@@ -1,9 +1,248 @@
-@import 'tailwindcss';
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
+@source "./resources/views/**/*.blade.php";
+@source "./vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php";
+@source "./storage/framework/views/*.php";
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-brand: #d4739a;
+    --color-brand-dark: #b85a82;
+    --color-brand-darker: #a04575;
+    --color-brand-light: #e8a5c0;
+    --color-brand-50: #fdf2f8;
+    --color-brand-100: #fce7f3;
+    --color-brand-200: #fbcfe8;
+    --color-gold: #c9a227;
+    --color-gold-dark: #b08f1f;
+    --color-cream: #faf6f2;
+    --font-display: 'Playfair Display', serif;
+    --font-body: 'Plus Jakarta Sans', sans-serif;
 }
+
+/* ══════════════ BASE (menggantikan preflight yang dimatikan) ══════════════ */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: 'Plus Jakarta Sans', sans-serif; background: #faf6f2; color: #333; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4, h5, h6 { margin: 0; font-family: 'Playfair Display', serif; }
+p { margin: 0; }
+
+/* ══════════════ SCROLLBAR ══════════════ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #e8a5c0; border-radius: 10px; }
+::-webkit-scrollbar-track { background: #f3f4f6; }
+
+/* ══════════════ SIDEBAR (mobile animation) ══════════════ */
+#sidebar { transition: transform .3s cubic-bezier(.4,0,.2,1); }
+@media (max-width: 1023.98px) {
+    #sidebar { transform: translateX(-100%); }
+    #sidebar.open { transform: translateX(0); }
+}
+
+/* ══════════════ FLASH MESSAGES ══════════════ */
+@keyframes flashIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ══════════════ ALPINE DROPDOWN TRANSITIONS ══════════════ */
+[x-cloak] { display: none !important; }
+.dropdown-enter { transition: opacity .15s ease, transform .15s ease; }
+.dropdown-enter-start { opacity: 0; transform: translateY(-6px) scale(.97); }
+.dropdown-enter-end { opacity: 1; transform: translateY(0) scale(1); }
+.dropdown-leave { transition: opacity .1s ease, transform .1s ease; }
+.dropdown-leave-start { opacity: 1; transform: translateY(0) scale(1); }
+.dropdown-leave-end { opacity: 0; transform: translateY(-4px) scale(.97); }
+
+/* ══════════════ SIDEBAR HELPERS ══════════════ */
+.border-l-brand { border-left-color: #d4739a !important; }
+.nav-item-active { background: #d4739a !important; color: #fff !important; font-weight: 600; }
+.nav-item-active i { color: #fff !important; }
+
+/* ════════════════════════════════════════════════════════════
+   LANDING PAGE DESIGN SYSTEM
+════════════════════════════════════════════════════════════ */
+:root {
+    --primary: #d4739a;
+    --primary-dark: #b85c85;
+    --primary-light: #f5d5e0;
+    --accent: #e8a0bf;
+    --bg: #faf6f2;
+    --text: #2d2521;
+    --muted: #8a8075;
+    --white: #ffffff;
+    --success: #198754;
+    --danger: #dc3545;
+}
+
+.font-display { font-family: 'Playfair Display', serif !important; }
+.font-heading { font-family: 'Playfair Display', serif !important; }
+
+/* ── NAVBAR ── */
+.nav-landing {
+    background: rgba(255,255,255,.98);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(45,37,33,.06);
+    position: sticky;
+    top: 0;
+    z-index: 1050;
+}
+.nav-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    min-height: 72px;
+    padding: .6rem 0;
+    position: relative;
+}
+.brand-logo {
+    font-family: 'Playfair Display', serif;
+    font-weight: 700; font-size: 1.55rem;
+    color: var(--primary); letter-spacing: 1px;
+    text-decoration: none; line-height: 1.1;
+    flex-shrink: 0;
+}
+.brand-logo:hover { color: var(--primary-dark); }
+.brand-logo small {
+    display: block; font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: .58rem; font-weight: 600; letter-spacing: 4px;
+    text-transform: uppercase; color: var(--muted); margin-top: 2px;
+}
+.nav-menu { display: flex; align-items: center; justify-content: center; gap: .25rem; flex: 1; }
+.nav-menu-link {
+    color: #4a423d; font-weight: 500; font-size: .82rem;
+    padding: .45rem .65rem; text-decoration: none; position: relative;
+    transition: color .2s; white-space: nowrap;
+}
+.nav-menu-link::after {
+    content: ''; position: absolute; left: .65rem; right: .65rem; bottom: 2px;
+    height: 2.5px; border-radius: 2px; background: var(--primary);
+    transform: scaleX(0); transform-origin: center; transition: transform .25s ease;
+}
+.nav-menu-link:hover { color: var(--primary); }
+.nav-menu-link.active { color: var(--primary); font-weight: 600; }
+.nav-menu-link.active::after,
+.nav-menu-link:hover::after { transform: scaleX(1); }
+.nav-actions { display: flex; align-items: center; gap: .75rem; flex-shrink: 0; }
+.nav-hamburger {
+    display: none;
+    background: none; border: 1.5px solid rgba(45,37,33,.15);
+    border-radius: 10px; font-size: 1.25rem; color: var(--text);
+    padding: .35rem .6rem; cursor: pointer; line-height: 1;
+}
+.nav-hamburger:focus { outline: none; border-color: var(--primary); }
+@media (max-width: 991.98px) {
+    .nav-hamburger { display: block; }
+    .nav-menu {
+        display: none;
+        flex-direction: column;
+        align-items: stretch;
+        position: absolute;
+        top: 100%; left: 0; right: 0;
+        background: #fff;
+        border-radius: 0 0 16px 16px;
+        box-shadow: 0 20px 40px rgba(26,20,18,.12);
+        border-bottom: 1px solid rgba(45,37,33,.06);
+        padding: 1rem 1.5rem 1.25rem;
+        gap: .25rem;
+    }
+    .nav-open .nav-menu { display: flex; }
+    .nav-menu-link { padding: .65rem 1rem; border-radius: 10px; }
+    .nav-menu-link:hover, .nav-menu-link.active { background: var(--primary-light); }
+    .nav-menu-link::after { display: none; }
+    .nav-actions {
+        flex-direction: column;
+        align-items: stretch;
+        padding-top: 1rem;
+        margin-top: .5rem;
+        border-top: 1px solid rgba(45,37,33,.08);
+    }
+    .nav-actions .btn-pink, .nav-actions .btn-outline-pink { width: 100%; text-align: center; }
+}
+
+/* ── BUTTONS ── */
+.btn-pink {
+    background: var(--primary); color: #fff; border: none; font-weight: 600;
+    font-size: .88rem; padding: .6rem 1.6rem; border-radius: 50px;
+    transition: all .25s; box-shadow: 0 4px 14px rgba(212,115,154,.3);
+}
+.btn-pink:hover { background: var(--primary-dark); color: #fff; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(212,115,154,.4); }
+.btn-outline-pink {
+    border: 1.5px solid var(--primary); color: var(--primary); background: transparent;
+    font-weight: 600; font-size: .88rem; padding: .55rem 1.4rem; border-radius: 50px;
+    transition: all .25s;
+}
+.btn-outline-pink:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-pink, .btn-outline-pink, .btn-pink-solid, .btn-pink-outline, .btn-booking-cta, .btn-float {
+    display: inline-block;
+    text-align: center;
+    vertical-align: middle;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* ── UTILITY LANDING ── */
+.section-eyebrow { letter-spacing: 3.5px; font-size: .7rem; text-transform: uppercase; color: var(--primary); font-weight: 700; }
+.section-heading { font-size: 2rem; line-height: 1.25; }
+.rose-rule { width: 56px; height: 3px; background: var(--primary); border: none; border-radius: 2px; }
+.text-rose { color: var(--primary) !important; }
+.bg-rose { background: var(--primary) !important; }
+
+/* ── FOOTER ── */
+.site-footer { background: var(--white); border-top: 1px solid rgba(45,37,33,.07); }
+.site-footer a { color: var(--text); text-decoration: none; transition: color .25s; font-size: .9rem; }
+.site-footer a:hover { color: var(--primary); }
+.site-footer .footer-heading { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--primary); margin: 0 0 .75rem; line-height: 1; }
+
+/* ── FLOATING CTA ── */
+.btn-float { position: fixed; bottom: 24px; right: 24px; z-index: 1050; border-radius: 50px; box-shadow: 0 6px 20px rgba(212,115,154,.4); }
+
+/* ── FLOATING WHATSAPP ── */
+.wa-float {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1050;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #25d366;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    text-decoration: none;
+    box-shadow: 0 6px 20px rgba(37, 211, 102, .45);
+    transition: transform .25s, box-shadow .25s;
+}
+.wa-float:hover { transform: scale(1.08); box-shadow: 0 8px 24px rgba(37, 211, 102, .55); color: #fff; }
+@media (max-width: 991.98px) {
+    .wa-float { bottom: 96px; }
+}
+
+/* ── COMPONENTS LANDING ── */
+.btn-primary-rose { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; background: #d4739a; color: #fff; border: none; border-radius: .5rem; padding: .6rem 1.25rem; font-weight: 600; font-size: .875rem; cursor: pointer; transition: background .25s; text-decoration: none; }
+.btn-primary-rose:hover { background: #b85c85; color: #fff; }
+.link-btn { display: inline-flex; align-items: center; gap: .4rem; color: #d4739a; font-weight: 600; font-size: .875rem; text-decoration: none; cursor: pointer; transition: color .2s; }
+.link-btn:hover { color: #b85c85; }
+.card-mua { background: #fff; border: none; border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,.05); transition: transform .25s, box-shadow .25s; }
+.card-mua:hover { transform: translateY(-5px); box-shadow: 0 14px 30px rgba(0,0,0,.1); }
+.stat-number { font-size: 2.1rem; font-weight: 700; line-height: 1.1; }
+
+/* ── CONTAINER (centering dijamin, tidak bergantung utility) ── */
+.container {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+.nav-landing .container { max-width: 1280px; padding-left: 2rem; padding-right: 2rem; }
+.section-container { width: 100%; max-width: 1280px; margin: 0 auto; padding: 0 3rem; }
+@media (max-width: 767.98px) { .section-container { padding: 0 1.25rem; } }
+.landing-section .container,
+.landing-section .container-fluid,
+.site-footer .container { max-width: 1280px; padding-left: 3rem; padding-right: 3rem; }
+@media (max-width: 767.98px) {
+    .landing-section .container,
+    .site-footer .container { padding-left: 1.25rem; padding-right: 1.25rem; }
+}
+
