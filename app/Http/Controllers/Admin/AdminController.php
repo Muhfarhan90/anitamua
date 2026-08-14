@@ -12,21 +12,34 @@ use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
-    public function users()
+    public function staffs()
     {
-        $users = User::withCount('bookings')->orderBy('role')->paginate(20);
+        $users = User::withCount('bookings')
+            ->whereIn('role', [User::ROLE_OWNER, User::ROLE_ADMIN, User::ROLE_TEAM])
+            ->orderBy('role')->orderBy('name')
+            ->paginate(20);
 
-        return view('admin.users.index', compact('users'));
+        return view('admin.users.staff', compact('users'));
     }
 
-    public function storeUser(Request $request)
+    public function clients()
+    {
+        $users = User::withCount('bookings')
+            ->where('role', User::ROLE_CLIENT)
+            ->orderBy('name')
+            ->paginate(20);
+
+        return view('admin.users.client', compact('users'));
+    }
+
+    public function storeStaff(Request $request)
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users'],
             'phone' => ['nullable', 'string', 'max:30'],
             'password' => ['required', 'min:6'],
-            'role' => ['required', 'in:owner,admin,team,client'],
+            'role' => ['required', 'in:owner,admin,team'],
         ]);
 
         $user = User::create([
@@ -37,9 +50,31 @@ class AdminController extends Controller
             'role' => $data['role'],
         ]);
 
-        ActivityLogger::log('user_created', 'User ditambahkan', 'User '.$user->name.' ('.$user->role.') ditambahkan oleh '.auth()->user()->name);
+        ActivityLogger::log('user_created', 'Staff ditambahkan', 'Staff '.$user->name.' ('.$user->role.') ditambahkan oleh '.auth()->user()->name);
 
-        return back()->with('success', 'User berhasil ditambahkan.');
+        return back()->with('success', 'Staff berhasil ditambahkan.');
+    }
+
+    public function storeClient(Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'unique:users'],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'password' => ['required', 'min:6'],
+        ]);
+
+        $user = User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'],
+            'password' => bcrypt($data['password']),
+            'role' => User::ROLE_CLIENT,
+        ]);
+
+        ActivityLogger::log('user_created', 'Klien ditambahkan', 'Akun klien '.$user->name.' ditambahkan oleh '.auth()->user()->name);
+
+        return back()->with('success', 'Akun klien berhasil ditambahkan.');
     }
 
     public function toggleUser(User $user)

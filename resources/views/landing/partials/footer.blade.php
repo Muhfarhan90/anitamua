@@ -2,9 +2,13 @@
     <div class="container">
         <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 items-start">
             <div class="">
-                <a href="{{ route('home') }}" class="block mb-3 leading-none">
-                    <span class="font-display font-bold text-xl leading-none" style="color:var(--primary); letter-spacing:1.5px;">ANITA</span>
-                    <span class="block" style="font-size:.58rem; letter-spacing:4px; text-transform:uppercase; color:var(--muted); font-weight:600; margin-top:4px; line-height:1;">Make Up Artist</span>
+                <a href="{{ route('home') }}" class="block mb-3">
+                    @if(!empty($settings['logo']))
+                        <img src="{{ asset('storage/'.$settings['logo']) }}" alt="{{ $settings['company_name'] ?? 'ANITA MUA' }}" style="height:48px; width:auto; display:block;">
+                    @else
+                        <span class="font-display font-bold text-xl leading-none" style="color:var(--primary); letter-spacing:1.5px;">ANITA</span>
+                        <span class="block" style="font-size:.58rem; letter-spacing:4px; text-transform:uppercase; color:var(--muted); font-weight:600; margin-top:4px; line-height:1;">Make Up Artist</span>
+                    @endif
                 </a>
                 <p style="color:var(--muted); font-size:.88rem; line-height:1.7;">
                     {{ $settings['tagline'] ?? 'Makeup profesional untuk hari spesial Anda. Elegan, flawless, dan unforgettable.' }}

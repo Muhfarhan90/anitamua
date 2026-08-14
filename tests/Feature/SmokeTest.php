@@ -329,13 +329,14 @@ it('renders MVP back office pages and hides deferred features', function () {
 
     // Modul fase 2 sudah aktif
     foreach (['/admin/inventory', '/admin/inventory-categories', '/admin/benefits', '/admin/benefit-categories',
+              '/admin/users/staff', '/admin/users/clients',
               '/admin/content/testimonials', '/admin/content/gallery', '/admin/content/faqs', '/admin/content/settings'] as $url) {
         $this->actingAs($owner)->get($url)->assertOk();
     }
 
-    // Vendor, Keuangan, Users, Timeline, Reminder dinonaktifkan sementara
+    // Vendor, Keuangan, Timeline, Reminder dinonaktifkan sementara
     foreach (['/admin/vendors', '/admin/vendor-categories',
-              '/admin/finances', '/admin/users', '/admin/timeline', '/admin/reminders'] as $url) {
+              '/admin/finances', '/admin/timeline', '/admin/reminders'] as $url) {
         $this->actingAs($owner)->get($url)->assertNotFound();
     }
 });

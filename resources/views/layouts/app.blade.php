@@ -63,7 +63,8 @@
                 ['label' => 'Inventory',  'icon' => 'fa-solid fa-shirt',           'url' => route('admin.inventory.index'),  'active' => 'admin.inventory.*'],
                 ['label' => 'Kat. Inventory', 'icon' => 'fa-solid fa-tags',        'url' => route('admin.inventory-categories.index'), 'active' => 'admin.inventory-categories.*'],
                 // ['label' => 'Keuangan',   'icon' => 'fa-solid fa-coins',           'url' => route('admin.finances.index'),   'active' => 'admin.finances.*'],
-                // ['label' => 'Users',      'icon' => 'fa-solid fa-users',           'url' => route('admin.users.index'),      'active' => 'admin.users.*'],
+                ['label' => 'Manajemen Staff', 'icon' => 'fa-solid fa-user-tie',     'url' => route('admin.users.staff'),      'active' => 'admin.users.staff*'],
+                ['label' => 'Manajemen Klien', 'icon' => 'fa-solid fa-users',        'url' => route('admin.users.clients'),    'active' => 'admin.users.clients*'],
                 ['label' => 'Testimoni',  'icon' => 'fa-solid fa-quote-right',     'url' => route('admin.content.testimonials'), 'active' => 'admin.content.testimonials*'],
                 ['label' => 'Galeri',     'icon' => 'fa-solid fa-image',           'url' => route('admin.content.gallery'), 'active' => 'admin.content.gallery*'],
                 ['label' => 'FAQ',        'icon' => 'fa-solid fa-circle-question', 'url' => route('admin.content.faqs'),    'active' => 'admin.content.faqs*'],
@@ -109,12 +110,19 @@
 
         {{-- Logo --}}
         <div class="px-5 h-16 flex items-center gap-3 border-b border-gray-100">
-            <div class="w-8 h-8 rounded-xl bg-brand flex items-center justify-center flex-shrink-0">
-                <i class="fas fa-wand-sparkles text-white text-sm"></i>
-            </div>
-            <a href="{{ route('home') }}" class="font-display text-lg font-bold tracking-wide text-gray-800 no-underline leading-tight">
-                ANITA <span class="text-brand">MUA</span>
-            </a>
+            @if(!empty($settings['logo']))
+                <img src="{{ asset('storage/'.$settings['logo']) }}" alt="{{ $settings['company_name'] ?? 'ANITA MUA' }}" class="h-8 w-auto object-contain flex-shrink-0">
+                <a href="{{ route('home') }}" class="font-display text-lg font-bold tracking-wide text-gray-800 no-underline leading-tight">
+                    {{ $settings['company_name'] ?? 'ANITA MUA' }}
+                </a>
+            @else
+                <div class="w-8 h-8 rounded-xl bg-brand flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-wand-sparkles text-white text-sm"></i>
+                </div>
+                <a href="{{ route('home') }}" class="font-display text-lg font-bold tracking-wide text-gray-800 no-underline leading-tight">
+                    {{ $settings['company_name'] ?? 'ANITA MUA' }}
+                </a>
+            @endif
         </div>
 
         {{-- Navigation --}}

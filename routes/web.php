@@ -147,13 +147,14 @@ Route::middleware('auth')->group(function () {
             Route::post('/schedules', [ScheduleController::class, 'store'])->name('schedules.store');
             Route::delete('/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('schedules.destroy');
 
-                // // Keuangan & User (Owner only) — dinonaktifkan sementara
-                // Route::get('/finances', [FinanceController::class, 'index'])->name('finances.index');
-                // Route::post('/finances', [FinanceController::class, 'store'])->name('finances.store');
-                // Route::delete('/finances/{finance}', [FinanceController::class, 'destroy'])->name('finances.destroy');
-                // Route::get('/users', [AdminController::class, 'users'])->name('users.index');
-                // Route::post('/users', [AdminController::class, 'storeUser'])->name('users.store');
-                // Route::patch('/users/{user}/toggle', [AdminController::class, 'toggleUser'])->name('users.toggle');
+                // Manajemen User (Owner only) — Staff & Klien
+                Route::middleware('role:owner')->group(function () {
+                    Route::get('/users/staff', [AdminController::class, 'staffs'])->name('users.staff');
+                    Route::post('/users/staff', [AdminController::class, 'storeStaff'])->name('users.staff.store');
+                    Route::get('/users/clients', [AdminController::class, 'clients'])->name('users.clients');
+                    Route::post('/users/clients', [AdminController::class, 'storeClient'])->name('users.clients.store');
+                    Route::patch('/users/{user}/toggle', [AdminController::class, 'toggleUser'])->name('users.toggle');
+                });
 
                 // Konten Website — Owner only
                 Route::get('/content/testimonials', [ContentController::class, 'testimonials'])->name('content.testimonials');

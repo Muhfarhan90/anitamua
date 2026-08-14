@@ -15,7 +15,11 @@
 <nav class="nav-landing">
     <div class="container nav-inner">
         <a class="brand-logo" href="{{ route('home') }}">
-            ANITA<small>Make Up Artist</small>
+            @if(!empty($settings['logo']))
+                <img src="{{ asset('storage/'.$settings['logo']) }}" alt="{{ $settings['company_name'] ?? 'ANITA MUA' }}" style="height:48px; width:auto; display:block;">
+            @else
+                ANITA<small>Make Up Artist</small>
+            @endif
         </a>
 
         <button class="nav-hamburger" type="button" x-data @click="$el.closest('.nav-inner').classList.toggle('nav-open')" aria-label="Toggle menu">
@@ -24,7 +28,7 @@
 
         <div class="nav-menu">
             <a class="nav-menu-link {{ request()->routeIs('home')?'active':'' }}" href="{{ route('home') }}">Home</a>
-            <a class="nav-menu-link {{ request()->routeIs('about')?'active':'' }}" href="{{ route('about') }}">Tentang Anita MUA</a>
+            <a class="nav-menu-link {{ request()->routeIs('about')?'active':'' }}" href="{{ route('about') }}">Tentang</a>
             <a class="nav-menu-link {{ request()->routeIs('packages')?'active':'' }}" href="{{ route('packages') }}">Paket</a>
             <a class="nav-menu-link {{ request()->routeIs('gallery')?'active':'' }}" href="{{ route('gallery') }}">Galeri</a>
             <a class="nav-menu-link {{ request()->routeIs('testimonials')?'active':'' }}" href="{{ route('testimonials') }}">Testimoni</a>

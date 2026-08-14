@@ -12,8 +12,21 @@
 </x-page-header>
 
 <x-card class="max-w-2xl">
-    <form action="{{ route('admin.content.settings.store') }}" method="POST" class="space-y-4">
+    <form action="{{ route('admin.content.settings.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
         @csrf
+
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 pb-2">Logo</p>
+        <div>
+            <label class="block text-sm font-medium text-gray-600 mb-1">Logo Website</label>
+            <div class="w-32 h-20 rounded-lg border border-gray-100 bg-gray-50 flex items-center justify-center overflow-hidden mb-3 {{ empty($settings['logo']) ? 'hidden' : '' }}" id="logoBox">
+                <img id="logoPreview" src="{{ !empty($settings['logo']) ? asset('storage/'.$settings['logo']) : '' }}" alt="Logo" class="max-h-full max-w-full object-contain p-1">
+            </div>
+            <input type="file" id="logoInput" name="logo" accept="image/*" onchange="previewLogo(this)" class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
+            <p class="text-xs text-gray-400 mt-1">Format PNG/JPG, maks 2 MB — otomatis dikompres. Kosongkan untuk memakai logo lama.</p>
+            @error('logo')
+                <p class="text-xs text-red-600 mt-1"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>
+            @enderror
+        </div>
 
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 pb-2">Umum</p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -43,4 +56,21 @@
         </div>
     </form>
 </x-card>
+
+@push('scripts')
+<script>
+    function previewLogo(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const img = document.getElementById('logoPreview');
+            const box = document.getElementById('logoBox');
+            img.src = e.target.result;
+            box.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+</script>
+@endpush
 @endsection

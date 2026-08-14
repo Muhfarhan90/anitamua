@@ -5,7 +5,10 @@
 @section('content')
 <x-page-header :title="'Detail Booking — '.($booking->client->name ?? $booking->name)">
     <x-slot:actions>
+        @php $hasFitting = $booking->schedules->where('type', 'fitting')->where('status', '!=', 'cancelled')->isNotEmpty(); @endphp
+        @if($hasFitting)
         <x-button href="{{ route('admin.bookings.packing', $booking) }}" color="primary"><i class="fas fa-box"></i> Packing Checklist</x-button>
+        @endif
         @if($booking->status !== 'completed' && $booking->status !== 'cancelled')
         <form action="{{ route('admin.bookings.complete', $booking) }}" method="POST" class="inline">
             @csrf

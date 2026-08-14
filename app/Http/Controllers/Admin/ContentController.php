@@ -8,7 +8,9 @@ use App\Models\Gallery;
 use App\Models\SiteSetting;
 use App\Models\Testimonial;
 use App\Services\ActivityLogger;
+use App\Services\ImageCompressor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ContentController extends Controller
 {
@@ -155,7 +157,7 @@ class ContentController extends Controller
 
     public function settings()
     {
-        $keys = ['company_name', 'tagline', 'about', 'address', 'phone', 'email', 'instagram', 'whatsapp', 'bank_name', 'bank_account_number', 'bank_account_name'];
+        $keys = ['company_name', 'tagline', 'about', 'address', 'phone', 'email', 'instagram', 'whatsapp', 'bank_name', 'bank_account_number', 'bank_account_name', 'logo'];
 
         $settings = SiteSetting::whereIn('key', $keys)->pluck('value', 'key');
 
@@ -176,11 +178,25 @@ class ContentController extends Controller
             'bank_name' => ['nullable', 'string', 'max:50'],
             'bank_account_number' => ['nullable', 'string', 'max:50'],
             'bank_account_name' => ['nullable', 'string', 'max:100'],
+            'logo' => ['nullable', 'image', 'max:2048'],
         ]);
+
+        // Upload logo baru (kompres otomatis) — hapus logo lama agar hanya tersimpan 1 logo
+        if ($request->hasFile('logo')) {
+            $oldLogo = SiteSetting::where('key', 'logo')->value('value');
+            if ($oldLogo && Storage::disk('public')->exists($oldLogo)) {
+                Storage::disk('public')->delete($oldLogo);
+            }
+
+            $data['logo'] = ImageCompressor::compressAndStore($request->file('logo'), 'uploads/logo');
+        }
 
         foreach ($data as $key => $value) {
             SiteSetting::set($key, $value);
         }
+
+        // Hapus cache agar perubahan langsung tampil di landing & dashboard
+        cache()->forget('site_settings');
 
         ActivityLogger::log('settings_updated', 'Pengaturan situs diperbarui', 'Pengaturan situs diperbarui oleh '.auth()->user()->name);
 

@@ -19,9 +19,14 @@
         <p class="text-xs text-gray-500">{{ $booking->package?->name }} · {{ $booking->event_date ? $booking->event_date->format('d M Y') : '-' }} · {{ $booking->location ?? '-' }}</p>
     </div>
     <div class="ml-auto">
+        @php $hasFitting = $booking->schedules->where('type', 'fitting')->where('status', '!=', 'cancelled')->isNotEmpty(); @endphp
+        @if($hasFitting)
         <x-button size="sm" href="{{ route('admin.bookings.packing', $booking) }}">
             <i class="fas fa-clipboard-check"></i> Packing Checklist
         </x-button>
+        @else
+        <span class="text-xs text-gray-400 inline-flex items-center gap-1.5"><i class="fas fa-circle-info"></i> Packing muncul setelah jadwal fitting dibuat</span>
+        @endif
     </div>
 </div>
 
