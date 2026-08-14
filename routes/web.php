@@ -73,6 +73,8 @@ Route::middleware('auth')->group(function () {
         Route::post('/admin/schedules/{schedule}/pic', [ScheduleController::class, 'updatePic'])->name('admin.schedules.pic');
 
         // Survey & Fitting (data lapangan)
+        Route::get('/admin/fieldwork', [FieldWorkController::class, 'index'])->name('admin.fieldwork.index');
+        Route::get('/admin/fieldwork/{booking}', [FieldWorkController::class, 'fieldwork'])->name('admin.fieldwork.booking');
         Route::post('/admin/survey', [FieldWorkController::class, 'surveyStore'])->name('admin.survey.store');
         Route::post('/admin/fitting', [FieldWorkController::class, 'fittingStore'])->name('admin.fitting.store');
 
@@ -123,17 +125,17 @@ Route::middleware('auth')->group(function () {
             // Route::put('/vendor-categories/{category}', [VendorCategoryController::class, 'update'])->name('vendor-categories.update');
             // Route::delete('/vendor-categories/{category}', [VendorCategoryController::class, 'destroy'])->name('vendor-categories.destroy');
 
-            // // Inventory Wardrobe (Owner & Admin) — dinonaktifkan sementara
-            // Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
-            // Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
-            // Route::put('/inventory/{item}', [InventoryController::class, 'update'])->name('inventory.update');
-            // Route::delete('/inventory/{item}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
+            // Inventory Wardrobe (Owner & Admin)
+            Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+            Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
+            Route::put('/inventory/{item}', [InventoryController::class, 'update'])->name('inventory.update');
+            Route::delete('/inventory/{item}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
 
-            // // Kategori Inventory (Owner & Admin) — dinonaktifkan sementara
-            // Route::get('/inventory-categories', [InventoryCategoryController::class, 'index'])->name('inventory-categories.index');
-            // Route::post('/inventory-categories', [InventoryCategoryController::class, 'store'])->name('inventory-categories.store');
-            // Route::put('/inventory-categories/{category}', [InventoryCategoryController::class, 'update'])->name('inventory-categories.update');
-            // Route::delete('/inventory-categories/{category}', [InventoryCategoryController::class, 'destroy'])->name('inventory-categories.destroy');
+            // Kategori Inventory (Owner & Admin)
+            Route::get('/inventory-categories', [InventoryCategoryController::class, 'index'])->name('inventory-categories.index');
+            Route::post('/inventory-categories', [InventoryCategoryController::class, 'store'])->name('inventory-categories.store');
+            Route::put('/inventory-categories/{category}', [InventoryCategoryController::class, 'update'])->name('inventory-categories.update');
+            Route::delete('/inventory-categories/{category}', [InventoryCategoryController::class, 'destroy'])->name('inventory-categories.destroy');
 
             // // Reminder manual & Timeline (Owner & Admin) — dinonaktifkan sementara
             // Route::get('/reminders', [AdminController::class, 'reminders'])->name('reminders.index');

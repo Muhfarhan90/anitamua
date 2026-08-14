@@ -32,6 +32,7 @@
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Kode</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Lokasi</th>
                     <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                    <th class="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider text-center">Aksi</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-50">
@@ -51,7 +52,6 @@
                     <td class="px-5 py-3.5">
                         <form action="{{ route('admin.schedules.status', $task) }}" method="POST">
                             @csrf
-                            @method('PATCH')
                             <select name="status" onchange="this.form.submit()"
                                     class="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand/30 cursor-pointer">
                                 <option value="scheduled" {{ $task->status === 'scheduled' ? 'selected' : '' }}>Terjadwal</option>
@@ -60,10 +60,15 @@
                             </select>
                         </form>
                     </td>
+                    <td class="px-5 py-3.5 text-center">
+                        <x-button size="sm" href="{{ route('admin.fieldwork.booking', $task->booking) }}">
+                            <i class="fas fa-clipboard-list"></i> Buka Tugas
+                        </x-button>
+                    </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="6"><x-empty-state icon="fa-calendar-xmark" title="Tidak ada tugas" /></td>
+                    <td colspan="7"><x-empty-state icon="fa-calendar-xmark" title="Tidak ada tugas" /></td>
                 </tr>
                 @endforelse
             </tbody>

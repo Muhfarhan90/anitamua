@@ -3,14 +3,35 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Booking;
 use App\Models\Fitting;
 use App\Models\Survey;
+use App\Models\User;
 use App\Services\ActivityLogger;
 use App\Services\ImageCompressor;
 use Illuminate\Http\Request;
 
 class FieldWorkController extends Controller
 {
+    public function index()
+    {
+        $bookings = Booking::with('package')
+            ->where('status', '!=', Booking::STATUS_CANCELLED)
+            ->orderByDesc('event_date')
+            ->get();
+
+        return view('admin.fieldwork.index', compact('bookings'));
+    }
+
+    public function fieldwork(Booking $booking)
+    {
+        $booking->load(['survey', 'fittings', 'package']);
+
+        $teamMembers = User::where('role', User::ROLE_TEAM)->where('is_active', true)->orderBy('name')->get();
+
+        return view('admin.fieldwork.booking', compact('booking', 'teamMembers'));
+    }
+
     public function surveyStore(Request $request)
     {
         $data = $request->validate([

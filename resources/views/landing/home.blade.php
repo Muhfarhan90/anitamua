@@ -262,11 +262,11 @@
 </section>
 
 {{-- ══════════ CTA ══════════ --}}
-<section class="py-16 landing-section" style="background:var(--bg);">
-    <div class="container text-center">
-        <h2 class="font-display font-bold mb-2" style="color:var(--text); font-size:2rem;">Wujudkan Hari Bahagia Anda</h2>
-        <p class="mb-4 mx-auto" style="color:var(--muted); max-width:420px;">Jadwal terbatas setiap bulannya. Amankan tanggal pernikahan Anda sekarang.</p>
-        <a href="{{ route('booking.create') }}" class="btn-pink px-5 py-3 text-base">
+<section class="py-16 landing-section" style="background:var(--bg); text-align:center;">
+    <div class="container" style="text-align:center;">
+        <h2 class="font-display font-bold mb-2" style="color:var(--text); font-size:2rem; text-align:center;">Wujudkan Hari Bahagia Anda</h2>
+        <p style="color:var(--muted); max-width:420px; margin:1.5rem auto 2rem; text-align:center;">Jadwal terbatas setiap bulannya. Amankan tanggal pernikahan Anda sekarang.</p>
+        <a href="{{ route('booking.create') }}" class="btn-pink px-5 py-3 text-base" style="display:inline-block;">
             <i class="fas fa-calendar-check mr-2"></i>Booking Sekarang
         </a>
     </div>

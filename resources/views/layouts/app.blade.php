@@ -60,9 +60,8 @@
                 // Vendor dinonaktifkan sementara
                 // ['label' => 'Vendor',     'icon' => 'fa-solid fa-store',           'url' => route('admin.vendors.index'),    'active' => 'admin.vendors.*'],
                 // ['label' => 'Kat. Vendor', 'icon' => 'fa-solid fa-tags',           'url' => route('admin.vendor-categories.index'), 'active' => 'admin.vendor-categories.*'],
-                // Inventory dinonaktifkan sementara
-                // ['label' => 'Inventory',  'icon' => 'fa-solid fa-shirt',           'url' => route('admin.inventory.index'),  'active' => 'admin.inventory.*'],
-                // ['label' => 'Kat. Inventory', 'icon' => 'fa-solid fa-tags',        'url' => route('admin.inventory-categories.index'), 'active' => 'admin.inventory-categories.*'],
+                ['label' => 'Inventory',  'icon' => 'fa-solid fa-shirt',           'url' => route('admin.inventory.index'),  'active' => 'admin.inventory.*'],
+                ['label' => 'Kat. Inventory', 'icon' => 'fa-solid fa-tags',        'url' => route('admin.inventory-categories.index'), 'active' => 'admin.inventory-categories.*'],
                 // ['label' => 'Keuangan',   'icon' => 'fa-solid fa-coins',           'url' => route('admin.finances.index'),   'active' => 'admin.finances.*'],
                 // ['label' => 'Users',      'icon' => 'fa-solid fa-users',           'url' => route('admin.users.index'),      'active' => 'admin.users.*'],
                 ['label' => 'Testimoni',  'icon' => 'fa-solid fa-quote-right',     'url' => route('admin.content.testimonials'), 'active' => 'admin.content.testimonials*'],
@@ -81,13 +80,13 @@
                 // Vendor dinonaktifkan sementara
                 // ['label' => 'Vendor',     'icon' => 'fa-solid fa-store',           'url' => route('admin.vendors.index'),    'active' => 'admin.vendors.*'],
                 // ['label' => 'Kat. Vendor', 'icon' => 'fa-solid fa-tags',           'url' => route('admin.vendor-categories.index'), 'active' => 'admin.vendor-categories.*'],
-                // Inventory dinonaktifkan sementara
-                // ['label' => 'Inventory',  'icon' => 'fa-solid fa-shirt',           'url' => route('admin.inventory.index'),  'active' => 'admin.inventory.*'],
-                // ['label' => 'Kat. Inventory', 'icon' => 'fa-solid fa-tags',        'url' => route('admin.inventory-categories.index'), 'active' => 'admin.inventory-categories.*'],
+                ['label' => 'Inventory',  'icon' => 'fa-solid fa-shirt',           'url' => route('admin.inventory.index'),  'active' => 'admin.inventory.*'],
+                ['label' => 'Kat. Inventory', 'icon' => 'fa-solid fa-tags',        'url' => route('admin.inventory-categories.index'), 'active' => 'admin.inventory-categories.*'],
             ],
             'team' => [
                 ['label' => 'Dashboard', 'icon' => 'fa-solid fa-table-cells-large', 'url' => route('dashboard'), 'active' => 'dashboard'],
                 ['label' => 'Jadwal Saya', 'icon' => 'fa-regular fa-calendar', 'url' => route('admin.calendar'), 'active' => 'admin.calendar'],
+                ['label' => 'Tugas Lapangan', 'icon' => 'fa-solid fa-clipboard-list', 'url' => route('admin.fieldwork.index'), 'active' => 'admin.fieldwork.*'],
             ],
             'client' => [
                 ['label' => 'Dashboard',    'icon' => 'fa-solid fa-grip',           'url' => route('dashboard'),                                                                        'active' => 'dashboard'],
