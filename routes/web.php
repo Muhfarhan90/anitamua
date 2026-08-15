@@ -161,6 +161,9 @@ Route::middleware('auth')->group(function () {
                     Route::get('/users/clients', [AdminController::class, 'clients'])->name('users.clients');
                     Route::post('/users/clients', [AdminController::class, 'storeClient'])->name('users.clients.store');
                     Route::patch('/users/{user}/toggle', [AdminController::class, 'toggleUser'])->name('users.toggle');
+                    Route::get('/users/{user}/edit', [AdminController::class, 'edit'])->name('users.edit');
+                    Route::patch('/users/{user}', [AdminController::class, 'update'])->name('users.update');
+                    Route::delete('/users/{user}', [AdminController::class, 'destroy'])->name('users.destroy');
                 });
 
                 // Konten Website — Owner only

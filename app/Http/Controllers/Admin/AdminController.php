@@ -16,6 +16,7 @@ class AdminController extends Controller
     {
         $users = User::withCount('bookings')
             ->whereIn('role', [User::ROLE_OWNER, User::ROLE_ADMIN, User::ROLE_TEAM])
+            ->where('id', '!=', auth()->id())
             ->orderBy('role')->orderBy('name')
             ->paginate(20);
 
@@ -84,6 +85,61 @@ class AdminController extends Controller
         ActivityLogger::log('user_status_changed', 'Status user diubah', 'User '.$user->name.' '.($user->is_active ? 'diaktifkan' : 'dinonaktifkan').' oleh '.auth()->user()->name);
 
         return back()->with('success', 'Status user diperbarui.');
+    }
+
+    public function update(User $user, Request $request)
+    {
+        abort_if($user->id === auth()->id(), 403, 'Tidak dapat mengedit akun sendiri.');
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'unique:users,email,'.$user->id],
+            'phone' => ['nullable', 'string', 'max:30'],
+            'role' => ['nullable', 'in:owner,admin,team,client'],
+            'password' => ['nullable', 'min:6'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        $user->update([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'] ?? null,
+            'role' => $data['role'] ?? $user->role,
+            'is_active' => $request->has('is_active'),
+        ]);
+
+        if (! empty($data['password'])) {
+            $user->update(['password' => bcrypt($data['password'])]);
+        }
+
+        ActivityLogger::log('user_updated', 'User diperbarui', 'User '.$user->name.' diperbarui oleh '.auth()->user()->name);
+
+        return redirect()->back()->with('success', 'User berhasil diperbarui.');
+    }
+
+    public function edit(User $user)
+    {
+        abort_if($user->id === auth()->id(), 403, 'Tidak dapat mengedit akun sendiri.');
+
+        return view('admin.users.edit', ['user' => $user]);
+    }
+
+    public function destroy(User $user)
+    {
+        abort_if($user->id === auth()->id(), 403, 'Tidak dapat menghapus akun sendiri.');
+
+        $bookingCount = Booking::where('client_id', $user->id)->count();
+
+        if ($bookingCount > 0) {
+            return back()->with('warning', "User {$user->name} tidak dapat dihapus karena memiliki {$bookingCount} booking. Nonaktifkan saja akunnya.");
+        }
+
+        $name = $user->name;
+        $user->delete();
+
+        ActivityLogger::log('user_deleted', 'User dihapus', 'User '.$name.' dihapus oleh '.auth()->user()->name);
+
+        return back()->with('success', 'User '.$name.' berhasil dihapus.');
     }
 
     public function timeline(Request $request)

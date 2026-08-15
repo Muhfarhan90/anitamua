@@ -48,13 +48,14 @@
                     <td class="px-5 py-3">
                         <x-badge :color="$user->is_active ? 'success' : 'gray'">{{ $user->is_active ? 'Aktif' : 'Nonaktif' }}</x-badge>
                     </td>
-                    <td class="px-5 py-3 text-center">
-                        <form method="POST" action="{{ route('admin.users.toggle', $user->id) }}">
-                            @csrf @method('PATCH')
-                            <x-button size="sm" :color="$user->is_active ? 'danger' : 'success'" type="submit">
-                                {{ $user->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
-                            </x-button>
-                        </form>
+                    <td class="px-5 py-3">
+                        <div class="flex items-center justify-center gap-2">
+                            <x-button size="sm" color="outline" href="{{ route('admin.users.edit', $user->id) }}"><i class="fas fa-pen"></i></x-button>
+                            <form method="POST" action="{{ route('admin.users.destroy', $user->id) }}" onsubmit="return confirm('Hapus user {{ $user->name }}?')">
+                                @csrf @method('DELETE')
+                                <x-button size="sm" color="danger" type="submit"><i class="fas fa-trash"></i></x-button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 @empty
