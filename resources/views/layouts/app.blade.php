@@ -50,48 +50,73 @@
 
         $sidebarMenus = [
             'owner' => [
-                ['label' => 'Dashboard',  'icon' => 'fa-solid fa-grip',           'url' => route('dashboard'),              'active' => 'dashboard'],
-                ['label' => 'Booking',    'icon' => 'fa-solid fa-calendar-check', 'url' => route('admin.bookings.index'),   'active' => 'admin.bookings.*'],
-                ['label' => 'Pembayaran', 'icon' => 'fa-solid fa-credit-card',     'url' => route('admin.payments.index'),   'active' => 'admin.payments.*'],
-                ['label' => 'Jadwal',     'icon' => 'fa-solid fa-calendar-week',   'url' => route('admin.calendar'),         'active' => 'admin.calendar'],
-                ['label' => 'Paket',      'icon' => 'fa-solid fa-box',             'url' => route('admin.packages.index'),   'active' => 'admin.packages.*'],
-                ['label' => 'Benefit',    'icon' => 'fa-solid fa-circle-check',    'url' => route('admin.benefits.index'),   'active' => 'admin.benefits.*'],
-                ['label' => 'Kat. Benefit', 'icon' => 'fa-solid fa-tags',          'url' => route('admin.benefit-categories.index'), 'active' => 'admin.benefit-categories.*'],
-                // Vendor dinonaktifkan sementara
-                // ['label' => 'Vendor',     'icon' => 'fa-solid fa-store',           'url' => route('admin.vendors.index'),    'active' => 'admin.vendors.*'],
-                // ['label' => 'Kat. Vendor', 'icon' => 'fa-solid fa-tags',           'url' => route('admin.vendor-categories.index'), 'active' => 'admin.vendor-categories.*'],
-                ['label' => 'Inventory',  'icon' => 'fa-solid fa-shirt',           'url' => route('admin.inventory.index'),  'active' => 'admin.inventory.*'],
-                ['label' => 'Kat. Inventory', 'icon' => 'fa-solid fa-tags',        'url' => route('admin.inventory-categories.index'), 'active' => 'admin.inventory-categories.*'],
-                // ['label' => 'Keuangan',   'icon' => 'fa-solid fa-coins',           'url' => route('admin.finances.index'),   'active' => 'admin.finances.*'],
-                ['label' => 'Manajemen Staff', 'icon' => 'fa-solid fa-user-tie',     'url' => route('admin.users.staff'),      'active' => 'admin.users.staff*'],
-                ['label' => 'Manajemen Klien', 'icon' => 'fa-solid fa-users',        'url' => route('admin.users.clients'),    'active' => 'admin.users.clients*'],
-                ['label' => 'Testimoni',  'icon' => 'fa-solid fa-quote-right',     'url' => route('admin.content.testimonials'), 'active' => 'admin.content.testimonials*'],
-                ['label' => 'Galeri',     'icon' => 'fa-solid fa-image',           'url' => route('admin.content.gallery'), 'active' => 'admin.content.gallery*'],
-                ['label' => 'FAQ',        'icon' => 'fa-solid fa-circle-question', 'url' => route('admin.content.faqs'),    'active' => 'admin.content.faqs*'],
-                ['label' => 'Pengaturan', 'icon' => 'fa-solid fa-gear',            'url' => route('admin.content.settings'), 'active' => 'admin.content.settings*'],
+                ['title' => 'Menu Utama', 'items' => [
+                    ['label' => 'Dashboard',  'icon' => 'fa-solid fa-grip',           'url' => route('dashboard'),              'active' => 'dashboard'],
+                    ['label' => 'Booking',    'icon' => 'fa-solid fa-calendar-check', 'url' => route('admin.bookings.index'),   'active' => 'admin.bookings.*'],
+                    ['label' => 'Pembayaran', 'icon' => 'fa-solid fa-credit-card',     'url' => route('admin.payments.index'),   'active' => 'admin.payments.*'],
+                    ['label' => 'Jadwal',     'icon' => 'fa-solid fa-calendar-week',   'url' => route('admin.calendar'),         'active' => 'admin.calendar'],
+                ]],
+                ['title' => 'Paket', 'items' => [
+                    ['label' => 'Paket',      'icon' => 'fa-solid fa-box',             'url' => route('admin.packages.index'),   'active' => 'admin.packages.*'],
+                    ['label' => 'Benefit',    'icon' => 'fa-solid fa-circle-check',    'url' => route('admin.benefits.index'),   'active' => 'admin.benefits.*'],
+                    ['label' => 'Kat. Benefit', 'icon' => 'fa-solid fa-tags',          'url' => route('admin.benefit-categories.index'), 'active' => 'admin.benefit-categories.*'],
+                ]],
+                ['title' => 'Wardrobe', 'items' => [
+                    ['label' => 'Inventory',  'icon' => 'fa-solid fa-shirt',           'url' => route('admin.inventory.index'),  'active' => 'admin.inventory.*'],
+                    ['label' => 'Kat. Inventory', 'icon' => 'fa-solid fa-tags',        'url' => route('admin.inventory-categories.index'), 'active' => 'admin.inventory-categories.*'],
+                ]],
+                ['title' => 'Users', 'items' => [
+                    ['label' => 'Manajemen Staff', 'icon' => 'fa-solid fa-user-tie',     'url' => route('admin.users.staff'),      'active' => 'admin.users.staff*'],
+                    ['label' => 'Manajemen Klien', 'icon' => 'fa-solid fa-users',        'url' => route('admin.users.clients'),    'active' => 'admin.users.clients*'],
+                ]],
+                ['title' => 'Settings', 'items' => [
+                    ['label' => 'Testimoni',  'icon' => 'fa-solid fa-quote-right',     'url' => route('admin.content.testimonials'), 'active' => 'admin.content.testimonials*'],
+                    ['label' => 'Galeri',     'icon' => 'fa-solid fa-image',           'url' => route('admin.content.gallery'), 'active' => 'admin.content.gallery*'],
+                    ['label' => 'FAQ',        'icon' => 'fa-solid fa-circle-question', 'url' => route('admin.content.faqs'),    'active' => 'admin.content.faqs*'],
+                    ['label' => 'Pengaturan', 'icon' => 'fa-solid fa-gear',            'url' => route('admin.content.settings'), 'active' => 'admin.content.settings*'],
+                ]],
+                ['title' => 'Marketing', 'items' => [
+                    ['label' => 'Promo Banner', 'icon' => 'fa-solid fa-bullhorn',      'url' => route('admin.promo-banners.index'), 'active' => 'admin.promo-banners.*'],
+                ]],
             ],
             'admin' => [
-                ['label' => 'Dashboard',  'icon' => 'fa-solid fa-grip',           'url' => route('dashboard'),              'active' => 'dashboard'],
-                ['label' => 'Booking',    'icon' => 'fa-solid fa-calendar-check', 'url' => route('admin.bookings.index'),   'active' => 'admin.bookings.*'],
-                ['label' => 'Pembayaran', 'icon' => 'fa-solid fa-credit-card',     'url' => route('admin.payments.index'),   'active' => 'admin.payments.*'],
-                ['label' => 'Jadwal',     'icon' => 'fa-solid fa-calendar-week',   'url' => route('admin.calendar'),         'active' => 'admin.calendar'],
-                ['label' => 'Paket',      'icon' => 'fa-solid fa-box',             'url' => route('admin.packages.index'),   'active' => 'admin.packages.*'],
-                ['label' => 'Benefit',    'icon' => 'fa-solid fa-circle-check',    'url' => route('admin.benefits.index'),   'active' => 'admin.benefits.*'],
-                ['label' => 'Kat. Benefit', 'icon' => 'fa-solid fa-tags',          'url' => route('admin.benefit-categories.index'), 'active' => 'admin.benefit-categories.*'],
-                // Vendor dinonaktifkan sementara
-                // ['label' => 'Vendor',     'icon' => 'fa-solid fa-store',           'url' => route('admin.vendors.index'),    'active' => 'admin.vendors.*'],
-                // ['label' => 'Kat. Vendor', 'icon' => 'fa-solid fa-tags',           'url' => route('admin.vendor-categories.index'), 'active' => 'admin.vendor-categories.*'],
-                ['label' => 'Inventory',  'icon' => 'fa-solid fa-shirt',           'url' => route('admin.inventory.index'),  'active' => 'admin.inventory.*'],
-                ['label' => 'Kat. Inventory', 'icon' => 'fa-solid fa-tags',        'url' => route('admin.inventory-categories.index'), 'active' => 'admin.inventory-categories.*'],
+                ['title' => 'Menu Utama', 'items' => [
+                    ['label' => 'Dashboard',  'icon' => 'fa-solid fa-grip',           'url' => route('dashboard'),              'active' => 'dashboard'],
+                    ['label' => 'Booking',    'icon' => 'fa-solid fa-calendar-check', 'url' => route('admin.bookings.index'),   'active' => 'admin.bookings.*'],
+                    ['label' => 'Pembayaran', 'icon' => 'fa-solid fa-credit-card',     'url' => route('admin.payments.index'),   'active' => 'admin.payments.*'],
+                    ['label' => 'Jadwal',     'icon' => 'fa-solid fa-calendar-week',   'url' => route('admin.calendar'),         'active' => 'admin.calendar'],
+                ]],
+                ['title' => 'Paket', 'items' => [
+                    ['label' => 'Paket',      'icon' => 'fa-solid fa-box',             'url' => route('admin.packages.index'),   'active' => 'admin.packages.*'],
+                    ['label' => 'Benefit',    'icon' => 'fa-solid fa-circle-check',    'url' => route('admin.benefits.index'),   'active' => 'admin.benefits.*'],
+                    ['label' => 'Kat. Benefit', 'icon' => 'fa-solid fa-tags',          'url' => route('admin.benefit-categories.index'), 'active' => 'admin.benefit-categories.*'],
+                ]],
+                ['title' => 'Wardrobe', 'items' => [
+                    ['label' => 'Inventory',  'icon' => 'fa-solid fa-shirt',           'url' => route('admin.inventory.index'),  'active' => 'admin.inventory.*'],
+                    ['label' => 'Kat. Inventory', 'icon' => 'fa-solid fa-tags',        'url' => route('admin.inventory-categories.index'), 'active' => 'admin.inventory-categories.*'],
+                ]],
+                ['title' => 'Settings', 'items' => [
+                    ['label' => 'Testimoni',  'icon' => 'fa-solid fa-quote-right',     'url' => route('admin.content.testimonials'), 'active' => 'admin.content.testimonials*'],
+                    ['label' => 'Galeri',     'icon' => 'fa-solid fa-image',           'url' => route('admin.content.gallery'), 'active' => 'admin.content.gallery*'],
+                    ['label' => 'FAQ',        'icon' => 'fa-solid fa-circle-question', 'url' => route('admin.content.faqs'),    'active' => 'admin.content.faqs*'],
+                    ['label' => 'Pengaturan', 'icon' => 'fa-solid fa-gear',            'url' => route('admin.content.settings'), 'active' => 'admin.content.settings*'],
+                ]],
+                ['title' => 'Marketing', 'items' => [
+                    ['label' => 'Promo Banner', 'icon' => 'fa-solid fa-bullhorn',      'url' => route('admin.promo-banners.index'), 'active' => 'admin.promo-banners.*'],
+                ]],
             ],
             'team' => [
-                ['label' => 'Dashboard', 'icon' => 'fa-solid fa-table-cells-large', 'url' => route('dashboard'), 'active' => 'dashboard'],
-                ['label' => 'Jadwal Saya', 'icon' => 'fa-regular fa-calendar', 'url' => route('admin.calendar'), 'active' => 'admin.calendar'],
-                ['label' => 'Tugas Lapangan', 'icon' => 'fa-solid fa-clipboard-list', 'url' => route('admin.fieldwork.index'), 'active' => 'admin.fieldwork.*'],
+                ['title' => 'Menu', 'items' => [
+                    ['label' => 'Dashboard', 'icon' => 'fa-solid fa-table-cells-large', 'url' => route('dashboard'), 'active' => 'dashboard'],
+                    ['label' => 'Jadwal Saya', 'icon' => 'fa-regular fa-calendar', 'url' => route('admin.calendar'), 'active' => 'admin.calendar'],
+                    ['label' => 'Tugas Lapangan', 'icon' => 'fa-solid fa-clipboard-list', 'url' => route('admin.fieldwork.index'), 'active' => 'admin.fieldwork.*'],
+                ]],
             ],
             'client' => [
-                ['label' => 'Dashboard',    'icon' => 'fa-solid fa-grip',           'url' => route('dashboard'),                                                                        'active' => 'dashboard'],
-                ['label' => 'Booking Saya', 'icon' => 'fa-solid fa-calendar-check', 'url' => $firstBooking ? route('client.booking', $firstBooking) : route('booking.create'),  'active' => ['client.booking*', 'booking.create']],
+                ['title' => 'Menu', 'items' => [
+                    ['label' => 'Dashboard',    'icon' => 'fa-solid fa-grip',           'url' => route('dashboard'),              'active' => 'dashboard'],
+                    ['label' => 'Booking Saya', 'icon' => 'fa-solid fa-calendar-check', 'url' => $firstBooking ? route('client.booking', $firstBooking) : route('booking.create'), 'active' => ['client.booking*', 'booking.create']],
+                ]],
             ],
         ];
         $menus = $sidebarMenus[$role] ?? $sidebarMenus['client'];
@@ -125,9 +150,11 @@
             @endif
         </div>
 
-        {{-- Navigation --}}
-        <nav class="flex-1 px-3 py-3">
-            @foreach($menus as $item)
+        {{-- Navigation (grup menu + scrollable) --}}
+        <nav class="flex-1 px-3 pt-5 pb-3 overflow-y-auto">
+            @foreach($menus as $section)
+            <p class="px-3 {{ $loop->first ? 'mt-4' : 'mt-6' }} mb-8 text-[10px] font-bold uppercase tracking-widest text-gray-400" style="padding-bottom:4px; border-bottom:1px solid rgba(255,255,255,.06);">{{ $section['title'] }}</p>
+            @foreach($section['items'] as $item)
             @php $isActive = request()->routeIs($item['active']); @endphp
             <a href="{{ $item['url'] }}"
                class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium no-underline mb-0.5 transition-all duration-150
@@ -139,6 +166,7 @@
                 </span>
                 {{ $item['label'] }}
             </a>
+            @endforeach
             @endforeach
         </nav>
 

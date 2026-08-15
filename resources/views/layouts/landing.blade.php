@@ -51,6 +51,44 @@
 @yield('content')
 @include('landing.partials.footer')
 
+{{-- ══ PROMO BANNER POPUP (full gambar + tombol silang) ══ --}}
+@php $promo = \App\Models\PromoBanner::active()->whereNotNull('image')->latest()->first(); @endphp
+@if($promo)
+<div id="promoModal" class="hidden fixed inset-0 z-[1200] bg-black/70 flex items-center justify-center p-4">
+    <div class="relative w-full max-w-3xl">
+        <button type="button" onclick="closePromo()" aria-label="Tutup"
+                class="absolute -top-3 -right-3 z-10 w-10 h-10 rounded-full bg-white shadow-lg flex items-center justify-center text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors cursor-pointer">
+            <i class="fas fa-xmark text-lg"></i>
+        </button>
+        <img src="{{ asset('storage/'.$promo->image) }}" alt="Promo" class="w-full h-auto rounded-2xl shadow-2xl">
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const promoKey = 'promo_dismissed_{{ $promo->id }}';
+        const modal = document.getElementById('promoModal');
+
+        window.closePromo = function () {
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+            try { sessionStorage.setItem(promoKey, '1'); } catch (e) {}
+        };
+
+        if (!sessionStorage.getItem(promoKey)) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        modal.addEventListener('click', function (e) {
+            if (e.target === this) closePromo();
+        });
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closePromo();
+        });
+    });
+</script>
+@endif
+
 <a href="{{ route('booking.create') }}" class="btn-pink btn-float" id="floatBookingBtn"><i class="fas fa-calendar-check mr-1"></i> Booking</a>
 <script>if(window.innerWidth>=992)document.getElementById('floatBookingBtn').style.display='none';</script>
 

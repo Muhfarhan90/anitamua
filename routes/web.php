@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\InventoryController;
 use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\PackingController;
 use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\Admin\PromoBannerController;
 use App\Http\Controllers\Admin\ScheduleController;
 use App\Http\Controllers\Admin\VendorCategoryController;
 use App\Http\Controllers\Admin\VendorController;
@@ -146,6 +147,12 @@ Route::middleware('auth')->group(function () {
             // Schedules (admin)
             Route::post('/schedules', [ScheduleController::class, 'store'])->name('schedules.store');
             Route::delete('/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('schedules.destroy');
+
+            // Promo Banner popup (Owner & Admin)
+            Route::get('/promo-banners', [PromoBannerController::class, 'index'])->name('promo-banners.index');
+            Route::post('/promo-banners', [PromoBannerController::class, 'store'])->name('promo-banners.store');
+            Route::put('/promo-banners/{banner}', [PromoBannerController::class, 'update'])->name('promo-banners.update');
+            Route::delete('/promo-banners/{banner}', [PromoBannerController::class, 'destroy'])->name('promo-banners.destroy');
 
                 // Manajemen User (Owner only) — Staff & Klien
                 Route::middleware('role:owner')->group(function () {
