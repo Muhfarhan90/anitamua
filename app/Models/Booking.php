@@ -138,4 +138,25 @@ class Booking extends Model
     {
         return $this->name.' ('.$this->code.')';
     }
+
+    /**
+     * Buat jadwal Hari H otomatis (muncul di kalender) jika belum ada.
+     * Dipanggil saat booking menjadi BOOKED — berlaku untuk alur landing maupun admin.
+     */
+    public function ensureHariHSchedule(): void
+    {
+        if ($this->schedules()->where('type', Schedule::TYPE_HARI_H)->exists()) {
+            return;
+        }
+
+        $this->schedules()->create([
+            'type' => Schedule::TYPE_HARI_H,
+            'title' => Schedule::typeLabel(Schedule::TYPE_HARI_H).' — '.$this->name,
+            'date' => $this->event_date,
+            'time' => $this->event_time,
+            'location' => $this->location,
+            'notes' => 'Hari H — acara '.$this->name,
+            'status' => Schedule::STATUS_SCHEDULED,
+        ]);
+    }
 }

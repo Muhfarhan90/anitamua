@@ -10,8 +10,8 @@
     <x-stat-card icon="fa-calendar-plus"    color="amber"   label="Booking Baru"        value="{{ $stats['newBookings'] }}" />
     <x-stat-card icon="fa-users"            color="blue"    label="Client Aktif"        value="{{ $stats['activeClients'] }}" />
     <x-stat-card icon="fa-calendar-week"    color="emerald" label="Acara Minggu Ini"    value="{{ $stats['eventsThisWeek'] }}" />
-    <x-stat-card icon="fa-hand-holding-usd" color="rose"    label="DP Menunggu"         value="Rp {{ number_format($stats['dpIncoming'], 0, ',', '.') }}" />
-    <x-stat-card icon="fa-money-bill-wave"  color="purple"  label="Pelunasan Menunggu"  value="Rp {{ number_format($stats['pelunasan'], 0, ',', '.') }}" />
+    <x-stat-card icon="fa-hand-holding-usd" color="rose"    label="Menunggu Verifikasi"    value="Rp {{ number_format($stats['pendingPayments'], 0, ',', '.') }}" />
+    <x-stat-card icon="fa-circle-check"     color="emerald" label="Sudah Diterima"        value="Rp {{ number_format($stats['receivedPayments'], 0, ',', '.') }}" />
     <x-stat-card icon="fa-calendar-check"   color="brand"   label="Booking Aktif"       value="{{ $stats['bookedEvents'] }}" />
 </div>
 

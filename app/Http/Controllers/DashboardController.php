@@ -30,12 +30,8 @@ class DashboardController extends Controller
             'eventsThisWeek' => Booking::whereBetween('event_date', [Carbon::today(), Carbon::today()->addWeek()])
                 ->where('status', '!=', Booking::STATUS_CANCELLED)
                 ->count(),
-            'dpIncoming' => Payment::where('type', Payment::TYPE_DP10)
-                ->where('status', Payment::STATUS_PENDING)
-                ->sum('amount'),
-            'pelunasan' => Payment::where('type', Payment::TYPE_PELUNASAN)
-                ->where('status', Payment::STATUS_PENDING)
-                ->sum('amount'),
+            'pendingPayments' => Payment::where('status', Payment::STATUS_PENDING)->sum('amount'),
+            'receivedPayments' => Payment::where('status', Payment::STATUS_VERIFIED)->sum('amount'),
             'bookedEvents' => Booking::where('status', Booking::STATUS_BOOKED)->count(),
         ];
 

@@ -133,14 +133,22 @@
                                 }">{{ ucfirst($payment->status) }}</x-badge>
                             </td>
                             <td class="px-5 py-3 text-center">
-                                @if($payment->status === 'pending')
-                                <form action="{{ route('admin.payments.verify', $payment->id) }}" method="POST" class="inline">
-                                    @csrf
-                                    <x-button size="sm" color="success" type="submit">Verifikasi</x-button>
-                                </form>
-                                @else
-                                <span class="text-gray-400 text-xs">-</span>
-                                @endif
+                                <div class="flex items-center justify-center gap-1.5">
+                                    @if($payment->status === 'pending')
+                                    <form action="{{ route('admin.payments.verify', $payment->id) }}" method="POST" class="inline">
+                                        @csrf
+                                        <x-button size="sm" color="success" type="submit">Verifikasi</x-button>
+                                    </form>
+                                    <form action="{{ route('admin.payments.destroy', $payment->id) }}" method="POST" class="inline"
+                                          onsubmit="return confirm('Hapus tahap pembayaran ini?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <x-button size="sm" color="danger" type="submit"><i class="fas fa-trash"></i></x-button>
+                                    </form>
+                                    @else
+                                    <span class="text-gray-400 text-xs">-</span>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                         @empty
@@ -150,6 +158,32 @@
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            {{-- Tambah Tahap Pembayaran (manual, label bebas) --}}
+            <div class="p-5 border-t border-dashed border-brand-200">
+                <p class="text-sm font-semibold text-brand mb-3">Tambah Tahap Pembayaran</p>
+                <form action="{{ route('admin.payments.store') }}" method="POST" class="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
+                    @csrf
+                    <input type="hidden" name="booking_id" value="{{ $booking->id }}">
+                    <div class="col-span-2">
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Label Tahap</label>
+                        <input type="text" name="type" required placeholder="Contoh: DP 15% / Angsuran 2 / Pelunasan"
+                               class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Nominal</label>
+                        <input type="number" name="amount" required min="0" step="1000" placeholder="1000000"
+                               class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Jatuh Tempo</label>
+                        <input type="date" name="due_date"
+                               class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
+                    </div>
+                    <x-button type="submit"><i class="fas fa-plus"></i> Tambah</x-button>
+                </form>
+                <p class="text-xs text-gray-400 mt-2">Label & nominal tahap bebas — tidak terikat persentase DP 10/25/75.</p>
             </div>
         </x-card>
 

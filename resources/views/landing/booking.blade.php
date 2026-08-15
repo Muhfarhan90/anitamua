@@ -225,7 +225,7 @@
             <div class="col-span-12 lg:col-span-7">
                 <div class="form-card">
                     <div class="card-body">
-                        <h5 class="font-display font-bold mb-4" style="color:#d4739a">
+                        <h5 class="font-display font-bold" style="color:#d4739a; margin-bottom: 16px;">
                             <i class="fa-solid fa-pen-to-square mr-2"></i>Formulir Booking
                         </h5>
                         <form method="POST" action="{{ route('booking.store') }}" enctype="multipart/form-data">
@@ -340,7 +340,7 @@
             <div class="col-span-12 lg:col-span-5">
                 <div class="summary-card mb-4">
                     <div class="card-body">
-                        <h5 class="font-display font-bold mb-3" style="color:#d4739a">
+                        <h5 class="font-display font-bold" style="color:#d4739a; margin-bottom: 16px;">
                             <i class="fa-solid fa-receipt mr-2"></i>Ringkasan Reservasi
                         </h5>
                         <div class="summary-line">
@@ -380,7 +380,7 @@
                 {{-- Instruksi Pembayaran --}}
                 <div class="info-card mb-4">
                     <div class="card-body">
-                        <h6 class="font-display font-bold mb-3" style="color:#d4739a">
+                        <h6 class="font-display font-bold" style="color:#d4739a; margin-bottom: 16px;">
                             <i class="fa-solid fa-building-columns mr-2"></i>Instruksi Pembayaran
                         </h6>
                         <div class="bank-account">

@@ -81,7 +81,6 @@
             <x-input name="email" label="Email" type="email" required placeholder="email@example.com" />
             <x-input name="phone" label="No HP" placeholder="08xxxxxxxxxx" />
             <x-input name="password" label="Password" type="password" required minlength="6" />
-            <p class="text-xs text-gray-400">Akun klien biasanya dibuat otomatis saat DP 10% diverifikasi.</p>
             <x-button color="primary" type="submit" class="w-full"><i class="fas fa-save"></i> Simpan</x-button>
         </form>
     </div>

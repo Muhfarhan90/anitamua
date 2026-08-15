@@ -153,7 +153,7 @@
         {{-- Navigation (grup menu + scrollable) --}}
         <nav class="flex-1 px-3 pt-5 pb-3 overflow-y-auto">
             @foreach($menus as $section)
-            <p class="px-3 {{ $loop->first ? 'mt-4' : 'mt-6' }} mb-8 text-[10px] font-bold uppercase tracking-widest text-gray-400" style="padding-bottom:4px; border-bottom:1px solid rgba(255,255,255,.06);">{{ $section['title'] }}</p>
+            <p class="px-3 {{ $loop->first ? 'mt-4' : 'mt-8' }} mb-4 pb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">{{ $section['title'] }}</p>
             @foreach($section['items'] as $item)
             @php $isActive = request()->routeIs($item['active']); @endphp
             <a href="{{ $item['url'] }}"

@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Package;
 use App\Models\Payment;
+use App\Models\Schedule;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Services\ActivityLogger;
 use App\Services\ClientAccountService;
+use App\Services\ImageCompressor;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -50,7 +52,15 @@ class BookingManagementController extends Controller
         $packages = Package::where('status', 'active')->get();
         $clients = User::where('role', User::ROLE_CLIENT)->get();
 
-        return view('admin.bookings.create', compact('packages', 'clients'));
+        $subTypeLabels = [
+            'makeup' => 'Makeup Only',
+            'akad' => 'Akad',
+            'makeup_attire' => 'Makeup & Attire',
+            'rumahan' => 'Rumahan',
+            'gedung' => 'Gedung',
+        ];
+
+        return view('admin.bookings.create', compact('packages', 'clients', 'subTypeLabels'));
     }
 
     public function store(Request $request)
@@ -58,26 +68,54 @@ class BookingManagementController extends Controller
         $data = $request->validate([
             'client_id' => ['required', 'exists:users,id'],
             'package_id' => ['required', 'exists:packages,id'],
-            'name' => ['required', 'string', 'max:255'],
-            'phone' => ['required', 'string', 'max:30'],
-            'email' => ['nullable', 'email'],
             'event_date' => ['required', 'date'],
             'survey_date' => ['nullable', 'date'],
             'fitting_date' => ['nullable', 'date'],
             'location' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
+            'proof' => ['nullable', 'image', 'max:3072'], // bukti opsional — tanpa bukti pun tetap verified
         ]);
+
+        // Kontak & nama acara diambil dari data klien (klien dibuat dulu sebelum booking)
+        $client = User::findOrFail($data['client_id']);
+        $data['name'] = $client->name;
+        $data['phone'] = $client->phone;
+        $data['email'] = $client->email;
 
         $year = date('Y');
         $count = Booking::whereYear('created_at', $year)->count() + 1;
         $data['code'] = 'AMU-'.$year.'-'.str_pad((string) $count, 4, '0', STR_PAD_LEFT);
         $data['created_by'] = auth()->id();
+        $data['status'] = Booking::STATUS_BOOKED; // dibuat admin → langsung sah
 
         $booking = Booking::create($data);
 
         ActivityLogger::log('booking_created', 'Booking dibuat oleh Admin', 'Booking '.$booking->code.' untuk '.$booking->name, $booking->id);
 
-        return redirect()->route('admin.bookings.show', $booking)->with('success', 'Booking berhasil dibuat.');
+        // Tahap DP langsung diverifikasi (dibuat oleh admin — bukti opsional, tanpa bukti pun verified)
+        $paymentData = [
+            'type' => Payment::TYPE_DP10,
+            'amount' => round($booking->package->price * 0.1),
+            'due_date' => Carbon::parse($booking->event_date)->subDays(30)->toDateString(),
+            'method' => 'transfer',
+            'status' => Payment::STATUS_VERIFIED,
+            'paid_at' => now(),
+            'verified_by' => auth()->id(),
+            'verified_at' => now(),
+        ];
+
+        if ($request->hasFile('proof')) {
+            $paymentData['proof'] = ImageCompressor::compressAndStore($request->file('proof'));
+        }
+
+        $booking->payments()->create($paymentData);
+
+        ActivityLogger::log('dp_verified', 'DP dikonfirmasi', 'DP 10% dikonfirmasi oleh '.auth()->user()->name.' (booking dibuat via form admin)', $booking->id);
+
+        // Jadwal Hari H otomatis masuk kalender
+        $booking->ensureHariHSchedule();
+
+        return redirect()->route('admin.bookings.show', $booking)->with('success', 'Booking berhasil dibuat. DP otomatis terverifikasi, status BOOKED, dan jadwal Hari H masuk kalender.');
     }
 
     public function verifyDp(Booking $booking, Request $request)
@@ -101,7 +139,9 @@ class BookingManagementController extends Controller
 
         $booking->update(['status' => Booking::STATUS_BOOKED]);
 
-        $this->ensurePaymentSchedule($booking, $data['amount']);
+        $booking->ensureHariHSchedule();
+
+        $this->ensureDp10Payment($booking, $data['amount']);
         $account = app(ClientAccountService::class)->ensure($booking);
 
         ActivityLogger::log(
@@ -274,29 +314,25 @@ class BookingManagementController extends Controller
         }
     }
 
-    private function ensurePaymentSchedule(Booking $booking, float $dp10Amount): void
+    /**
+     * Pastikan tahap pembayaran pertama (DP) ada.
+     * Tahap selanjutnya dibuat manual oleh admin (label & nominal bebas).
+     */
+    private function ensureDp10Payment(Booking $booking, float $amount): void
     {
-        $eventDate = Carbon::parse($booking->event_date);
-        $packagePrice = (float) $booking->package->price;
+        $payment = $booking->payments()->where('type', Payment::TYPE_DP10)->first();
 
-        $schedule = [
-            [Payment::TYPE_DP10, $dp10Amount, $eventDate->copy()->subDays(30)],
-            [Payment::TYPE_DP25, round($packagePrice * 0.25), $eventDate->copy()->subDays(14)],
-            [Payment::TYPE_DP75, round($packagePrice * 0.75), $eventDate->copy()->subDays(7)],
-            [Payment::TYPE_PELUNASAN, 0, $eventDate->copy()->subDays(1)],
-        ];
-
-        foreach ($schedule as [$type, $amount, $due]) {
-            $payment = $booking->payments()->where('type', $type)->first();
-            if (! $payment) {
-                $booking->payments()->create([
-                    'type' => $type,
-                    'amount' => $amount,
-                    'due_date' => $due->toDateString(),
-                    'method' => 'transfer',
-                    'status' => Payment::STATUS_PENDING,
-                ]);
-            }
+        if (! $payment) {
+            $booking->payments()->create([
+                'type' => Payment::TYPE_DP10,
+                'amount' => $amount,
+                'due_date' => Carbon::parse($booking->event_date)->subDays(30)->toDateString(),
+                'method' => 'transfer',
+                'status' => Payment::STATUS_VERIFIED,
+                'paid_at' => now(),
+                'verified_by' => auth()->id(),
+                'verified_at' => now(),
+            ]);
         }
     }
 

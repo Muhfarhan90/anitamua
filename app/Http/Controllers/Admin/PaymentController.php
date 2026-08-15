@@ -59,6 +59,50 @@ class PaymentController extends Controller
         return back()->with('success', 'Pembayaran diperbarui.');
     }
 
+    public function store(Request $request)
+    {
+        $data = $request->validate([
+            'booking_id' => ['required', 'exists:bookings,id'],
+            'type' => ['required', 'string', 'max:100'], // label tahap bebas
+            'amount' => ['required', 'numeric', 'min:0'],
+            'due_date' => ['nullable', 'date'],
+            'method' => ['nullable', 'string', 'max:50'],
+        ]);
+
+        $payment = Payment::create([
+            'booking_id' => $data['booking_id'],
+            'type' => $data['type'],
+            'amount' => $data['amount'],
+            'due_date' => $data['due_date'] ?? null,
+            'method' => $data['method'] ?? 'transfer',
+            'status' => Payment::STATUS_PENDING,
+        ]);
+
+        ActivityLogger::log(
+            'payment_stage_created',
+            'Tahap pembayaran ditambahkan',
+            'Tahap "'.$payment->type.'" (Rp '.number_format($payment->amount).') ditambahkan oleh '.auth()->user()->name,
+            $data['booking_id'],
+        );
+
+        return back()->with('success', 'Tahap pembayaran berhasil ditambahkan.');
+    }
+
+    public function destroy(Payment $payment)
+    {
+        $bookingId = $payment->booking_id;
+
+        if ($payment->status === Payment::STATUS_VERIFIED) {
+            return back()->with('warning', 'Tahap yang sudah terverifikasi tidak bisa dihapus.');
+        }
+
+        $payment->delete();
+
+        ActivityLogger::log('payment_stage_deleted', 'Tahap pembayaran dihapus', 'Tahap pembayaran dihapus oleh '.auth()->user()->name, $bookingId);
+
+        return back()->with('success', 'Tahap pembayaran dihapus.');
+    }
+
     public function verify(Payment $payment)
     {
         $payment->update([
@@ -83,17 +127,18 @@ class PaymentController extends Controller
     private function bookIfDp10(Booking $booking): void
     {
         if ($booking->status === Booking::STATUS_PENDING) {
-            $hasVerifiedDp10 = $booking->payments()
-                ->where('type', Payment::TYPE_DP10)
+            $hasVerifiedPayment = $booking->payments()
                 ->where('status', Payment::STATUS_VERIFIED)
                 ->exists();
 
-            if ($hasVerifiedDp10) {
+            if ($hasVerifiedPayment) {
                 $booking->update(['status' => Booking::STATUS_BOOKED]);
+
+                $booking->ensureHariHSchedule();
 
                 $account = app(ClientAccountService::class)->ensure($booking);
 
-                ActivityLogger::log('dp_verified', 'Booking sah (BOOKED)', 'DP 10% terverifikasi, booking '.$booking->code.' sah.', $booking->id);
+                ActivityLogger::log('dp_verified', 'Booking sah (BOOKED)', 'Pembayaran pertama terverifikasi, booking '.$booking->code.' sah.', $booking->id);
 
                 if ($account) {
                     ActivityLogger::log('client_account_created', 'Akun portal dibuat otomatis', 'Akun portal client '.$account->email.' dibuat otomatis setelah DP terverifikasi.', $booking->id);

@@ -108,6 +108,44 @@ it('team can save survey and fitting data', function () {
     expect($booking->fitting_date->toDateString())->toBe(now()->addDays(5)->toDateString());
 });
 
+it('admin creating booking auto-verifies dp, books it, and adds hari h schedule', function () {
+    Storage::fake('public');
+    $admin = User::where('email', 'admin@anitamua.com')->first();
+    $client = User::where('email', 'client@anitamua.com')->first();
+    $package = Package::first();
+
+    $eventDate = now()->addMonths(2)->toDateString();
+
+    $this->actingAs($admin)->post('/admin/bookings', [
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'event_date' => $eventDate,
+        'location' => 'Ballroom Hotel X',
+        'proof' => UploadedFile::fake()->image('bukti-admin.jpg'),
+    ])->assertRedirect();
+
+    $booking = Booking::where('email', $client->email)->orderByDesc('id')->first();
+    expect($booking)->not->toBeNull();
+    expect($booking->status)->toBe('booked');
+    expect($booking->client_id)->toBe($client->id);
+    expect($booking->name)->toBe($client->name);
+    expect($booking->phone)->toBe($client->phone);
+    expect($booking->email)->toBe($client->email);
+
+    $payment = $booking->payments()->where('type', 'dp10')->first();
+    expect($payment)->not->toBeNull();
+    expect($payment->status)->toBe('verified');
+    expect($payment->proof)->not->toBeNull();
+    expect($payment->proof)->toStartWith('uploads/proofs/');
+    Storage::disk('public')->assertExists($payment->proof);
+
+    // Jadwal Hari H otomatis masuk kalender
+    $hariH = $booking->schedules()->where('type', 'hari_h')->first();
+    expect($hariH)->not->toBeNull();
+    expect($hariH->date->toDateString())->toBe($eventDate);
+    expect($hariH->status)->toBe('scheduled');
+});
+
 it('guest can create booking without an account', function () {
     $package = Package::first();
 
@@ -180,6 +218,11 @@ it('admin verifying dp10 creates client account automatically', function () {
     $booking->refresh();
     expect($booking->status)->toBe('booked');
 
+    // Jadwal Hari H otomatis masuk kalender saat DP diverifikasi
+    $hariH = $booking->schedules()->where('type', 'hari_h')->first();
+    expect($hariH)->not->toBeNull();
+    expect($hariH->status)->toBe('scheduled');
+
     $user = User::where('email', 'renodewi@test.com')->first();
     expect($user)->not->toBeNull();
     expect($user->role)->toBe('client');
@@ -225,8 +268,7 @@ it('shows owner dashboard with booking pipeline widgets', function () {
         ->get('/dashboard')
         ->assertOk()
         ->assertSee('Booking Baru')
-        ->assertSee('DP Menunggu')
-        ->assertSee('Pelunasan Menunggu')
+        ->assertSee('Menunggu Verifikasi')
         ->assertDontSee('Pendapatan');
 });
 
