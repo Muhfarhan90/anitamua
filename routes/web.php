@@ -97,12 +97,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/bookings/{booking}/cancel', [BookingManagementController::class, 'cancel'])->name('bookings.cancel');
             Route::post('/bookings/{booking}/complete', [BookingManagementController::class, 'complete'])->name('bookings.complete');
 
-            // Payments
+            // Payments (tahap dibuat oleh client; admin hanya verifikasi)
             Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
-            Route::post('/payments', [PaymentController::class, 'store'])->name('payments.store');
             Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify'])->name('payments.verify');
-            Route::post('/bookings/{booking}/payments/{payment}', [PaymentController::class, 'update'])->name('payments.update');
-            Route::delete('/payments/{payment}', [PaymentController::class, 'destroy'])->name('payments.destroy');
 
             // Packages (dibutuhkan form booking & pricelist)
             Route::resource('/packages', PackageController::class)->names('packages')->except('show');

@@ -78,7 +78,7 @@
                             <tr class="text-left text-gray-500 border-b border-gray-100 bg-cream/60">
                                 <th class="px-5 py-2.5 font-medium">Tahap Pembayaran</th>
                                 <th class="px-5 py-2.5 font-medium">Nominal</th>
-                                <th class="px-5 py-2.5 font-medium">Jatuh Tempo</th>
+                                <th class="px-5 py-2.5 font-medium">Waktu Transaksi</th>
                                 <th class="px-5 py-2.5 font-medium">Status</th>
                                 <th class="px-5 py-2.5 font-medium text-center">Aksi</th>
                             </tr>
@@ -99,7 +99,7 @@
                                     </div>
                                 </td>
                                 <td class="px-5 py-3 font-semibold text-gray-800">Rp {{ number_format($payment->amount, 0, ',', '.') }}</td>
-                                <td class="px-5 py-3 text-gray-600">{{ $payment->due_date ? $payment->due_date->format('d M Y') : '-' }}</td>
+                                <td class="px-5 py-3 text-gray-600">{{ ($payment->paid_at ?? $payment->created_at)?->format('d M Y H:i') }}</td>
                                 <td class="px-5 py-3">
                                     <x-badge :color="match($payment->status) {
                                         'verified' => 'success',
@@ -131,16 +131,16 @@
                 </div>
             </x-card>
 
-            {{-- UPLOAD BUKTI --}}
-            <x-card title="Upload Bukti Transfer" title-icon="fa-cloud-arrow-up" id="upload">
+            {{-- UPLOAD BUKTI / TAMBAH TAHAP --}}
+            <x-card title="Bayar / Tambah Tahap Pembayaran" title-icon="fa-cloud-arrow-up" id="upload">
                 <form id="proofForm" enctype="multipart/form-data" action="{{ route('client.booking.proof', $booking->id) }}" method="POST" class="space-y-4">
                     @csrf
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <x-select name="payment_id" label="Tahap Pembayaran" required>
+                        <x-select name="payment_id" id="paymentSelect" label="Tahap Pembayaran">
+                            <option value="">— Tambah Tahap Baru (isi label & nominal) —</option>
                             @forelse($pendingPayments as $p)
                                 <option value="{{ $p->id }}">{{ \App\Models\Payment::typeLabel($p->type) }} — Rp {{ number_format($p->amount, 0, ',', '.') }}</option>
                             @empty
-                                <option value="">Tidak ada pembayaran menunggu</option>
                             @endforelse
                         </x-select>
                         <x-select name="method" label="Metode Pembayaran" required>
@@ -148,6 +148,10 @@
                             <option value="qris">QRIS</option>
                             <option value="cash">Cash</option>
                         </x-select>
+                    </div>
+                    <div id="newStageFields" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <x-input name="type" id="newStageType" label="Label Tahap" placeholder="Contoh: Pelunasan / Angsuran 2 / DP Tambahan" />
+                        <x-input name="amount" id="newStageAmount" label="Nominal" type="number" min="0" step="1000" placeholder="1000000" />
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Bukti Transfer <span class="text-red-500">*</span></label>
@@ -162,9 +166,10 @@
                             </div>
                         </div>
                     </div>
-                    <x-button type="submit" class="w-full justify-center" :disabled="$pendingPayments->isEmpty()">
+                    <x-button type="submit" class="w-full justify-center">
                         <i class="fas fa-paper-plane"></i> Kirim Bukti Pembayaran
                     </x-button>
+                    <p class="text-xs text-gray-400">Untuk tahap baru, label & nominal ditulis oleh Anda. Setelah diverifikasi admin, tahap tampil di tabel pembayaran.</p>
                 </form>
             </x-card>
 
@@ -338,6 +343,21 @@ document.addEventListener('DOMContentLoaded', function () {
             alert('Pilih file bukti transfer terlebih dahulu.');
         }
     });
+
+    // Toggle input label & nominal saat "Tambah Tahap Baru" dipilih
+    const paymentSelect = document.getElementById('paymentSelect');
+    const newStageFields = document.getElementById('newStageFields');
+    const newStageType = document.getElementById('newStageType');
+    const newStageAmount = document.getElementById('newStageAmount');
+
+    function toggleNewStage() {
+        const isNew = !paymentSelect.value;
+        newStageFields.classList.toggle('hidden', !isNew);
+        newStageType.required = isNew;
+        newStageAmount.required = isNew;
+    }
+    paymentSelect.addEventListener('change', toggleNewStage);
+    toggleNewStage();
 });
 </script>
 @endpush

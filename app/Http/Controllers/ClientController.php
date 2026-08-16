@@ -29,13 +29,26 @@ class ClientController extends Controller
         abort_unless($booking->client_id === auth()->id(), 403);
 
         $data = $request->validate([
-            'payment_id' => ['required', 'exists:payments,id'],
+            'payment_id' => ['nullable', 'exists:payments,id'],
+            'type' => ['required_without:payment_id', 'nullable', 'string', 'max:100'],
+            'amount' => ['required_without:payment_id', 'nullable', 'numeric', 'min:1000'],
             'proof' => ['required', 'image', 'max:5120'],
             'method' => ['required', 'string'],
         ]);
 
-        $payment = Payment::findOrFail($data['payment_id']);
-        abort_unless($payment->booking_id === $booking->id, 403);
+        if (! empty($data['payment_id'])) {
+            // Bayar tahap yang sudah ada (mis. DP 10%)
+            $payment = Payment::findOrFail($data['payment_id']);
+            abort_unless($payment->booking_id === $booking->id, 403);
+        } else {
+            // Client menambah tahap baru sendiri (label & nominal diketik client)
+            $payment = $booking->payments()->create([
+                'type' => $data['type'],
+                'amount' => $data['amount'],
+                'method' => $data['method'],
+                'status' => Payment::STATUS_PENDING,
+            ]);
+        }
 
         $payment->update([
             'proof' => $request->file('proof')->store('uploads/proofs', 'public'),

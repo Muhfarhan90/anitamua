@@ -78,20 +78,15 @@
                 <div class="flex-1">
                     <h4 class="font-display text-lg font-bold text-yellow-800">Verifikasi DP 10%</h4>
                     <p class="text-sm text-yellow-700 mt-1">Booking ini belum diverifikasi. Silakan verifikasi pembayaran DP. Setelah diverifikasi, akun dashboard client dibuat otomatis.</p>
-                    <form action="{{ route('admin.bookings.verify-dp', $booking) }}" method="POST" class="mt-4">
-                        @csrf
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <x-input name="amount" label="Nominal" type="number" placeholder="500000" :value="$booking->package?->price * 0.1" />
-                            <x-select name="method" label="Metode">
-                                <option value="transfer">Transfer</option>
-                                <option value="cash">Cash</option>
-                                <option value="qris">QRIS</option>
-                            </x-select>
-                            <div class="flex items-end">
-                                <x-button color="success" type="submit" class="w-full"><i class="fas fa-check"></i> Verifikasi DP</x-button>
-                            </div>
-                        </div>
-                    </form>
+                    <div class="mt-4 flex flex-wrap gap-3">
+                        <x-button color="success" type="button" data-modal-target="verifyDpModal" data-modal-toggle="verifyDpModal">
+                            <i class="fas fa-check"></i> Verifikasi DP
+                        </x-button>
+                        <a href="{{ asset('storage/' . ($booking->payments->firstWhere('type', 'dp10')?->proof ?? '')) }}" onclick="openProof(event, this.href)"
+                           class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 border-yellow-400/60 text-yellow-800 hover:bg-yellow-100/70 transition-all {{ $booking->payments->firstWhere('type', 'dp10')?->proof ? '' : 'opacity-40 pointer-events-none' }}">
+                            <i class="fas fa-image"></i> Lihat Bukti
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -105,7 +100,7 @@
                         <tr class="text-left text-gray-500 border-b border-gray-100 bg-cream/60">
                             <th class="px-5 py-2.5 font-medium">Tahap</th>
                             <th class="px-5 py-2.5 font-medium">Nominal</th>
-                            <th class="px-5 py-2.5 font-medium">Jatuh Tempo</th>
+                            <th class="px-5 py-2.5 font-medium">Waktu Transaksi</th>
                             <th class="px-5 py-2.5 font-medium">Bukti</th>
                             <th class="px-5 py-2.5 font-medium">Status</th>
                             <th class="px-5 py-2.5 font-medium text-center">Aksi</th>
@@ -116,7 +111,7 @@
                         <tr class="border-b border-gray-50 hover:bg-brand-50/30 transition-colors">
                             <td class="px-5 py-3"><x-badge>{{ \App\Models\Payment::typeLabel($payment->type) }}</x-badge></td>
                             <td class="px-5 py-3 font-semibold text-gray-800">Rp {{ number_format($payment->amount, 0, ',', '.') }}</td>
-                            <td class="px-5 py-3 text-gray-600">{{ $payment->due_date ? $payment->due_date->format('d M Y') : '-' }}</td>
+                            <td class="px-5 py-3 text-gray-600">{{ ($payment->paid_at ?? $payment->created_at)?->format('d M Y H:i') }}</td>
                             <td class="px-5 py-3">
                                 @if($payment->proof)
                                     <a href="{{ asset('storage/' . $payment->proof) }}" onclick="openProof(event, this.href)" class="text-brand underline text-sm cursor-pointer">Lihat</a>
@@ -133,22 +128,11 @@
                                 }">{{ ucfirst($payment->status) }}</x-badge>
                             </td>
                             <td class="px-5 py-3 text-center">
-                                <div class="flex items-center justify-center gap-1.5">
-                                    @if($payment->status === 'pending')
-                                    <form action="{{ route('admin.payments.verify', $payment->id) }}" method="POST" class="inline">
-                                        @csrf
-                                        <x-button size="sm" color="success" type="submit">Verifikasi</x-button>
-                                    </form>
-                                    <form action="{{ route('admin.payments.destroy', $payment->id) }}" method="POST" class="inline"
-                                          onsubmit="return confirm('Hapus tahap pembayaran ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <x-button size="sm" color="danger" type="submit"><i class="fas fa-trash"></i></x-button>
-                                    </form>
-                                    @else
-                                    <span class="text-gray-400 text-xs">-</span>
-                                    @endif
-                                </div>
+                                @if($payment->status === 'pending')
+                                <x-button size="sm" color="success" type="button" data-modal-target="verifyPayModal-{{ $payment->id }}" data-modal-toggle="verifyPayModal-{{ $payment->id }}">Verifikasi</x-button>
+                                @else
+                                <span class="text-gray-400 text-xs">-</span>
+                                @endif
                             </td>
                         </tr>
                         @empty
@@ -158,32 +142,6 @@
                         @endforelse
                     </tbody>
                 </table>
-            </div>
-
-            {{-- Tambah Tahap Pembayaran (manual, label bebas) --}}
-            <div class="p-5 border-t border-dashed border-brand-200">
-                <p class="text-sm font-semibold text-brand mb-3">Tambah Tahap Pembayaran</p>
-                <form action="{{ route('admin.payments.store') }}" method="POST" class="grid grid-cols-2 md:grid-cols-5 gap-3 items-end">
-                    @csrf
-                    <input type="hidden" name="booking_id" value="{{ $booking->id }}">
-                    <div class="col-span-2">
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Label Tahap</label>
-                        <input type="text" name="type" required placeholder="Contoh: DP 15% / Angsuran 2 / Pelunasan"
-                               class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Nominal</label>
-                        <input type="number" name="amount" required min="0" step="1000" placeholder="1000000"
-                               class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">Jatuh Tempo</label>
-                        <input type="date" name="due_date"
-                               class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
-                    </div>
-                    <x-button type="submit"><i class="fas fa-plus"></i> Tambah</x-button>
-                </form>
-                <p class="text-xs text-gray-400 mt-2">Label & nominal tahap bebas — tidak terikat persentase DP 10/25/75.</p>
             </div>
         </x-card>
 
@@ -334,6 +292,97 @@
         </x-card>
     </div>
 </div>
+
+{{-- VERIFY DP MODAL (pending booking) --}}
+<div id="verifyDpModal" tabindex="-1" aria-hidden="true"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative p-4 w-full max-w-lg max-h-full">
+        <div class="relative bg-white rounded-2xl shadow-xl p-8">
+            <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100">
+                <i class="fas fa-check-circle text-2xl text-emerald-600"></i>
+            </div>
+            <h3 class="font-display text-xl font-bold text-center mb-2 text-gray-900">Konfirmasi Verifikasi DP</h3>
+            <p class="text-sm text-center text-gray-500 mb-4">Yakin ingin memverifikasi DP 10% booking <strong>{{ $booking->code }}</strong>?</p>
+            <form action="{{ route('admin.bookings.verify-dp', $booking) }}" method="POST" class="space-y-4">
+                @csrf
+
+                <div>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Bukti Transfer</span>
+                    @php $dp10Payment = $booking->payments->firstWhere('type', 'dp10'); @endphp
+                    @if($dp10Payment?->proof)
+                        <img src="{{ asset('storage/' . $dp10Payment->proof) }}" alt="Bukti DP"
+                             class="mt-2 w-full max-h-64 object-contain rounded-xl border border-brand-100 bg-brand-50/40">
+                    @else
+                        <p class="mt-2 text-sm text-yellow-700 bg-yellow-50 rounded-xl px-4 py-2.5 border border-yellow-200">
+                            <i class="fas fa-circle-info mr-1"></i> Tidak ada bukti transfer diupload oleh client.
+                        </p>
+                    @endif
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <x-input name="amount" label="Nominal" type="number" placeholder="500000" :value="$booking->package?->price * 0.1" />
+                    <x-select name="method" label="Metode">
+                        <option value="transfer">Transfer</option>
+                        <option value="cash">Cash</option>
+                        <option value="qris">QRIS</option>
+                    </x-select>
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <button type="button" data-modal-hide="verifyDpModal"
+                            class="flex-1 px-6 py-2.5 rounded-xl text-sm font-semibold border-2 border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">
+                        Batal
+                    </button>
+                    <x-button type="submit" class="flex-1 justify-center bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"><i class="fas fa-check"></i> Ya, Verifikasi</x-button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@foreach($booking->payments as $payment)
+    @if($payment->status === 'pending')
+        {{-- VERIFY MODAL PER TAHAP PEMBAYARAN --}}
+        <div id="verifyPayModal-{{ $payment->id }}" tabindex="-1" aria-hidden="true"
+             class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+            <div class="relative p-4 w-full max-w-lg max-h-full">
+                <div class="relative bg-white rounded-2xl shadow-xl p-8">
+                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-brand-100">
+                        <i class="fas fa-shield-halved text-2xl text-brand"></i>
+                    </div>
+                    <h3 class="font-display text-xl font-bold text-center mb-2 text-gray-900">Konfirmasi Verifikasi</h3>
+                    <p class="text-sm text-center text-gray-500 mb-4">
+                        Tahap <strong>{{ \App\Models\Payment::typeLabel($payment->type) }}</strong>
+                        sebesar <strong>Rp {{ number_format($payment->amount, 0, ',', '.') }}</strong> untuk booking {{ $booking->code }}?
+                    </p>
+                    <form action="{{ route('admin.payments.verify', $payment->id) }}" method="POST" class="space-y-4">
+                        @csrf
+
+                        <div>
+                            <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Bukti Transfer</span>
+                            @if($payment->proof)
+                                <img src="{{ asset('storage/' . $payment->proof) }}" alt="Bukti Transfer"
+                                     class="mt-2 w-full max-h-64 object-contain rounded-xl border border-brand-100 bg-brand-50/40">
+                            @else
+                                <p class="mt-2 text-sm text-yellow-700 bg-yellow-50 rounded-xl px-4 py-2.5 border border-yellow-200">
+                                    <i class="fas fa-circle-info mr-1"></i> Tidak ada bukti transfer diupload untuk tahap ini.
+                                </p>
+                            @endif
+                        </div>
+
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" data-modal-hide="verifyPayModal-{{ $payment->id }}"
+                                    class="flex-1 px-6 py-2.5 rounded-xl text-sm font-semibold border-2 border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">
+                                Batal
+                            </button>
+                            <x-button type="submit" class="flex-1 justify-center bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"><i class="fas fa-check"></i> Ya, Verifikasi</x-button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
+@endforeach
 
 {{-- CANCEL MODAL --}}
 <div id="cancelModal" class="hidden fixed inset-0 z-50 overflow-y-auto">

@@ -324,6 +324,29 @@ it('lets client view their booking detail', function () {
     $this->actingAs($client)->get("/client/booking/{$booking->id}")->assertOk();
 });
 
+it('client can add a new payment stage with custom label and nominal', function () {
+    Storage::fake('public');
+    $client = User::where('email', 'client@anitamua.com')->first();
+    $booking = $client->bookings()->first();
+    $before = $booking->payments()->count();
+
+    $this->actingAs($client)->post("/client/booking/{$booking->id}/proof", [
+        'type' => 'Pelunasan',
+        'amount' => 2500000,
+        'method' => 'transfer',
+        'proof' => UploadedFile::fake()->image('pelunasan.jpg'),
+    ])->assertRedirect()->assertSessionHas('success');
+
+    $payment = $booking->payments()->latest('id')->first();
+    expect($payment)->not->toBeNull();
+    expect($booking->payments()->count())->toBe($before + 1);
+    expect($payment->type)->toBe('Pelunasan');
+    expect((float) $payment->amount)->toBe(2500000.0);
+    expect($payment->status)->toBe('pending');
+    expect($payment->proof)->toStartWith('uploads/proofs/');
+    Storage::disk('public')->assertExists($payment->proof);
+});
+
 it('admin can verify pending booking DP', function () {
     $admin = User::where('email', 'admin@anitamua.com')->first();
     $booking = $admin->bookings->first() ?? Booking::first();

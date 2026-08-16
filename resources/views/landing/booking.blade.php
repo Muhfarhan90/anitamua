@@ -225,7 +225,7 @@
             <div class="col-span-12 lg:col-span-7">
                 <div class="form-card">
                     <div class="card-body">
-                        <h5 class="font-display font-bold" style="color:#d4739a; margin-bottom: 16px;">
+                        <h5 class="font-display font-bold text-xl" style="color:#d4739a; margin-bottom: 16px;">
                             <i class="fa-solid fa-pen-to-square mr-2"></i>Formulir Booking
                         </h5>
                         <form method="POST" action="{{ route('booking.store') }}" enctype="multipart/form-data">
@@ -340,7 +340,7 @@
             <div class="col-span-12 lg:col-span-5">
                 <div class="summary-card mb-4">
                     <div class="card-body">
-                        <h5 class="font-display font-bold" style="color:#d4739a; margin-bottom: 16px;">
+                        <h5 class="font-display font-bold text-xl" style="color:#d4739a; margin-bottom: 16px;">
                             <i class="fa-solid fa-receipt mr-2"></i>Ringkasan Reservasi
                         </h5>
                         <div class="summary-line">
@@ -380,12 +380,28 @@
                 {{-- Instruksi Pembayaran --}}
                 <div class="info-card mb-4">
                     <div class="card-body">
-                        <h6 class="font-display font-bold" style="color:#d4739a; margin-bottom: 16px;">
+                        <h6 class="font-display font-bold text-xl" style="color:#d4739a; margin-bottom: 16px;">
                             <i class="fa-solid fa-building-columns mr-2"></i>Instruksi Pembayaran
                         </h6>
                         <div class="bank-account">
-                            <div class="bank-account-name">Bank BCA</div>
-                            <div class="bank-account-number">{{ $settings['bank_account_number'] ?? '1234567890' }}</div>
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="bank-account-name">{{ $settings['bank_name'] ?? 'Bank BCA' }}</div>
+                            </div>
+                            <div class="flex items-center gap-2 mt-1.5">
+                                <span id="bank-account-copy-text" class="bank-account-number">{{ $settings['bank_account_number'] ?? '1234567890' }}</span>
+                                <button type="button" data-copy-to-clipboard-target="bank-account-copy-text"
+                                        data-copy-to-clipboard-content-type="textContent"
+                                        class="flex-shrink-0 flex items-center text-white bg-white/20 border border-white/30 hover:bg-white/30 rounded-lg text-xs font-semibold px-2.5 py-1.5 transition-colors">
+                                    <span id="copy-default-message" class="flex items-center">
+                                        <svg class="w-3.5 h-3.5 me-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 4h3a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3m0 3h6m-6 5h6m-6 4h6M10 3v4h4V3h-4Z"/></svg>
+                                        <span class="text-xs font-semibold">Salin</span>
+                                    </span>
+                                    <span id="copy-success-message" class="hidden items-center">
+                                        <svg class="w-3.5 h-3.5 me-1" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 4h3a1 1 0 0 1 1 1v15a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h3m0 3h6m-6 7 2 2 4-4m-5-9v4h4V3h-4Z"/></svg>
+                                        <span class="text-xs font-semibold">Tersalin</span>
+                                    </span>
+                                </button>
+                            </div>
                             <div class="bank-account-holder">a.n. {{ $settings['bank_account_name'] ?? 'ANITA MUA' }}</div>
                         </div>
                         <ul class="list-none mb-0 mt-3" style="color:#555; font-size:.88rem;">
@@ -482,6 +498,43 @@ document.addEventListener('DOMContentLoaded', function () {
     updateSummary();
     updateTanggal();
     updateLokasi();
+});
+
+/* Copy Clipboard no. rekening (flowbite) */
+window.addEventListener('load', function () {
+    const $defaultMessage = document.getElementById('copy-default-message');
+    const $successMessage = document.getElementById('copy-success-message');
+    if (!$defaultMessage || !$successMessage) return;
+
+    const clipboard = window.FlowbiteInstances?.getInstance('CopyClipboard', 'bank-account-copy-text');
+
+    if (clipboard) {
+        clipboard.updateOnCopyCallback(function () {
+            $defaultMessage.classList.add('hidden');
+            $successMessage.classList.remove('hidden');
+            $successMessage.classList.add('flex');
+            setTimeout(() => {
+                $defaultMessage.classList.remove('hidden');
+                $successMessage.classList.add('hidden');
+                $successMessage.classList.remove('flex');
+            }, 2000);
+        });
+    } else {
+        // Fallback: salin manual + ganti pesan
+        document.querySelector('[data-copy-to-clipboard-target="bank-account-copy-text"]')
+            .addEventListener('click', function () {
+                const span = document.getElementById('bank-account-copy-text');
+                navigator.clipboard?.writeText(span.textContent.trim());
+                $defaultMessage.classList.add('hidden');
+                $successMessage.classList.remove('hidden');
+                $successMessage.classList.add('flex');
+                setTimeout(() => {
+                    $defaultMessage.classList.remove('hidden');
+                    $successMessage.classList.add('hidden');
+                    $successMessage.classList.remove('flex');
+                }, 2000);
+            });
+    }
 });
 </script>
 @endpush
