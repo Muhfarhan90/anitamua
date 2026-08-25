@@ -2,7 +2,6 @@
 
 @section('title', 'Booking Paket Anda')
 
-@section('content')
 @push('styles')
 <style>
     .booking-hero {
@@ -196,6 +195,8 @@
 </style>
 @endpush
 
+@section('content')
+
 {{-- HERO --}}
 <section class="booking-hero" style="text-align:center;">
     <div class="container" style="text-align:center;">
@@ -214,7 +215,7 @@
                 <i class="fa-solid fa-circle-info text-xl"></i>
                 <div>
                     <strong class="text-gray-900">Belum punya akun?</strong>
-                    <span class="text-gray-500">Tidak perlu mendaftar. Setelah DP 10% diverifikasi admin, akun dashboard Anda akan dibuat otomatis dan Anda bisa login menggunakan email ini.</span>
+                    <span class="text-gray-500">Tidak perlu mendaftar. Setelah DP diverifikasi admin, akun dashboard Anda akan dibuat otomatis dan Anda bisa login menggunakan email ini.</span>
                 </div>
             </div>
         @endguest
@@ -311,9 +312,9 @@
                                 </div>
                             </div>
 
-                            {{-- Bukti Transfer DP 10% (Wajib) --}}
+                            {{-- Bukti Transfer DP (Wajib) --}}
                             <div class="mb-3">
-                                <label class="form-label">Bukti Transfer DP 10% <span class="text-red-600">*</span></label>
+                                <label class="form-label">Bukti Transfer DP <span class="text-red-600">*</span></label>
                                 <div class="input-group-icon" style="align-items:flex-start">
                                     <i class="fa-solid fa-cloud-arrow-up input-icon" style="top:1.1rem"></i>
                                     <input type="file" name="proof" accept="image/jpeg,image/png,image/webp" class="form-control" style="padding-left:2.6rem; padding-top:.55rem;" required>                                </div>
@@ -352,10 +353,6 @@
                             <span class="value" id="summary-harga">Rp 0</span>
                         </div>
                         <div class="summary-line">
-                            <span class="label">Estimasi DP (10%)</span>
-                            <span class="value" id="summary-dp">Rp 0</span>
-                        </div>
-                        <div class="summary-line">
                             <span class="label">Tanggal Acara</span>
                             <span class="value" id="summary-tanggal">-</span>
                         </div>
@@ -364,14 +361,7 @@
                             <span class="value" id="summary-lokasi">-</span>
                         </div>
 
-                        <div class="summary-total mt-3">
-                            <div class="flex justify-between items-center">
-                                <span style="font-size:.88rem;opacity:.9">Estimasi Total</span>
-                                <span class="amount" id="summary-total">Rp 0</span>
-                            </div>
-                        </div>
-
-                        <button type="button" class="btn-booking-cta w-full mt-3" onclick="document.querySelector('form').requestSubmit()">
+                        <button type="button" class="btn-booking-cta w-full mt-3" onclick="validateThenSubmit()">
                             <i class="fa-solid fa-circle-arrow-right mr-2"></i>Lanjutkan Booking
                         </button>
                     </div>
@@ -405,7 +395,7 @@
                             <div class="bank-account-holder">a.n. {{ $settings['bank_account_name'] ?? 'ANITA MUA' }}</div>
                         </div>
                         <ul class="list-none mb-0 mt-3" style="color:#555; font-size:.88rem;">
-                            <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check mt-1" style="color:#198754; font-size:.7rem;"></i> Transfer DP 10% (lihat estimasi di Ringkasan Reservasi) ke rekening di atas sebelum mengirim booking.</li>
+                            <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check mt-1" style="color:#198754; font-size:.7rem;"></i> Transfer DP (lihat estimasi di Ringkasan Reservasi) ke rekening di atas sebelum mengirim booking.</li>
                             <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check mt-1" style="color:#198754; font-size:.7rem;"></i> Kode booking yang dikirim setelah submit dipakai sebagai berita transfer.</li>
                             <li class="flex items-start gap-2"><i class="fa-solid fa-circle-check mt-1" style="color:#198754; font-size:.7rem;"></i> Upload bukti di formulir ini — booking langsung menunggu verifikasi admin.</li>
                         </ul>
@@ -417,9 +407,73 @@
     </div>
 </section>
 
+{{-- KONFIRMASI BOOKING --}}
+<div id="confirmBookingModal" tabindex="-1" aria-hidden="true"
+     class="hidden overflow-y-auto overflow-x-hidden fixed inset-0 z-50 justify-center items-center w-full bg-black/50">
+    <div class="flex items-center justify-center min-h-screen px-4 py-8 text-center sm:p-0">
+        <div class="relative bg-white rounded-2xl shadow-xl max-w-md w-full mx-auto p-8">
+            <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full" style="background:#f5d5e0;">
+                <i class="fas fa-circle-question text-2xl" style="color:#d4739a;"></i>
+            </div>
+            <h3 class="font-display text-xl font-bold text-center mb-2" style="color:#2d2521;">Konfirmasi Booking</h3>
+            <p class="text-sm text-center mb-6" style="color:#8a8075;">
+                Apakah data Anda sudah benar dan bukti transfer sudah diupload?
+            </p>
+            <div class="flex gap-3">
+                <button type="button" data-confirm-booking-close
+                        class="flex-1 px-6 py-2.5 rounded-xl text-sm font-semibold border-2 border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">
+                    Kembali
+                </button>
+                <button type="button" data-confirm-booking-submit
+                        class="flex-1 px-6 py-2.5 rounded-xl text-sm font-semibold text-white transition-all"
+                        style="background:#d4739a;" onmouseover="this.style.background='#b85c85'" onmouseout="this.style.background='#d4739a'">
+                    Ya, Lanjutkan
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const confirmModal = document.getElementById('confirmBookingModal');
+
+    function openConfirmBookingModal() {
+        confirmModal.classList.remove('hidden');
+        confirmModal.classList.add('flex');
+        confirmModal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeConfirmBookingModal() {
+        confirmModal.classList.add('hidden');
+        confirmModal.classList.remove('flex');
+        confirmModal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    /* Validasi form, jika lolos baru tampilkan popup konfirmasi */
+    window.validateThenSubmit = function () {
+        const form = document.querySelector('form');
+        if (!form.reportValidity()) return;
+        openConfirmBookingModal();
+    };
+
+    document.querySelector('[data-confirm-booking-close]')?.addEventListener('click', closeConfirmBookingModal);
+    document.querySelector('[data-confirm-booking-submit]')?.addEventListener('click', function () {
+        document.querySelector('form').submit();
+    });
+    confirmModal?.addEventListener('click', function (event) {
+        if (event.target === confirmModal) closeConfirmBookingModal();
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && !confirmModal.classList.contains('hidden')) {
+            closeConfirmBookingModal();
+        }
+    });
+
     const selectPaket  = document.querySelector('select[name="package_id"]');
     const inputTanggal = document.querySelector('input[name="event_date"]');
     const inputLokasi  = document.querySelector('input[name="location"]');
@@ -458,21 +512,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const pkg = packages.find(p => p.id == selectPaket.value);
         const namaPaket = document.getElementById('summary-paket');
         const harga     = document.getElementById('summary-harga');
-        const dp        = document.getElementById('summary-dp');
-        const total     = document.getElementById('summary-total');
         const tgl       = document.getElementById('summary-tanggal');
         const lok       = document.getElementById('summary-lokasi');
 
         if (pkg) {
             namaPaket.textContent = pkg.name;
             harga.textContent     = fmtRp(pkg.price);
-            dp.textContent        = fmtRp(Math.round(pkg.price * 0.1));
-            total.textContent     = fmtRp(pkg.price);
         } else {
             namaPaket.textContent = '-';
             harga.textContent     = fmtRp(0);
-            dp.textContent        = fmtRp(0);
-            total.textContent     = fmtRp(0);
         }
     }
 
@@ -538,4 +586,3 @@ window.addEventListener('load', function () {
 });
 </script>
 @endpush
-@endsection

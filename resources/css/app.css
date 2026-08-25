@@ -24,11 +24,13 @@
 }
 
 /* ══════════════ BASE (menggantikan preflight yang dimatikan) ══════════════ */
-*, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-body { font-family: 'Plus Jakarta Sans', sans-serif; background: #faf6f2; color: #333; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
-h1, h2, h3, h4, h5, h6 { margin: 0; font-family: 'Playfair Display', serif; }
-p { margin: 0; }
+@layer base {
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background: #faf6f2; color: #333; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+    h1, h2, h3, h4, h5, h6 { margin: 0; font-family: 'Playfair Display', serif; }
+    p { margin: 0; }
+}
 
 /* ══════════════ SCROLLBAR ══════════════ */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -251,4 +253,3 @@ p { margin: 0; }
     .landing-section .container,
     .site-footer .container { padding-left: 1.25rem; padding-right: 1.25rem; }
 }
-
