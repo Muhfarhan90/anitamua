@@ -73,7 +73,7 @@ class ProdSeeder extends Seeder
         ]);
         Faq::create([
             'question' => 'Kapan vendor akan dikonfirmasi?',
-            'answer' => 'Vendor akan dikonfirmasi oleh admin setelah booking sah (DP 10% terverifikasi).',
+            'answer' => 'Vendor akan dikonfirmasi oleh admin setelah booking sah (DP1 terverifikasi).',
             'sort_order' => 3,
         ]);
         Faq::create([

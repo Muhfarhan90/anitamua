@@ -15,7 +15,7 @@
                 Halo <strong>{{ $user->name }}</strong>,
             </p>
             <p style="margin:0 0 16px;font-size:14px;color:#2d2521;line-height:1.6;">
-                DP 10% booking Anda telah diverifikasi. Akun dashboard Anda telah dibuat otomatis
+                DP1 booking Anda telah diverifikasi. Akun dashboard Anda telah dibuat otomatis
                 @if($bookingCode)
                     (kode booking: <strong>{{ $bookingCode }}</strong>)
                 @endif

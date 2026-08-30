@@ -38,7 +38,7 @@ class BookingController extends Controller
             'event_date' => ['required', 'date', 'after_or_equal:today'],
             'location' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
-            'proof' => ['required', 'image', 'max:3072'], // bukti transfer DP 10% wajib
+            'proof' => ['required', 'image', 'max:3072'], // bukti transfer DP1 wajib
         ]);
 
         $year = date('Y');
@@ -54,10 +54,10 @@ class BookingController extends Controller
 
         $booking = Booking::create($data);
 
-        // Payment DP 10% dibuat langsung, bukti transfer (opsional) dikompres & dilampirkan
+        // Payment DP1 dibuat langsung; nominal diisi admin saat verifikasi.
         $paymentData = [
-            'type' => Payment::TYPE_DP10,
-            'amount' => round($booking->package->price * 0.1),
+            'type' => Payment::TYPE_DP1,
+            'amount' => 0,
             'due_date' => Carbon::parse($booking->event_date)->subDays(30)->toDateString(),
             'method' => 'transfer',
             'status' => Payment::STATUS_PENDING,
@@ -77,14 +77,16 @@ class BookingController extends Controller
 
         return redirect()
             ->route('booking.success', $booking->code)
-            ->with('success', 'Booking berhasil dibuat. Silakan transfer DP 10% untuk mengunci jadwal Anda.');
+            ->with('success', 'Booking berhasil dibuat. Silakan transfer DP1 untuk mengunci jadwal Anda.');
     }
 
     public function success(string $code)
     {
         $booking = Booking::with('package')->where('code', $code)->firstOrFail();
 
-        $payment = $booking->payments()->where('type', 'dp10')->first();
+        $payment = $booking->payments()
+            ->whereIn('type', [Payment::TYPE_DP1, 'dp10'])
+            ->first();
 
         return view('landing.booking-success', compact('booking', 'payment'));
     }

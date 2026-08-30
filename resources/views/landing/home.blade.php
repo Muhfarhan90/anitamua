@@ -125,7 +125,7 @@
             $steps = [
                 ['icon' => 'fa-solid fa-user-plus', 'title' => 'Pilih Paket', 'desc' => 'Tentukan paket yang sesuai dengan kebutuhan Anda'],
                 ['icon' => 'fa-solid fa-file-lines', 'title' => 'Isi Form Booking', 'desc' => 'Lengkapi data acara, tanggal, dan lokasi'],
-                ['icon' => 'fa-solid fa-credit-card', 'title' => 'Transfer DP 10%', 'desc' => 'Transfer DP untuk mengunci tanggal Anda'],
+                ['icon' => 'fa-solid fa-credit-card', 'title' => 'Transfer DP1', 'desc' => 'Transfer DP untuk mengunci tanggal Anda'],
                 ['icon' => 'fa-regular fa-calendar-check', 'title' => 'Booking Sah!', 'desc' => 'Admin verifikasi dan status berubah BOOKED'],
             ];
         @endphp
@@ -146,7 +146,7 @@
         <div class="rounded-2xl p-4 mt-4 mx-auto flex items-center gap-3" style="max-width:720px; background:var(--primary-light); color:var(--primary-dark);">
             <i class="fas fa-circle-info text-lg flex-shrink-0"></i>
             <div class="text-sm">
-                <strong>Alur pembayaran:</strong> DP 10% saat booking → DP 25% saat fitting → DP 75% pada H-7 → Pelunasan pada H-1/H-2.
+                <strong>Alur pembayaran:</strong> DP1 saat booking → DP 25% saat fitting → DP 75% pada H-7 → Pelunasan pada H-1/H-2.
                 Jika booking dibatalkan sepihak oleh client, DP dinyatakan hangus.
             </div>
         </div>

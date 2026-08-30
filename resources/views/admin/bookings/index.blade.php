@@ -70,6 +70,7 @@
                     </td>
                     <td class="px-5 py-3 whitespace-nowrap text-center">
                         <x-button size="sm" href="{{ route('admin.bookings.show', $booking) }}"><i class="fas fa-eye"></i> Detail</x-button>
+                        <x-button size="sm" color="ghost" href="{{ route('admin.bookings.edit', $booking) }}"><i class="fas fa-pen"></i> Edit</x-button>
                     </td>
                 </tr>
                 @empty

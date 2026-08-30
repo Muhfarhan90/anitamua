@@ -54,8 +54,10 @@
 
             <x-textarea name="notes" label="Catatan" placeholder="Catatan tambahan untuk booking ini..." />
 
+            <x-input name="dp1_amount" label="Nominal DP1" type="number" required placeholder="500000" />
+
             <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Bukti Transfer DP 10% <span
+                <label class="block text-sm font-medium text-gray-600 mb-1">Bukti Transfer DP1 <span
                         class="text-gray-400 font-normal">(opsional)</span></label>
                 <input type="file" name="proof" accept="image/jpeg,image/png,image/webp"
                     class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200 border-gray-200">

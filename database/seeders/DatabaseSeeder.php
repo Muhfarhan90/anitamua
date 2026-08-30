@@ -210,7 +210,7 @@ class DatabaseSeeder extends Seeder
         ActivityLogger::log('booking_created', 'Booking dibuat', 'Booking '.$booking->code.' oleh '.$admin->name.' untuk '.$booking->name, $booking->id);
 
         $payments = [
-            [Payment::TYPE_DP10, round($package->price * 0.10), 'transfer', Payment::STATUS_VERIFIED, $eventDate->copy()->subDays(30)],
+            [Payment::TYPE_DP1, 500000, 'transfer', Payment::STATUS_VERIFIED, $eventDate->copy()->subDays(30)],
             [Payment::TYPE_DP25, round($package->price * 0.25), 'transfer', Payment::STATUS_VERIFIED, $eventDate->copy()->subDays(14)],
             [Payment::TYPE_DP75, round($package->price * 0.75), 'transfer', Payment::STATUS_PENDING, $eventDate->copy()->subDays(7)],
             [Payment::TYPE_PELUNASAN, 0, 'transfer', Payment::STATUS_PENDING, $eventDate->copy()->subDays(1)],
@@ -231,7 +231,7 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        ActivityLogger::log('dp_verified', 'DP 10% dikonfirmasi', 'DP 10% sebesar '.$payments[0][1].' dikonfirmasi oleh '.$admin->name, $booking->id);
+        ActivityLogger::log('dp_verified', 'DP1 dikonfirmasi', 'DP1 sebesar '.$payments[0][1].' dikonfirmasi oleh '.$admin->name, $booking->id);
 
         // // VENDOR BOOKING (modul vendor dinonaktifkan sementara)
         // foreach ($package->vendors as $vendor) {

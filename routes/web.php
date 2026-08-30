@@ -92,6 +92,8 @@ Route::middleware('auth')->group(function () {
         Route::prefix('admin')->name('admin.')->middleware('role:owner,admin')->group(function () {
             // Booking management (operasional admin)
             Route::post('/bookings', [BookingManagementController::class, 'store'])->name('bookings.store');
+            Route::get('/bookings/{booking}/edit', [BookingManagementController::class, 'edit'])->name('bookings.edit');
+            Route::patch('/bookings/{booking}', [BookingManagementController::class, 'update'])->name('bookings.update');
             Route::get('/bookings/{booking}', [BookingManagementController::class, 'show'])->name('bookings.show');
             Route::post('/bookings/{booking}/verify-dp', [BookingManagementController::class, 'verifyDp'])->name('bookings.verify-dp');
             Route::post('/bookings/{booking}/cancel', [BookingManagementController::class, 'cancel'])->name('bookings.cancel');

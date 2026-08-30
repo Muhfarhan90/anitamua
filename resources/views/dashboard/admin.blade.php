@@ -35,12 +35,7 @@
                         <td class="px-5 py-3.5 text-gray-800 font-medium">{{ $booking->name }}</td>
                         <td class="px-5 py-3.5 text-gray-500 text-xs">{{ $booking->event_date->format('d M Y') }}</td>
                         <td class="px-5 py-3.5 text-center">
-                            <form action="{{ route('admin.bookings.verify-dp', $booking->id) }}" method="POST" class="inline">
-                                @csrf
-                                <input type="hidden" name="amount" value="{{ $booking->package?->price * 0.1 }}">
-                                <input type="hidden" name="method" value="transfer">
-                                <x-button size="sm" color="success" type="submit">Verifikasi</x-button>
-                            </form>
+                            <x-button size="sm" color="success" type="button" data-modal-target="verifyBookingModal-{{ $booking->id }}" data-modal-toggle="verifyBookingModal-{{ $booking->id }}">Verifikasi</x-button>
                         </td>
                     </tr>
                     @empty
@@ -74,7 +69,6 @@
                         <td class="px-5 py-3.5 text-center">
                             <form action="{{ route('admin.payments.verify', $payment->id) }}" method="POST" class="inline">
                                 @csrf
-                                @method('PATCH')
                                 <x-button size="sm" color="success" type="submit">Verifikasi</x-button>
                             </form>
                         </td>
@@ -90,6 +84,36 @@
     </x-card>
 
 </div>
+
+@foreach($pendingBookings as $booking)
+<div id="verifyBookingModal-{{ $booking->id }}" tabindex="-1" aria-hidden="true"
+     class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative p-4 w-full max-w-lg max-h-full">
+        <div class="relative bg-white rounded-2xl shadow-xl p-8">
+            <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-brand-100">
+                <i class="fas fa-shield-halved text-2xl text-brand"></i>
+            </div>
+            <h3 class="font-display text-xl font-bold text-center mb-2 text-gray-900">Konfirmasi Verifikasi DP1</h3>
+            <p class="text-sm text-center text-gray-500 mb-4">
+                Verifikasi DP1 untuk booking <strong>{{ $booking->code }}</strong> atas nama <strong>{{ $booking->name }}</strong>.
+            </p>
+            <form action="{{ route('admin.bookings.verify-dp', $booking) }}" method="POST" class="space-y-4">
+                @csrf
+                <x-input name="amount" label="Nominal DP1" type="number" placeholder="500000" required />
+                <input type="hidden" name="method" value="transfer">
+
+                <div class="flex gap-3 pt-2">
+                    <button type="button" data-modal-hide="verifyBookingModal-{{ $booking->id }}"
+                            class="flex-1 px-6 py-2.5 rounded-xl text-sm font-semibold border-2 border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">
+                        Batal
+                    </button>
+                    <x-button type="submit" class="flex-1 justify-center bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"><i class="fas fa-check"></i> Ya, Verifikasi</x-button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+@endforeach
 
 {{-- JADWAL MINGGU INI --}}
 <x-card title="Jadwal Minggu Ini" title-icon="fa-calendar-days">

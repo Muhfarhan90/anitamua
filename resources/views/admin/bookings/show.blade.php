@@ -3,8 +3,18 @@
 @section('title', 'Detail Booking')
 
 @section('content')
+@php
+    $totalPrice = $booking->package->price ?? 0;
+    $totalPaid = $booking->payments->where('status', \App\Models\Payment::STATUS_VERIFIED)->sum('amount');
+    $remaining = $totalPrice - $totalPaid;
+    $percentage = $totalPrice > 0 ? round(($totalPaid / $totalPrice) * 100) : 0;
+    $circumference = 2 * M_PI * 42;
+    $offset = $circumference - ($percentage / 100 * $circumference);
+@endphp
+
 <x-page-header :title="'Detail Booking — '.($booking->client->name ?? $booking->name)">
     <x-slot:actions>
+        <x-button href="{{ route('admin.bookings.edit', $booking) }}" color="ghost"><i class="fas fa-pen"></i> Edit Booking</x-button>
         @php $hasFitting = $booking->schedules->where('type', 'fitting')->where('status', '!=', 'cancelled')->isNotEmpty(); @endphp
         @if($hasFitting)
         <x-button href="{{ route('admin.bookings.packing', $booking) }}" color="primary"><i class="fas fa-box"></i> Packing Checklist</x-button>
@@ -44,30 +54,6 @@
             </div>
         </x-card>
 
-        {{-- PROGRESS --}}
-        <x-card title="Progress Booking" title-icon="fa-route">
-            @php
-                $steps = ['Booking', 'DP 10%', 'Hari H', 'Selesai'];
-                $progressMap = ['pending' => 1, 'booked' => 2, 'completed' => 4, 'cancelled' => 0];
-                $currentStep = $progressMap[$booking->status] ?? 1;
-            @endphp
-            <div class="flex items-center justify-between">
-                @foreach($steps as $index => $step)
-                    @php $stepNum = $index + 1; @endphp
-                    <div class="flex flex-col items-center flex-1">
-                        <div class="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300
-                                    {{ $stepNum <= $currentStep ? 'bg-brand text-white' : 'bg-gray-100 text-gray-400' }}">
-                            {{ $stepNum }}
-                        </div>
-                        <span class="text-xs mt-2 text-center font-medium {{ $stepNum <= $currentStep ? 'text-brand' : 'text-gray-400' }}">{{ $step }}</span>
-                    </div>
-                    @if(!$loop->last)
-                    <div class="flex-1 h-1 mx-1 rounded-full {{ $stepNum < $currentStep ? 'bg-brand' : 'bg-gray-200' }}"></div>
-                    @endif
-                @endforeach
-            </div>
-        </x-card>
-
         {{-- VERIFICATION --}}
         @if($booking->status === 'pending')
         <div class="bg-yellow-50 border-l-4 border-yellow-500 rounded-xl shadow-sm p-5">
@@ -76,14 +62,15 @@
                     <i class="fas fa-exclamation-triangle text-yellow-600"></i>
                 </div>
                 <div class="flex-1">
-                    <h4 class="font-display text-lg font-bold text-yellow-800">Verifikasi DP 10%</h4>
+                    <h4 class="font-display text-lg font-bold text-yellow-800">Verifikasi DP1</h4>
                     <p class="text-sm text-yellow-700 mt-1">Booking ini belum diverifikasi. Silakan verifikasi pembayaran DP. Setelah diverifikasi, akun dashboard client dibuat otomatis.</p>
                     <div class="mt-4 flex flex-wrap gap-3">
                         <x-button color="success" type="button" data-modal-target="verifyDpModal" data-modal-toggle="verifyDpModal">
                             <i class="fas fa-check"></i> Verifikasi DP
                         </x-button>
-                        <a href="{{ asset('storage/' . ($booking->payments->firstWhere('type', 'dp10')?->proof ?? '')) }}" onclick="openProof(event, this.href)"
-                           class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 border-yellow-400/60 text-yellow-800 hover:bg-yellow-100/70 transition-all {{ $booking->payments->firstWhere('type', 'dp10')?->proof ? '' : 'opacity-40 pointer-events-none' }}">
+                        @php $dp1Payment = $booking->payments->firstWhere('type', \App\Models\Payment::TYPE_DP1) ?? $booking->payments->firstWhere('type', 'dp10'); @endphp
+                        <a href="{{ asset('storage/' . ($dp1Payment?->proof ?? '')) }}" onclick="openProof(event, this.href)"
+                           class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 border-yellow-400/60 text-yellow-800 hover:bg-yellow-100/70 transition-all {{ $dp1Payment?->proof ? '' : 'opacity-40 pointer-events-none' }}">
                             <i class="fas fa-image"></i> Lihat Bukti
                         </a>
                     </div>
@@ -273,6 +260,40 @@
 
     {{-- SIDEBAR --}}
     <div class="space-y-5">
+        <x-card title="Ringkasan Keuangan" title-icon="fa-wallet">
+            <div class="space-y-2 text-sm mb-4">
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Total Harga Paket</span>
+                    <span class="font-bold text-gray-800">Rp {{ number_format($totalPrice, 0, ',', '.') }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Total Sudah Dibayar</span>
+                    <span class="font-bold text-emerald-500">Rp {{ number_format($totalPaid, 0, ',', '.') }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Sisa Pembayaran</span>
+                    <span class="font-bold text-brand">Rp {{ number_format($remaining, 0, ',', '.') }}</span>
+                </div>
+            </div>
+            <div class="flex items-center justify-center gap-6">
+                <div class="relative w-[100px] h-[100px]">
+                    <svg viewBox="0 0 100 100" style="transform: rotate(-90deg);">
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="#f0ece8" stroke-width="9" />
+                        <circle cx="50" cy="50" r="42" fill="none" stroke="#d4739a" stroke-width="9" stroke-linecap="round"
+                                stroke-dasharray="{{ $circumference }}" stroke-dashoffset="{{ $offset }}" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span class="font-display text-xl font-bold text-brand leading-none">{{ $percentage }}%</span>
+                        <span class="text-[10px] text-gray-500 mt-0.5">Dibayar</span>
+                    </div>
+                </div>
+                <div class="text-xs space-y-1.5">
+                    <div class="flex items-center gap-2 text-gray-600"><span class="w-2.5 h-2.5 rounded-full bg-brand inline-block"></span> Sudah Dibayar ({{ $percentage }}%)</div>
+                    <div class="flex items-center gap-2 text-gray-600"><span class="w-2.5 h-2.5 rounded-full bg-gray-200 inline-block"></span> Belum Dibayar ({{ 100 - $percentage }}%)</div>
+                </div>
+            </div>
+        </x-card>
+
         <x-card title="Paket" title-icon="fa-gift">
             @if(isset($booking->package))
             <div class="p-4 rounded-xl bg-brand-50">
@@ -301,16 +322,16 @@
             <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100">
                 <i class="fas fa-check-circle text-2xl text-emerald-600"></i>
             </div>
-            <h3 class="font-display text-xl font-bold text-center mb-2 text-gray-900">Konfirmasi Verifikasi DP</h3>
-            <p class="text-sm text-center text-gray-500 mb-4">Yakin ingin memverifikasi DP 10% booking <strong>{{ $booking->code }}</strong>?</p>
+            <h3 class="font-display text-xl font-bold text-center mb-2 text-gray-900">Konfirmasi Verifikasi DP1</h3>
+            <p class="text-sm text-center text-gray-500 mb-4">Yakin ingin memverifikasi DP1 booking <strong>{{ $booking->code }}</strong>?</p>
             <form action="{{ route('admin.bookings.verify-dp', $booking) }}" method="POST" class="space-y-4">
                 @csrf
 
                 <div>
                     <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Bukti Transfer</span>
-                    @php $dp10Payment = $booking->payments->firstWhere('type', 'dp10'); @endphp
-                    @if($dp10Payment?->proof)
-                        <img src="{{ asset('storage/' . $dp10Payment->proof) }}" alt="Bukti DP"
+                    @php $dp1Payment = $booking->payments->firstWhere('type', \App\Models\Payment::TYPE_DP1) ?? $booking->payments->firstWhere('type', 'dp10'); @endphp
+                    @if($dp1Payment?->proof)
+                        <img src="{{ asset('storage/' . $dp1Payment->proof) }}" alt="Bukti DP"
                              class="mt-2 w-full max-h-64 object-contain rounded-xl border border-brand-100 bg-brand-50/40">
                     @else
                         <p class="mt-2 text-sm text-yellow-700 bg-yellow-50 rounded-xl px-4 py-2.5 border border-yellow-200">
@@ -320,7 +341,7 @@
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <x-input name="amount" label="Nominal" type="number" placeholder="500000" :value="$booking->package?->price * 0.1" />
+                    <x-input name="amount" label="Nominal DP1" type="number" placeholder="500000" :value="$dp1Payment?->amount > 0 ? $dp1Payment->amount : ''" />
                     <x-select name="method" label="Metode">
                         <option value="transfer">Transfer</option>
                         <option value="cash">Cash</option>

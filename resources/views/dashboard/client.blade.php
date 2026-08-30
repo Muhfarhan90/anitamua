@@ -43,7 +43,7 @@
 
 @if(!$booking)
     <x-card class="text-center">
-        <x-empty-state icon="fa-calendar-plus" title="Belum Ada Booking" text="Pilih paket, isi formulir booking, lalu transfer DP 10% dalam 24 jam. Setelah diverifikasi, booking berstatus BOOKED." />
+        <x-empty-state icon="fa-calendar-plus" title="Belum Ada Booking" text="Pilih paket, isi formulir booking, lalu transfer DP1 dalam 24 jam. Setelah diverifikasi, booking berstatus BOOKED." />
         <div class="text-center pb-2 mt-2">
             <x-button href="{{ route('booking.create') }}" size="lg"><i class="fas fa-calendar-plus"></i> Booking Sekarang</x-button>
         </div>
@@ -167,7 +167,7 @@
             @if($booking->status === 'pending')
                 <div class="rounded-xl px-4 py-3 bg-amber-50 border border-amber-100 flex items-start gap-2.5">
                     <i class="fas fa-triangle-exclamation text-amber-500 mt-0.5 text-sm flex-shrink-0"></i>
-                    <p class="text-xs text-amber-700 leading-relaxed">Transfer DP 10% lalu upload bukti untuk verifikasi booking Anda.</p>
+                    <p class="text-xs text-amber-700 leading-relaxed">Transfer DP1 lalu upload bukti untuk verifikasi booking Anda.</p>
                 </div>
             @endif
         </x-card>

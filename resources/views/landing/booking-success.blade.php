@@ -179,7 +179,7 @@
 
         <div class="mt-4 text-center text-sm" style="color:var(--muted);">
             <i class="fa-solid fa-circle-info mr-1" style="color:var(--primary);"></i>
-            Booking Anda menunggu verifikasi admin. Status akan berubah <strong>BOOKED</strong> setelah DP 10% terverifikasi.
+            Booking Anda menunggu verifikasi admin. Status akan berubah <strong>BOOKED</strong> setelah DP1 terverifikasi.
         </div>
 
         {{-- Action Buttons --}}

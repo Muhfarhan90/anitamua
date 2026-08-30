@@ -7,12 +7,17 @@ use App\Models\Booking;
 use App\Models\Payment;
 use App\Services\ActivityLogger;
 use App\Services\ClientAccountService;
+use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $payments = Payment::with('booking')
+            ->when($request->status, fn ($q, $status) => $q->where('status', $status))
+            ->when($request->type, fn ($q, $type) => $type === Payment::TYPE_DP1
+                ? $q->whereIn('type', [Payment::TYPE_DP1, 'dp10'])
+                : $q->where('type', $type))
             ->orderByDesc('created_at')
             ->paginate(20)
             ->withQueryString();

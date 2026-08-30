@@ -37,7 +37,7 @@ class ClientController extends Controller
         ]);
 
         if (! empty($data['payment_id'])) {
-            // Bayar tahap yang sudah ada (mis. DP 10%)
+            // Bayar tahap yang sudah ada (mis. DP1)
             $payment = Payment::findOrFail($data['payment_id']);
             abort_unless($payment->booking_id === $booking->id, 403);
         } else {

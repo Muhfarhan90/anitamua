@@ -27,7 +27,7 @@
             <label class="block text-sm font-medium text-gray-600 mb-1">Tahap</label>
             <select name="type" class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
                 <option value="">Semua Tahap</option>
-                <option value="dp10" {{ request('type') == 'dp10' ? 'selected' : '' }}>DP 10%</option>
+                <option value="dp1" {{ request('type') == 'dp1' ? 'selected' : '' }}>DP1</option>
                 <option value="dp25" {{ request('type') == 'dp25' ? 'selected' : '' }}>DP 25% (Fitting)</option>
                 <option value="dp75" {{ request('type') == 'dp75' ? 'selected' : '' }}>DP 75% (H-7)</option>
                 <option value="pelunasan" {{ request('type') == 'pelunasan' ? 'selected' : '' }}>Pelunasan</option>

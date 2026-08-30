@@ -25,10 +25,10 @@ class BookingProgress
             return self::cancelled($booking);
         }
 
-        $hasVerifiedDp10 = $booking->payments
-            ->contains(fn ($p) => $p->type === Payment::TYPE_DP10 && $p->status === Payment::STATUS_VERIFIED);
+        $hasVerifiedDp1 = $booking->payments
+            ->contains(fn ($p) => in_array($p->type, [Payment::TYPE_DP1, 'dp10'], true) && $p->status === Payment::STATUS_VERIFIED);
 
-        if (! $hasVerifiedDp10) {
+        if (! $hasVerifiedDp1) {
             $statuses['dp'] = 'current';
         }
 
@@ -60,7 +60,7 @@ class BookingProgress
         return [
             'status' => $booking->status,
             'status_label' => match ($booking->status) {
-                Booking::STATUS_PENDING => 'Menunggu DP 10%',
+                Booking::STATUS_PENDING => 'Menunggu DP1',
                 Booking::STATUS_BOOKED => 'BOOKED',
                 Booking::STATUS_COMPLETED => 'Selesai',
                 Booking::STATUS_CANCELLED => 'Cancelled',
@@ -75,7 +75,7 @@ class BookingProgress
             },
             'steps' => [
                 ['key' => 'booking', 'label' => 'Booking', 'state' => $statuses['booking']],
-                ['key' => 'dp', 'label' => 'DP', 'state' => $statuses['dp']],
+                ['key' => 'dp', 'label' => 'DP1', 'state' => $statuses['dp']],
                 ['key' => 'survey', 'label' => 'Survey', 'state' => $statuses['survey']],
                 ['key' => 'fitting', 'label' => 'Fitting', 'state' => $statuses['fitting']],
                 ['key' => 'pelunasan', 'label' => 'Pelunasan', 'state' => $statuses['pelunasan']],
@@ -92,7 +92,7 @@ class BookingProgress
             'status_label' => 'Cancelled',
             'status_badge' => 'text-bg-danger',
             'steps' => collect([
-                ['Booking', 'done'], ['DP', 'done'],
+                ['Booking', 'done'], ['DP1', 'done'],
                 ['Survey', 'pending'], ['Fitting', 'pending'], ['Pelunasan', 'pending'],
                 ['Hari H', 'pending'], ['Selesai', 'pending'],
             ])->map(fn ($s) => ['label' => $s[0], 'state' => $s[1]])->all(),

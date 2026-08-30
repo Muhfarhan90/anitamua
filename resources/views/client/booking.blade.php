@@ -14,7 +14,7 @@
 
     $timelineSteps = [
         ['label' => 'Booking Berhasil', 'key' => 'booking'],
-        ['label' => 'DP 10% Dibayar', 'key' => 'dp10'],
+        ['label' => 'DP1 Dibayar', 'key' => 'dp1'],
         ['label' => 'DP 25% (Fitting)', 'key' => 'fitting'],
         ['label' => 'DP 75% (H-7)', 'key' => 'dp75'],
         ['label' => 'Pelunasan (H-2)', 'key' => 'pelunasan'],
@@ -123,7 +123,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="5"><x-empty-state icon="fa-credit-card" title="Belum ada tahap pembayaran" text="Jadwal pembayaran dibuat setelah DP 10% diverifikasi" /></td>
+                                <td colspan="5"><x-empty-state icon="fa-credit-card" title="Belum ada tahap pembayaran" text="Jadwal pembayaran dibuat setelah DP1 diverifikasi" /></td>
                             </tr>
                             @endforelse
                         </tbody>
@@ -269,7 +269,7 @@
 
             <x-card title="Informasi Penting" title-icon="fa-circle-info">
                 <div class="space-y-3 text-sm text-gray-600">
-                    <div class="flex gap-2 items-start"><i class="fas fa-circle-check text-emerald-500 mt-0.5 text-xs"></i> Booking sah setelah DP 10% diverifikasi admin.</div>
+                    <div class="flex gap-2 items-start"><i class="fas fa-circle-check text-emerald-500 mt-0.5 text-xs"></i> Booking sah setelah DP1 diverifikasi admin.</div>
                     <div class="flex gap-2 items-start"><i class="fas fa-circle-xmark text-red-500 mt-0.5 text-xs"></i> Pembatalan sepihak menyebabkan DP hangus.</div>
                     <div class="flex gap-2 items-start"><i class="fas fa-clock text-brand mt-0.5 text-xs"></i> Pembayaran diverifikasi maksimal 1Ã—24 jam pada hari kerja.</div>
                 </div>

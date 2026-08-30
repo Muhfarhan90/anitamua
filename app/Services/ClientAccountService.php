@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Mail;
 
 /**
  * Membuat akun client otomatis sesuai PRD:
- * akun dashboard dibuat saat admin memverifikasi DP 10% (status BOOKED).
+ * akun dashboard dibuat saat admin memverifikasi DP1 (status BOOKED).
  * Email berisi kredensial login dikirim ke client saat akun baru dibuat.
  */
 class ClientAccountService

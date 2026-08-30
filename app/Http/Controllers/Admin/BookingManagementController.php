@@ -63,6 +63,23 @@ class BookingManagementController extends Controller
         return view('admin.bookings.create', compact('packages', 'clients', 'subTypeLabels'));
     }
 
+    public function edit(Booking $booking)
+    {
+        $booking->load(['client', 'package']);
+        $packages = Package::where('status', 'active')->get();
+        $clients = User::where('role', User::ROLE_CLIENT)->get();
+
+        $subTypeLabels = [
+            'makeup' => 'Makeup Only',
+            'akad' => 'Akad',
+            'makeup_attire' => 'Makeup & Attire',
+            'rumahan' => 'Rumahan',
+            'gedung' => 'Gedung',
+        ];
+
+        return view('admin.bookings.edit', compact('booking', 'packages', 'clients', 'subTypeLabels'));
+    }
+
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -74,6 +91,7 @@ class BookingManagementController extends Controller
             'location' => ['nullable', 'string'],
             'notes' => ['nullable', 'string'],
             'proof' => ['nullable', 'image', 'max:3072'], // bukti opsional — tanpa bukti pun tetap verified
+            'dp1_amount' => ['required', 'numeric', 'min:0'],
         ]);
 
         // Kontak & nama acara diambil dari data klien (klien dibuat dulu sebelum booking)
@@ -94,8 +112,8 @@ class BookingManagementController extends Controller
 
         // Tahap DP langsung diverifikasi (dibuat oleh admin — bukti opsional, tanpa bukti pun verified)
         $paymentData = [
-            'type' => Payment::TYPE_DP10,
-            'amount' => round($booking->package->price * 0.1),
+            'type' => Payment::TYPE_DP1,
+            'amount' => $data['dp1_amount'],
             'due_date' => Carbon::parse($booking->event_date)->subDays(30)->toDateString(),
             'method' => 'transfer',
             'status' => Payment::STATUS_VERIFIED,
@@ -110,12 +128,55 @@ class BookingManagementController extends Controller
 
         $booking->payments()->create($paymentData);
 
-        ActivityLogger::log('dp_verified', 'DP dikonfirmasi', 'DP 10% dikonfirmasi oleh '.auth()->user()->name.' (booking dibuat via form admin)', $booking->id);
+        ActivityLogger::log('dp_verified', 'DP dikonfirmasi', 'DP1 dikonfirmasi oleh '.auth()->user()->name.' (booking dibuat via form admin)', $booking->id);
 
         // Jadwal Hari H otomatis masuk kalender
         $booking->ensureHariHSchedule();
 
-        return redirect()->route('admin.bookings.show', $booking)->with('success', 'Booking berhasil dibuat. DP otomatis terverifikasi, status BOOKED, dan jadwal Hari H masuk kalender.');
+        return redirect()->route('admin.bookings.show', $booking)->with('success', 'Booking berhasil dibuat. DP1 terverifikasi, status BOOKED, dan jadwal Hari H masuk kalender.');
+    }
+
+    public function update(Booking $booking, Request $request)
+    {
+        $data = $request->validate([
+            'client_id' => ['nullable', 'exists:users,id'],
+            'package_id' => ['required', 'exists:packages,id'],
+            'name' => ['required', 'string', 'max:255'],
+            'phone' => ['required', 'string', 'max:30'],
+            'email' => ['required', 'email'],
+            'event_date' => ['required', 'date'],
+            'survey_date' => ['nullable', 'date'],
+            'fitting_date' => ['nullable', 'date'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'notes' => ['nullable', 'string'],
+            'status' => ['required', 'in:pending,booked,completed,cancelled'],
+        ]);
+
+        $old = $booking->only(array_keys($data));
+        $booking->update($data);
+
+        if ($booking->wasChanged(['event_date', 'event_time', 'location', 'name'])) {
+            $booking->schedules()
+                ->where('type', Schedule::TYPE_HARI_H)
+                ->update([
+                    'title' => Schedule::typeLabel(Schedule::TYPE_HARI_H).' - '.$booking->name,
+                    'date' => $booking->event_date,
+                    'time' => $booking->event_time,
+                    'location' => $booking->location,
+                    'notes' => 'Hari H - acara '.$booking->name,
+                ]);
+        }
+
+        ActivityLogger::log(
+            'booking_updated',
+            'Booking diperbarui',
+            'Booking '.$booking->code.' diperbarui oleh '.auth()->user()->name,
+            $booking->id,
+            $old,
+            $booking->only(array_keys($data)),
+        );
+
+        return redirect()->route('admin.bookings.show', $booking)->with('success', 'Data booking berhasil diperbarui.');
     }
 
     public function verifyDp(Booking $booking, Request $request)
@@ -125,8 +186,8 @@ class BookingManagementController extends Controller
             'method' => ['required', 'string'],
         ]);
 
-        $payment = $booking->payments()->where('type', Payment::TYPE_DP10)->first();
-        $payment ??= new Payment(['booking_id' => $booking->id, 'type' => Payment::TYPE_DP10]);
+        $payment = $booking->payments()->whereIn('type', [Payment::TYPE_DP1, 'dp10'])->first();
+        $payment ??= new Payment(['booking_id' => $booking->id, 'type' => Payment::TYPE_DP1]);
 
         $payment->fill([
             'amount' => $data['amount'],
@@ -141,13 +202,13 @@ class BookingManagementController extends Controller
 
         $booking->ensureHariHSchedule();
 
-        $this->ensureDp10Payment($booking, $data['amount']);
+        $this->ensureDp1Payment($booking, $data['amount']);
         $account = app(ClientAccountService::class)->ensure($booking);
 
         ActivityLogger::log(
             'dp_verified',
-            'DP 10% dikonfirmasi',
-            'DP 10% sebesar '.number_format($data['amount']).' dikonfirmasi oleh '.auth()->user()->name,
+            'DP1 dikonfirmasi',
+            'DP1 sebesar '.number_format($data['amount']).' dikonfirmasi oleh '.auth()->user()->name,
             $booking->id,
             null,
             ['amount' => $data['amount']],
@@ -161,10 +222,10 @@ class BookingManagementController extends Controller
                 $booking->id,
             );
 
-            return back()->with('success', 'DP 10% terverifikasi. Booking berstatus BOOKED. Akun dashboard untuk '.$account->email.' dibuat otomatis (password default: '.User::generateDefaultPassword($booking->name).').');
+            return back()->with('success', 'DP1 terverifikasi. Booking berstatus BOOKED. Akun dashboard untuk '.$account->email.' dibuat otomatis (password default: '.User::generateDefaultPassword($booking->name).').');
         }
 
-        return back()->with('success', 'DP 10% terverifikasi. Booking berstatus BOOKED.');
+        return back()->with('success', 'DP1 terverifikasi. Booking berstatus BOOKED.');
     }
 
     public function cancel(Booking $booking, Request $request)
@@ -318,13 +379,13 @@ class BookingManagementController extends Controller
      * Pastikan tahap pembayaran pertama (DP) ada.
      * Tahap selanjutnya dibuat manual oleh admin (label & nominal bebas).
      */
-    private function ensureDp10Payment(Booking $booking, float $amount): void
+    private function ensureDp1Payment(Booking $booking, float $amount): void
     {
-        $payment = $booking->payments()->where('type', Payment::TYPE_DP10)->first();
+        $payment = $booking->payments()->whereIn('type', [Payment::TYPE_DP1, 'dp10'])->first();
 
         if (! $payment) {
             $booking->payments()->create([
-                'type' => Payment::TYPE_DP10,
+                'type' => Payment::TYPE_DP1,
                 'amount' => $amount,
                 'due_date' => Carbon::parse($booking->event_date)->subDays(30)->toDateString(),
                 'method' => 'transfer',
