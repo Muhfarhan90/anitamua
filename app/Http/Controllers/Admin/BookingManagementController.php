@@ -21,6 +21,7 @@ class BookingManagementController extends Controller
     {
         $query = Booking::with(['client', 'package', 'payments'])
             ->when($request->status, fn ($q, $s) => $q->where('status', $s))
+            ->when($request->event_date, fn ($q, $date) => $q->whereDate('event_date', $date))
             ->when($request->q, fn ($q, $s) => $q->where(function ($qq) use ($s) {
                 $qq->where('name', 'like', "%{$s}%")
                     ->orWhere('code', 'like', "%{$s}%")
@@ -83,7 +84,12 @@ class BookingManagementController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'client_id' => ['required', 'exists:users,id'],
+            'client_mode' => ['required', 'in:existing,new'],
+            'client_id' => ['required_if:client_mode,existing', 'nullable', 'exists:users,id'],
+            'new_client_name' => ['required_if:client_mode,new', 'nullable', 'string', 'max:255'],
+            'new_client_email' => ['required_if:client_mode,new', 'nullable', 'email', 'unique:users,email'],
+            'new_client_phone' => ['required_if:client_mode,new', 'nullable', 'string', 'max:30'],
+            'new_client_instagram' => ['nullable', 'string', 'max:100', 'regex:/^@?[A-Za-z0-9._]+$/'],
             'package_id' => ['required', 'exists:packages,id'],
             'event_date' => ['required', 'date'],
             'survey_date' => ['nullable', 'date'],
@@ -94,15 +100,25 @@ class BookingManagementController extends Controller
             'dp1_amount' => ['required', 'numeric', 'min:0'],
         ]);
 
-        // Kontak & nama acara diambil dari data klien (klien dibuat dulu sebelum booking)
-        $client = User::findOrFail($data['client_id']);
+        $clientWasCreated = $data['client_mode'] === 'new';
+        $client = $clientWasCreated
+            ? User::create([
+                'name' => $data['new_client_name'],
+                'email' => $data['new_client_email'],
+                'phone' => $data['new_client_phone'],
+                'instagram' => $data['new_client_instagram'] ?? null,
+                'password' => User::generateDefaultPassword($data['new_client_name']),
+                'role' => User::ROLE_CLIENT,
+            ])
+            : User::findOrFail($data['client_id']);
+
+        // Kontak & nama acara diambil dari data klien.
         $data['name'] = $client->name;
         $data['phone'] = $client->phone;
         $data['email'] = $client->email;
+        unset($data['client_mode'], $data['new_client_name'], $data['new_client_email'], $data['new_client_phone'], $data['new_client_instagram']);
 
-        $year = date('Y');
-        $count = Booking::whereYear('created_at', $year)->count() + 1;
-        $data['code'] = 'AMU-'.$year.'-'.str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+        $data['code'] = Booking::generateCode();
         $data['created_by'] = auth()->id();
         $data['status'] = Booking::STATUS_BOOKED; // dibuat admin → langsung sah
 
@@ -133,7 +149,14 @@ class BookingManagementController extends Controller
         // Jadwal Hari H otomatis masuk kalender
         $booking->ensureHariHSchedule();
 
-        return redirect()->route('admin.bookings.show', $booking)->with('success', 'Booking berhasil dibuat. DP1 terverifikasi, status BOOKED, dan jadwal Hari H masuk kalender.');
+        $message = 'Booking berhasil dibuat. DP1 terverifikasi, status BOOKED, dan jadwal Hari H masuk kalender.';
+
+        if ($clientWasCreated) {
+            ActivityLogger::log('user_created', 'Klien ditambahkan', 'Akun klien '.$client->name.' dibuat saat booking oleh '.auth()->user()->name);
+            $message .= ' Akun '.$client->email.' dibuat dengan password default: '.User::generateDefaultPassword($client->name).'.';
+        }
+
+        return redirect()->route('admin.bookings.show', $booking)->with('success', $message);
     }
 
     public function update(Booking $booking, Request $request)

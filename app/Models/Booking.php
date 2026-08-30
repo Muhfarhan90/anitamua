@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 class Booking extends Model
 {
@@ -19,6 +20,15 @@ class Booking extends Model
     public const STATUS_COMPLETED = 'completed';
 
     public const STATUS_CANCELLED = 'cancelled';
+
+    public static function generateCode(): string
+    {
+        do {
+            $code = Str::upper(Str::random(5));
+        } while (self::where('code', $code)->exists());
+
+        return $code;
+    }
 
     protected $fillable = [
         'code', 'client_id', 'package_id', 'name', 'phone', 'email',

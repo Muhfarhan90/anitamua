@@ -26,6 +26,11 @@
                 <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Dibatalkan</option>
             </select>
         </div>
+        <div class="min-w-[180px]">
+            <label class="block text-sm font-medium text-gray-600 mb-1">Tanggal Acara</label>
+            <input type="date" name="event_date" value="{{ request('event_date') }}"
+                   class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
+        </div>
         <x-button type="submit"><i class="fas fa-filter"></i> Filter</x-button>
     </form>
 </x-card>

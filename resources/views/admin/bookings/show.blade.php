@@ -34,7 +34,7 @@
     <div class="lg:col-span-2 space-y-5">
 
         <x-card title="Informasi Booking" title-icon="fa-file-invoice">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
                 <div>
                     <span class="text-gray-500">Kode</span>
                     <p class="font-semibold text-gray-800"><x-badge>{{ $booking->code }}</x-badge></p>
@@ -50,6 +50,10 @@
                 <div>
                     <span class="text-gray-500">Telepon</span>
                     <p class="font-semibold text-gray-800">{{ $booking->client->phone ?? '-' }}</p>
+                </div>
+                <div>
+                    <span class="text-gray-500">Instagram</span>
+                    <p class="font-semibold text-gray-800">{{ $booking->client?->instagram ?? '-' }}</p>
                 </div>
             </div>
         </x-card>

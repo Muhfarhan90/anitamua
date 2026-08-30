@@ -41,9 +41,7 @@ class BookingController extends Controller
             'proof' => ['required', 'image', 'max:3072'], // bukti transfer DP1 wajib
         ]);
 
-        $year = date('Y');
-        $count = Booking::whereYear('created_at', $year)->count() + 1;
-        $data['code'] = 'AMU-'.$year.'-'.str_pad((string) $count, 4, '0', STR_PAD_LEFT);
+        $data['code'] = Booking::generateCode();
 
         // Akun dibuat otomatis saat DP diverifikasi admin.
         // Jika email sudah punya akun client, booking melekat ke akun tersebut.

@@ -9,16 +9,42 @@
         <form action="{{ route('admin.bookings.store') }}" method="POST" enctype="multipart/form-data" class="space-y-5">
             @csrf
 
-            <x-select name="client_id" label="Klien" required placeholder="Pilih Klien">
-                @foreach ($clients ?? [] as $client)
-                    <option value="{{ $client->id }}" data-phone="{{ $client->phone }}" data-email="{{ $client->email }}"
-                        @selected(old('client_id') == $client->id)>{{ $client->name }} - {{ $client->phone }}</option>
-                @endforeach
-            </x-select>
-            <div id="client-preview" class="hidden rounded-lg bg-brand-50/60 border border-brand-100 px-4 py-3 text-sm">
-                <p class="font-medium text-gray-700" id="client-preview-name"></p>
-                <p class="text-gray-500" id="client-preview-phone"></p>
-                <p class="text-gray-500" id="client-preview-email"></p>
+            <div>
+                <label class="block text-sm font-medium text-gray-600 mb-1">Klien <span class="text-red-500">*</span></label>
+                <div class="inline-flex overflow-hidden rounded-lg border border-gray-200 text-sm" role="radiogroup" aria-label="Sumber klien">
+                    <label class="cursor-pointer">
+                        <input type="radio" name="client_mode" value="existing" class="sr-only peer" @checked(old('client_mode', 'existing') === 'existing')>
+                        <span class="block px-4 py-2 peer-checked:bg-brand peer-checked:text-white">Pilih Klien</span>
+                    </label>
+                    <label class="cursor-pointer border-l border-gray-200">
+                        <input type="radio" name="client_mode" value="new" class="sr-only peer" @checked(old('client_mode') === 'new')>
+                        <span class="block px-4 py-2 peer-checked:bg-brand peer-checked:text-white">Klien Baru</span>
+                    </label>
+                </div>
+                @error('client_mode')
+                    <p class="text-xs text-red-600 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div id="existingClientFields" class="space-y-3 {{ old('client_mode') === 'new' ? 'hidden' : '' }}">
+                <x-select name="client_id" id="client_id" label="Pilih Klien" required placeholder="Pilih Klien">
+                    @foreach ($clients ?? [] as $client)
+                        <option value="{{ $client->id }}" data-phone="{{ $client->phone }}" data-email="{{ $client->email }}"
+                            @selected(old('client_id') == $client->id)>{{ $client->name }} - {{ $client->phone }}</option>
+                    @endforeach
+                </x-select>
+                <div id="client-preview" class="hidden rounded-lg bg-brand-50/60 border border-brand-100 px-4 py-3 text-sm">
+                    <p class="font-medium text-gray-700" id="client-preview-name"></p>
+                    <p class="text-gray-500" id="client-preview-phone"></p>
+                    <p class="text-gray-500" id="client-preview-email"></p>
+                </div>
+            </div>
+
+            <div id="newClientFields" class="hidden grid grid-cols-1 md:grid-cols-2 gap-5 rounded-lg border border-brand-100 bg-brand-50/40 p-4">
+                <x-input name="new_client_name" label="Nama Klien" placeholder="Nama lengkap" />
+                <x-input name="new_client_phone" label="Nomor WhatsApp" placeholder="08xxxxxxxxxx" />
+                <x-input name="new_client_email" label="Email" type="email" placeholder="email@client.com" />
+                <x-input name="new_client_instagram" label="Username Instagram" placeholder="@username" />
             </div>
 
             {{-- Jenis Paket (sama dengan form landing) --}}
@@ -81,6 +107,12 @@
                 const selectJenis = document.getElementById('package_type');
                 const selectPaket = document.getElementById('package_id');
                 const paketOptions = Array.from(selectPaket.options).slice(1);
+                const clientModeInputs = document.querySelectorAll('input[name="client_mode"]');
+                const existingClientFields = document.getElementById('existingClientFields');
+                const newClientFields = document.getElementById('newClientFields');
+                const selectClient = document.getElementById('client_id');
+                const preview = document.getElementById('client-preview');
+                const newClientInputs = newClientFields.querySelectorAll('input');
 
                 function applyFilter() {
                     const jenis = selectJenis.value;
@@ -99,9 +131,6 @@
                     applyFilter();
                 }
 
-                // Preview data klien terpilih
-                const selectClient = document.getElementById('client_id');
-                const preview = document.getElementById('client-preview');
                 function updateClientPreview() {
                     const opt = selectClient.selectedOptions[0];
                     if (!opt || !opt.value) {
@@ -113,8 +142,24 @@
                     document.getElementById('client-preview-phone').textContent = 'WA: ' + (opt.dataset.phone || '—');
                     document.getElementById('client-preview-email').textContent = 'Email: ' + (opt.dataset.email || '—');
                 }
+
+                function updateClientMode() {
+                    const isNewClient = document.querySelector('input[name="client_mode"]:checked').value === 'new';
+                    existingClientFields.classList.toggle('hidden', isNewClient);
+                    newClientFields.classList.toggle('hidden', !isNewClient);
+                    selectClient.disabled = isNewClient;
+                    selectClient.required = !isNewClient;
+                    newClientInputs.forEach(input => {
+                        input.disabled = !isNewClient;
+                        input.required = isNewClient;
+                    });
+                    if (isNewClient) preview.classList.add('hidden');
+                    else updateClientPreview();
+                }
+
+                clientModeInputs.forEach(input => input.addEventListener('change', updateClientMode));
                 selectClient.addEventListener('change', updateClientPreview);
-                updateClientPreview();
+                updateClientMode();
             });
         </script>
     @endpush

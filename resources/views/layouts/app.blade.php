@@ -211,7 +211,7 @@
                 <div class="relative">
                     {{-- Trigger --}}
                     <button @click="open = !open" @click.outside="open = false"
-                            class="flex items-center gap-2 px-2 py-1 hover:bg-gray-50 transition-colors cursor-pointer">
+                            class="flex items-center gap-2 px-2 py-1 transition-colors cursor-pointer">
                         <div class="w-8 h-8 rounded-full bg-gradient-to-br from-brand to-brand-dark text-white flex items-center justify-center font-bold text-[11px] flex-shrink-0">
                             {{ strtoupper(substr($user->name ?? 'U', 0, 1)) }}
                         </div>

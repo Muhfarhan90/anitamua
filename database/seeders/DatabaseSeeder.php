@@ -189,7 +189,7 @@ class DatabaseSeeder extends Seeder
         $eventDate = Carbon::now()->addDays(18)->startOfDay();
 
         $booking = Booking::create([
-            'code' => 'AMU-'.date('Y').'-0001',
+            'code' => 'AMU01',
             'client_id' => $client->id,
             'package_id' => $package->id,
             'name' => 'Dewi & Andi',

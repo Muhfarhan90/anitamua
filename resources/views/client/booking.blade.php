@@ -11,27 +11,6 @@
     $circumference = 2 * M_PI * 42;
     $offset = $circumference - ($percentage / 100 * $circumference);
     $pendingPayments = $booking->payments->where('status', 'pending')->where('amount', '>', 0);
-
-    $timelineSteps = [
-        ['label' => 'Booking Berhasil', 'key' => 'booking'],
-        ['label' => 'DP1 Dibayar', 'key' => 'dp1'],
-        ['label' => 'DP 25% (Fitting)', 'key' => 'fitting'],
-        ['label' => 'DP 75% (H-7)', 'key' => 'dp75'],
-        ['label' => 'Pelunasan (H-2)', 'key' => 'pelunasan'],
-        ['label' => 'Selesai', 'key' => 'selesai'],
-    ];
-
-    $currentStep = 0;
-    foreach ($booking->payments as $p) {
-        if ($p->status === 'verified') {
-            $currentStep++;
-        } elseif ($p->status === 'pending' && $currentStep < count($timelineSteps)) {
-            break;
-        }
-    }
-    if ($booking->status === 'completed') {
-        $currentStep = count($timelineSteps);
-    }
 @endphp
 
 {{-- HEADER --}}
@@ -41,31 +20,6 @@
 </div>
 
 <div class="max-w-[1280px] mx-auto pb-10">
-    {{-- PROGRESS TIMELINE --}}
-    <x-card padding="p-5" class="mb-4 overflow-x-auto">
-        <div class="flex items-start min-w-[640px]">
-            @foreach($timelineSteps as $i => $step)
-                @php
-                    $state = $i < $currentStep ? 'done' : ($i == $currentStep ? 'active' : 'locked');
-                @endphp
-                <div class="flex flex-col items-center relative flex-1 min-w-0">
-                    <div class="w-11 h-11 rounded-full flex items-center justify-center border-[3px] z-10 text-sm font-bold transition-all
-                                {{ $state === 'done' ? 'bg-emerald-500 border-emerald-500 text-white' : ($state === 'active' ? 'bg-brand border-brand text-white shadow-[0_0_0_4px_rgba(212,115,154,0.25)]' : 'bg-white border-gray-200 text-gray-400') }}">
-                        @if($state === 'done')
-                            <i class="fas fa-check text-white"></i>
-                        @else
-                            {{ $i + 1 }}
-                        @endif
-                    </div>
-                    <span class="mt-2.5 text-xs font-semibold text-center max-w-[110px] leading-tight {{ $state === 'locked' ? 'text-gray-400' : 'text-gray-800' }}">{{ $step['label'] }}</span>
-                </div>
-                @if(!$loop->last)
-                    <div class="h-[3px] mt-[22px] flex-1 min-w-[16px] mx-1 {{ $i < $currentStep ? 'bg-emerald-500' : ($i == $currentStep ? 'bg-gradient-to-r from-brand to-gray-200' : 'bg-gray-200') }}"></div>
-                @endif
-            @endforeach
-        </div>
-    </x-card>
-
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 items-start">
 
         {{-- MAIN --}}
@@ -150,7 +104,7 @@
                         </x-select>
                     </div>
                     <div id="newStageFields" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <x-input name="type" id="newStageType" label="Label Tahap" placeholder="Contoh: Pelunasan / Angsuran 2 / DP Tambahan" />
+                        <x-input name="type" id="newStageType" label="Label Tahap" placeholder="Contoh: Pelunasan / Angsuran 2 / DP Tambahan" :value="old('type', 'DP'.($booking->payments->count() + 1))" />
                         <x-input name="amount" id="newStageAmount" label="Nominal" type="number" min="0" step="1000" placeholder="1000000" />
                     </div>
                     <div>
@@ -349,12 +303,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const newStageFields = document.getElementById('newStageFields');
     const newStageType = document.getElementById('newStageType');
     const newStageAmount = document.getElementById('newStageAmount');
+    const nextDpLabel = @json('DP'.($booking->payments->count() + 1));
 
     function toggleNewStage() {
         const isNew = !paymentSelect.value;
         newStageFields.classList.toggle('hidden', !isNew);
         newStageType.required = isNew;
         newStageAmount.required = isNew;
+        if (isNew && !newStageType.value) newStageType.value = nextDpLabel;
     }
     paymentSelect.addEventListener('change', toggleNewStage);
     toggleNewStage();
