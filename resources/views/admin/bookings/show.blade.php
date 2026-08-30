@@ -53,7 +53,7 @@
                 </div>
                 <div>
                     <span class="text-gray-500">Instagram</span>
-                    <p class="font-semibold text-gray-800">{{ $booking->client?->instagram ?? '-' }}</p>
+                    <p class="font-semibold text-gray-800">{{ $booking->instagram ?? '-' }}</p>
                 </div>
             </div>
         </x-card>

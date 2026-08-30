@@ -35,6 +35,7 @@ class BookingController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:30'],
             'email' => ['required', 'email'],
+            'instagram' => ['nullable', 'string', 'max:100', 'regex:/^@?[A-Za-z0-9._]+$/'],
             'event_date' => ['required', 'date', 'after_or_equal:today'],
             'location' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
@@ -46,6 +47,9 @@ class BookingController extends Controller
         // Akun dibuat otomatis saat DP diverifikasi admin.
         // Jika email sudah punya akun client, booking melekat ke akun tersebut.
         $existingUser = User::where('email', $data['email'])->where('role', User::ROLE_CLIENT)->first();
+        if ($existingUser && filled($data['instagram'] ?? null)) {
+            $existingUser->update(['instagram' => $data['instagram']]);
+        }
         $data['client_id'] = $existingUser->id ?? auth()->id();
         $data['created_by'] = auth()->id() ?? $existingUser->id ?? null;
         $data['status'] = Booking::STATUS_PENDING;

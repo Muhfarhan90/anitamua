@@ -37,6 +37,7 @@ class ClientAccountService
                 'name' => $booking->name,
                 'email' => $email,
                 'phone' => $booking->phone,
+                'instagram' => $booking->instagram,
                 'password' => Hash::make(User::generateDefaultPassword($booking->name)),
                 'role' => User::ROLE_CLIENT,
                 'position' => 'Bride',

@@ -262,6 +262,17 @@
                                 @enderror
                             </div>
 
+                            <div class="mb-3">
+                                <label class="form-label">Username Instagram</label>
+                                <div class="input-group-icon">
+                                    <i class="fa-brands fa-instagram input-icon"></i>
+                                    <input type="text" name="instagram" class="form-control" value="{{ old('instagram', auth()->user()->instagram ?? '') }}" placeholder="@username">
+                                </div>
+                                @error('instagram')
+                                    <div class="rounded-lg bg-red-50 text-red-700 text-sm px-3 py-2 mt-2 mb-0"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ $message }}</div>
+                                @enderror
+                            </div>
+
                             <div class="grid grid-cols-12 gap-3">
                                 {{-- Tanggal Acara --}}
                                 <div class="col-span-12 md:col-span-6 mb-3">

@@ -116,6 +116,7 @@ class BookingManagementController extends Controller
         $data['name'] = $client->name;
         $data['phone'] = $client->phone;
         $data['email'] = $client->email;
+        $data['instagram'] = $clientWasCreated ? ($data['new_client_instagram'] ?? null) : $client->instagram;
         unset($data['client_mode'], $data['new_client_name'], $data['new_client_email'], $data['new_client_phone'], $data['new_client_instagram']);
 
         $data['code'] = Booking::generateCode();
