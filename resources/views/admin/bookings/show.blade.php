@@ -421,7 +421,6 @@
             <p class="text-sm text-center text-gray-500 mb-6">Booking <strong>{{ $booking->code }}</strong> akan dibatalkan. DP dinyatakan hangus. Tindakan ini tidak dapat dibatalkan.</p>
             <form action="{{ route('admin.bookings.cancel', $booking) }}" method="POST">
                 @csrf
-                @method('PATCH')
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 mb-1">Alasan Pembatalan</label>
                     <textarea name="reason" rows="3" required placeholder="Masukkan alasan pembatalan..."
