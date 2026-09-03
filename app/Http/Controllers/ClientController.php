@@ -16,7 +16,7 @@ class ClientController extends Controller
         abort_unless($booking->client_id === auth()->id(), 403);
 
         $booking->load([
-            'package.benefits', 'payments', 'bookingVendors.vendor.category',
+            'package.benefits', 'addons', 'payments', 'bookingVendors.vendor.category',
             'schedules.picUser', 'survey', 'fittings', 'activityLogs.user',
             'packageChangeRequests.newPackage',
         ]);

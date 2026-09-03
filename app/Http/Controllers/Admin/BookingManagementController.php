@@ -14,6 +14,7 @@ use App\Services\ClientAccountService;
 use App\Services\ImageCompressor;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BookingManagementController extends Controller
 {
@@ -38,6 +39,7 @@ class BookingManagementController extends Controller
     {
         $booking->load([
             'client', 'package', 'payments', 'bookingVendors.vendor.category',
+            'addons',
             'schedules.picUser', 'survey', 'fittings', 'packingLists.items.inventoryItem',
             'activityLogs.user', 'packageChangeRequests.oldPackage', 'packageChangeRequests.newPackage',
         ]);
@@ -66,7 +68,7 @@ class BookingManagementController extends Controller
 
     public function edit(Booking $booking)
     {
-        $booking->load(['client', 'package']);
+        $booking->load(['client', 'package', 'addons']);
         $packages = Package::where('status', 'active')->get();
         $clients = User::where('role', User::ROLE_CLIENT)->get();
 
@@ -98,7 +100,13 @@ class BookingManagementController extends Controller
             'notes' => ['nullable', 'string'],
             'proof' => ['nullable', 'image', 'max:3072'], // bukti opsional — tanpa bukti pun tetap verified
             'dp1_amount' => ['required', 'numeric', 'min:0'],
+            'addons' => ['nullable', 'array'],
+            'addons.*.name' => ['required', 'string', 'max:255'],
+            'addons.*.price' => ['required', 'numeric', 'min:0'],
         ]);
+
+        $addons = $data['addons'] ?? [];
+        unset($data['addons']);
 
         $clientWasCreated = $data['client_mode'] === 'new';
         $client = $clientWasCreated
@@ -124,6 +132,7 @@ class BookingManagementController extends Controller
         $data['status'] = Booking::STATUS_BOOKED; // dibuat admin → langsung sah
 
         $booking = Booking::create($data);
+        $booking->addons()->createMany($addons);
 
         ActivityLogger::log('booking_created', 'Booking dibuat oleh Admin', 'Booking '.$booking->code.' untuk '.$booking->name, $booking->id);
 
@@ -174,10 +183,20 @@ class BookingManagementController extends Controller
             'location' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
             'status' => ['required', 'in:pending,booked,completed,cancelled'],
+            'addons' => ['nullable', 'array'],
+            'addons.*.name' => ['required', 'string', 'max:255'],
+            'addons.*.price' => ['required', 'numeric', 'min:0'],
         ]);
 
+        $addons = $data['addons'] ?? [];
+        unset($data['addons']);
+
         $old = $booking->only(array_keys($data));
-        $booking->update($data);
+        DB::transaction(function () use ($booking, $data, $addons) {
+            $booking->update($data);
+            $booking->addons()->delete();
+            $booking->addons()->createMany($addons);
+        });
 
         if ($booking->wasChanged(['event_date', 'event_time', 'location', 'name'])) {
             $booking->schedules()

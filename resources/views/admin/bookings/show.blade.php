@@ -4,10 +4,10 @@
 
 @section('content')
 @php
-    $totalPrice = $booking->package->price ?? 0;
+    $totalPrice = $booking->total_price;
     $totalPaid = $booking->payments->where('status', \App\Models\Payment::STATUS_VERIFIED)->sum('amount');
-    $remaining = $totalPrice - $totalPaid;
-    $percentage = $totalPrice > 0 ? round(($totalPaid / $totalPrice) * 100) : 0;
+    $remaining = max(0, $totalPrice - $totalPaid);
+    $percentage = $totalPrice > 0 ? min(100, round(($totalPaid / $totalPrice) * 100)) : 0;
     $circumference = 2 * M_PI * 42;
     $offset = $circumference - ($percentage / 100 * $circumference);
 @endphp
@@ -299,6 +299,23 @@
         </x-card>
 
         <x-card title="Paket" title-icon="fa-gift">
+            @if($booking->addons->isNotEmpty())
+            <div class="mb-3 rounded-xl border border-brand-100 bg-white p-4">
+                <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Paket Tambahan</p>
+                <div class="space-y-2">
+                    @foreach($booking->addons as $addon)
+                        <div class="flex items-center justify-between gap-3 text-sm">
+                            <span class="text-gray-700">{{ $addon->name }}</span>
+                            <span class="font-semibold text-gray-800 whitespace-nowrap">Rp {{ number_format($addon->price, 0, ',', '.') }}</span>
+                        </div>
+                    @endforeach
+                </div>
+                <div class="flex items-center justify-between gap-3 mt-3 pt-3 border-t border-gray-100 text-sm">
+                    <span class="font-semibold text-gray-700">Total Tagihan</span>
+                    <span class="font-bold text-brand">Rp {{ number_format($totalPrice, 0, ',', '.') }}</span>
+                </div>
+            </div>
+            @endif
             @if(isset($booking->package))
             <div class="p-4 rounded-xl bg-brand-50">
                 <h4 class="font-display font-bold text-brand">{{ $booking->package->name }}</h4>

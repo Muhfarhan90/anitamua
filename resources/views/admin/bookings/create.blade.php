@@ -70,6 +70,8 @@
                 @endforeach
             </x-select>
 
+            @include('admin.bookings.partials.addons-fields', ['addonRows' => old('addons', [])])
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <x-input name="event_date" label="Tanggal Acara" type="date" required />
                 <x-input name="survey_date" label="Tanggal Survey (Opsional)" type="date" />

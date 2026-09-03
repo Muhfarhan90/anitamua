@@ -146,6 +146,75 @@ it('admin creating booking auto-verifies dp, books it, and adds hari h schedule'
     expect($hariH->status)->toBe('scheduled');
 });
 
+it('admin can create and edit manual booking add-ons without changing payments', function () {
+    Storage::fake('public');
+    $admin = User::where('email', 'admin@anitamua.com')->first();
+    $client = User::where('email', 'client@anitamua.com')->first();
+    $package = Package::first();
+
+    $this->actingAs($admin)->post('/admin/bookings', [
+        'client_mode' => 'existing',
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'dp1_amount' => 1000000,
+        'addons' => [
+            ['name' => 'Extra Touch Up', 'price' => 250000],
+            ['name' => 'Tambahan Hijab', 'price' => 150000],
+        ],
+    ])->assertRedirect();
+
+    $booking = Booking::where('client_id', $client->id)->latest('id')->firstOrFail();
+    $paidBefore = (float) $booking->payments()->where('status', 'verified')->sum('amount');
+
+    expect($booking->addons()->count())->toBe(2);
+    expect($booking->total_price)->toBe((float) $package->price + 400000.0);
+
+    $this->actingAs($admin)->patch('/admin/bookings/'.$booking->id, [
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'name' => $booking->name,
+        'phone' => $booking->phone,
+        'email' => $booking->email,
+        'event_date' => $booking->event_date->toDateString(),
+        'location' => $booking->location,
+        'notes' => $booking->notes,
+        'status' => $booking->status,
+        'addons' => [
+            ['name' => 'Extra Touch Up Premium', 'price' => 300000],
+        ],
+    ])->assertRedirect();
+
+    $booking->refresh();
+    expect($booking->addons()->count())->toBe(1);
+    expect($booking->addons()->first()->name)->toBe('Extra Touch Up Premium');
+    expect($booking->total_price)->toBe((float) $package->price + 300000.0);
+    expect((float) $booking->payments()->where('status', 'verified')->sum('amount'))->toBe($paidBefore);
+
+    $this->actingAs($client)
+        ->get('/client/booking/'.$booking->id)
+        ->assertOk()
+        ->assertSee('Extra Touch Up Premium')
+        ->assertSee('Rp 300.000');
+});
+
+it('rejects invalid manual booking add-ons', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->first();
+    $client = User::where('email', 'client@anitamua.com')->first();
+    $package = Package::first();
+
+    $this->actingAs($admin)->post('/admin/bookings', [
+        'client_mode' => 'existing',
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'dp1_amount' => 1000000,
+        'addons' => [
+            ['name' => '', 'price' => -1],
+        ],
+    ])->assertSessionHasErrors(['addons.0.name', 'addons.0.price']);
+});
+
 it('guest can create booking without an account', function () {
     $package = Package::first();
 

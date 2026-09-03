@@ -43,6 +43,14 @@
                 @endforeach
             </x-select>
 
+            @php
+                $addonRows = old('addons', $booking->addons->map(fn ($addon) => [
+                    'name' => $addon->name,
+                    'price' => $addon->price,
+                ])->values()->all());
+            @endphp
+            @include('admin.bookings.partials.addons-fields', ['addonRows' => $addonRows])
+
             <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <x-input name="event_date" label="Tanggal Acara" type="date" required :value="$booking->event_date?->format('Y-m-d')" />
                 <x-input name="survey_date" label="Tanggal Survey" type="date" :value="$booking->survey_date?->format('Y-m-d')" />

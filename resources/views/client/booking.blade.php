@@ -4,10 +4,10 @@
 
 @section('content')
 @php
-    $totalPrice = $booking->package->price ?? 0;
+    $totalPrice = $booking->total_price;
     $totalPaid = $booking->payments->where('status', 'verified')->sum('amount');
-    $remaining = $totalPrice - $totalPaid;
-    $percentage = $totalPrice > 0 ? round(($totalPaid / $totalPrice) * 100) : 0;
+    $remaining = max(0, $totalPrice - $totalPaid);
+    $percentage = $totalPrice > 0 ? min(100, round(($totalPaid / $totalPrice) * 100)) : 0;
     $circumference = 2 * M_PI * 42;
     $offset = $circumference - ($percentage / 100 * $circumference);
     $pendingPayments = $booking->payments->where('status', 'pending')->where('amount', '>', 0);
@@ -156,6 +156,16 @@
                         <span class="text-gray-500">Nama Paket</span>
                         <span class="font-semibold text-gray-800">{{ $booking->package->name ?? '-' }}</span>
                     </div>
+                    @if($booking->addons->isNotEmpty())
+                    <div class="border-b border-gray-100 pb-2">
+                        <span class="text-gray-500">Paket Tambahan</span>
+                        <div class="mt-1 space-y-1 text-right">
+                            @foreach($booking->addons as $addon)
+                                <div class="font-semibold text-gray-800">{{ $addon->name }} — Rp {{ number_format($addon->price, 0, ',', '.') }}</div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endif
                     <div class="flex justify-between border-b border-gray-100 pb-2">
                         <span class="text-gray-500">Tanggal Acara</span>
                         <span class="font-semibold text-gray-800">{{ $booking->event_date ? $booking->event_date->format('d M Y') : '-' }}</span>
@@ -190,7 +200,7 @@
             <x-card title="Ringkasan Keuangan" title-icon="fa-wallet">
                 <div class="space-y-2 text-sm mb-4">
                     <div class="flex justify-between">
-                        <span class="text-gray-500">Total Harga Paket</span>
+                        <span class="text-gray-500">Total Tagihan</span>
                         <span class="font-bold text-gray-800">Rp {{ number_format($totalPrice, 0, ',', '.') }}</span>
                     </div>
                     <div class="flex justify-between">
