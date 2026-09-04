@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\PromoBannerController;
 use App\Http\Controllers\Admin\ScheduleController;
 use App\Http\Controllers\Admin\VendorCategoryController;
 use App\Http\Controllers\Admin\VendorController;
+use App\Http\Controllers\Admin\WeddingStageController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ClientController;
@@ -96,6 +97,7 @@ Route::middleware('auth')->group(function () {
             Route::patch('/bookings/{booking}', [BookingManagementController::class, 'update'])->name('bookings.update');
             Route::get('/bookings/{booking}', [BookingManagementController::class, 'show'])->name('bookings.show');
             Route::post('/bookings/{booking}/verify-dp', [BookingManagementController::class, 'verifyDp'])->name('bookings.verify-dp');
+            Route::post('/bookings/{booking}/payment', [BookingManagementController::class, 'addPayment'])->name('bookings.payment');
             Route::post('/bookings/{booking}/cancel', [BookingManagementController::class, 'cancel'])->name('bookings.cancel');
             Route::post('/bookings/{booking}/complete', [BookingManagementController::class, 'complete'])->name('bookings.complete');
 
@@ -105,6 +107,12 @@ Route::middleware('auth')->group(function () {
 
             // Packages (dibutuhkan form booking & pricelist)
             Route::resource('/packages', PackageController::class)->names('packages')->except('show');
+
+            // Master pelaminan untuk survey lapangan
+            Route::resource('/wedding-stages', WeddingStageController::class)
+                ->names('wedding-stages')
+                ->parameters(['wedding-stages' => 'weddingStage'])
+                ->only(['index', 'store', 'update', 'destroy']);
 
             // Master Benefit (Owner & Admin) — benefit dipakai ulang banyak paket
             Route::get('/benefits', [BenefitController::class, 'index'])->name('benefits.index');

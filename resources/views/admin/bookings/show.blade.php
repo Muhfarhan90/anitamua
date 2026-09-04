@@ -6,6 +6,7 @@
 @php
     $totalPrice = $booking->total_price;
     $totalPaid = $booking->payments->where('status', \App\Models\Payment::STATUS_VERIFIED)->sum('amount');
+    $paymentFormOpen = $errors->hasAny(['type', 'amount', 'proof', 'method']);
     $remaining = max(0, $totalPrice - $totalPaid);
     $percentage = $totalPrice > 0 ? min(100, round(($totalPaid / $totalPrice) * 100)) : 0;
     $circumference = 2 * M_PI * 42;
@@ -85,6 +86,12 @@
 
         {{-- PAYMENT TABLE --}}
         <x-card title="Pembayaran" title-icon="fa-credit-card" padding="p-0">
+            <x-slot:actions>
+                <x-button type="button" id="toggleAdminPaymentForm" aria-expanded="{{ $paymentFormOpen ? 'true' : 'false' }}">
+                    <i class="fas {{ $paymentFormOpen ? 'fa-xmark' : 'fa-plus' }}" data-admin-payment-button-icon></i>
+                    <span data-admin-payment-button-label>{{ $paymentFormOpen ? 'Tutup Form' : 'Tambah Pembayaran' }}</span>
+                </x-button>
+            </x-slot:actions>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead>
@@ -136,6 +143,28 @@
             </div>
         </x-card>
 
+        <x-card title="Tambah Pembayaran" title-icon="fa-cloud-arrow-up" id="adminPaymentPanel" class="{{ $paymentFormOpen ? '' : 'hidden' }}">
+            <form id="adminPaymentForm" action="{{ route('admin.bookings.payment', $booking) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                @csrf
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <x-input name="type" label="Tahap Pembayaran" placeholder="DP1 / DP2 / DP3 / Pelunasan" required />
+                    <x-select name="method" label="Metode Pembayaran" required>
+                        <option value="transfer">Transfer Bank</option>
+                        <option value="qris">QRIS</option>
+                        <option value="cash">Cash</option>
+                    </x-select>
+                </div>
+                <x-input name="amount" label="Nominal" type="number" min="1000" step="1000" placeholder="1000000" required />
+                <div>
+                    <label for="adminProof" class="block text-sm font-medium text-gray-600 mb-1">Bukti Pembayaran <span class="text-red-500">*</span></label>
+                    <input id="adminProof" type="file" name="proof" accept="image/*" required class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                    <p class="mt-1 text-xs text-gray-400">JPG, PNG, atau WebP. Maksimal 5 MB.</p>
+                </div>
+                <x-button type="submit" class="w-full justify-center"><i class="fas fa-paper-plane"></i> Simpan Pembayaran</x-button>
+                <p class="text-xs text-gray-400">Pembayaran baru akan berstatus pending sampai diverifikasi.</p>
+            </form>
+        </x-card>
+
         {{-- SCHEDULE --}}
         <x-card title="Jadwal" title-icon="fa-calendar-days" padding="p-0">
             <div class="overflow-x-auto">
@@ -145,10 +174,8 @@
                             <th class="px-5 py-2.5 font-medium">Jenis</th>
                             <th class="px-5 py-2.5 font-medium">Tanggal</th>
                             <th class="px-5 py-2.5 font-medium">Jam</th>
-                            <th class="px-5 py-2.5 font-medium">Lokasi</th>
                             <th class="px-5 py-2.5 font-medium">PIC</th>
                             <th class="px-5 py-2.5 font-medium">Status</th>
-                            <th class="px-5 py-2.5 font-medium text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -163,88 +190,34 @@
                                 }">{{ ucfirst(str_replace('_', ' ', $schedule->type)) }}</x-badge>
                             </td>
                             <td class="px-5 py-3 text-gray-600">{{ $schedule->date ? $schedule->date->format('d M Y') : '-' }}</td>
-                            <td class="px-5 py-3 text-gray-600">{{ $schedule->time ?? '-' }}</td>
-                            <td class="px-5 py-3 text-gray-600">{{ $schedule->location ?? '-' }}</td>
+                            <td class="px-5 py-3 text-gray-600">{{ $schedule->time?->format('H:i') ?? '-' }}</td>
+                            <td class="px-5 py-3 text-gray-600">{{ $schedule->picUser?->name ?? '— Belum ada PIC —' }}</td>
                             <td class="px-5 py-3">
-                                <form action="{{ route('admin.schedules.pic', $schedule) }}" method="POST" class="inline">
-                                    @csrf
-                                    <select name="pic_user_id" onchange="this.form.submit()"
-                                            class="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-200">
-                                        <option value="" {{ ! $schedule->pic_user_id ? 'selected' : '' }}>— Belum ada PIC —</option>
-                                        @foreach($teamMembers as $member)
-                                            <option value="{{ $member->id }}" @selected($schedule->pic_user_id === $member->id)>{{ $member->name }}</option>
-                                        @endforeach
-                                    </select>
-                                </form>
-                            </td>
-                            <td class="px-5 py-3">
-                                <form action="{{ route('admin.schedules.status', $schedule) }}" method="POST" class="inline">
-                                    @csrf
-                                    <select name="status" onchange="this.form.submit()"
-                                            class="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-200">
-                                        <option value="scheduled" {{ $schedule->status === 'scheduled' ? 'selected' : '' }}>Terjadwal</option>
-                                        <option value="on_going" {{ $schedule->status === 'on_going' ? 'selected' : '' }}>Berlangsung</option>
-                                        <option value="finished" {{ $schedule->status === 'finished' ? 'selected' : '' }}>Selesai</option>
-                                        <option value="cancelled" {{ $schedule->status === 'cancelled' ? 'selected' : '' }}>Dibatalkan</option>
-                                    </select>
-                                </form>
-                            </td>
-                            <td class="px-5 py-3 text-center">
-                                <form action="{{ route('admin.schedules.destroy', $schedule) }}" method="POST" class="inline"
-                                      onsubmit="return confirm('Hapus jadwal ini?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <x-button size="sm" color="danger" type="submit"><i class="fas fa-trash"></i></x-button>
-                                </form>
+                                <x-badge :color="match($schedule->status) {
+                                    'scheduled' => 'info',
+                                    'on_going' => 'warning',
+                                    'finished' => 'success',
+                                    'cancelled' => 'danger',
+                                    default => 'gray',
+                                }">{{ ucfirst(str_replace('_', ' ', $schedule->status)) }}</x-badge>
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7"><x-empty-state icon="fa-calendar-xmark" title="Belum ada jadwal" /></td>
+                            <td colspan="5"><x-empty-state icon="fa-calendar-xmark" title="Belum ada jadwal" /></td>
                         </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
 
-            @php
-                $existingTypes = $booking->schedules->pluck('type')->toArray();
-                $allTypes = ['survey', 'fitting', 'hari_h'];
-                $missingTypes = array_diff($allTypes, $existingTypes);
-            @endphp
-
-            @if(!empty($missingTypes))
-            <div class="p-5 border-t border-dashed border-brand-200">
-                <p class="text-sm font-semibold text-brand mb-3">Tambah Jadwal Baru</p>
-                <form action="{{ route('admin.schedules.store') }}" method="POST" class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                    @csrf
-                    <input type="hidden" name="booking_id" value="{{ $booking->id }}">
-                    <select name="type" required class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
-                        <option value="">Jenis</option>
-                        @foreach($allTypes as $t)
-                            <option value="{{ $t }}" {{ in_array($t, $existingTypes) ? 'disabled' : '' }}>
-                                {{ \App\Models\Schedule::typeLabel($t) }}{{ in_array($t, $existingTypes) ? ' (sudah ada)' : '' }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <input type="date" name="date" required class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
-                    <input type="time" name="time" class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
-                    <input type="text" name="location" placeholder="Lokasi" class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
-                    <x-button type="submit"><i class="fas fa-plus"></i> Tambah</x-button>
-                </form>
-            </div>
-            @else
-            <div class="p-5 border-t border-gray-100 text-center">
-                <p class="text-sm text-gray-500"><i class="fas fa-check-circle text-emerald-500 mr-1"></i> Semua jadwal sudah terjadwal: Survey, Fitting, Hari H.</p>
-            </div>
-            @endif
         </x-card>
 
-        {{-- SURVEY --}}
-        @include('admin.bookings.partials.survey-card')
+        {{-- SURVEY (READ ONLY) --}}
+        @include('admin.bookings.partials.survey-summary')
 
-        {{-- FITTING --}}
-        @include('admin.bookings.partials.fitting-card')
+        {{-- FITTING (READ ONLY) --}}
+        @include('admin.bookings.partials.fitting-summary')
 
         {{-- ACTIVITY --}}
         <x-card title="Aktivitas" title-icon="fa-clock-rotate-left">
@@ -334,6 +307,27 @@
         </x-card>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const toggle = document.getElementById('toggleAdminPaymentForm');
+    const panel = document.getElementById('adminPaymentPanel');
+    const label = toggle?.querySelector('[data-admin-payment-button-label]');
+    const icon = toggle?.querySelector('[data-admin-payment-button-icon]');
+
+    if (!toggle || !panel || !label || !icon) return;
+
+    toggle.addEventListener('click', function () {
+        const isHidden = panel.classList.toggle('hidden');
+        toggle.setAttribute('aria-expanded', String(!isHidden));
+        label.textContent = isHidden ? 'Tambah Pembayaran' : 'Tutup Form';
+        icon.classList.toggle('fa-plus', isHidden);
+        icon.classList.toggle('fa-xmark', !isHidden);
+    });
+});
+</script>
+@endpush
 
 {{-- VERIFY DP MODAL (pending booking) --}}
 <div id="verifyDpModal" tabindex="-1" aria-hidden="true"

@@ -5,8 +5,9 @@
 @section('content')
     <x-page-header title="Buat Booking Baru" />
 
-    <x-card padding="p-6" class="max-w-3xl">
-        <form action="{{ route('admin.bookings.store') }}" method="POST" enctype="multipart/form-data" class="space-y-5">
+    <form action="{{ route('admin.bookings.store') }}" method="POST" enctype="multipart/form-data" class="max-w-6xl space-y-5">
+        <x-card title="Data Booking" title-icon="fa-calendar-check" padding="p-6">
+            <div class="space-y-5">
             @csrf
 
             <div>
@@ -72,40 +73,62 @@
 
             @include('admin.bookings.partials.addons-fields', ['addonRows' => old('addons', [])])
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <x-input name="event_date" label="Tanggal Acara" type="date" required />
-                <x-input name="survey_date" label="Tanggal Survey (Opsional)" type="date" />
-                <x-input name="fitting_date" label="Tanggal Fitting (Opsional)" type="date" />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <x-input name="event_date" id="event_date" label="Tanggal Acara" type="date" required />
+                <x-input name="event_time" id="event_time" label="Jam Acara" type="time" />
             </div>
 
             <x-input name="location" label="Lokasi Acara" placeholder="Alamat lokasi acara" />
 
             <x-textarea name="notes" label="Catatan" placeholder="Catatan tambahan untuk booking ini..." />
 
-            <x-input name="dp1_amount" label="Nominal DP1" type="number" required placeholder="500000" />
-
-            <div>
-                <label class="block text-sm font-medium text-gray-600 mb-1">Bukti Transfer DP1 <span
-                        class="text-gray-400 font-normal">(opsional)</span></label>
-                <input type="file" name="proof" accept="image/jpeg,image/png,image/webp"
-                    class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200 border-gray-200">
-                <p class="text-xs text-gray-400 mt-1">JPG/PNG/WebP, maks 3 MB.</p>
-                @error('proof')
-                    <p class="text-xs text-red-600 mt-1"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>
-                @enderror
+            <div class="border-t border-gray-100 pt-5 mt-5 space-y-4">
+                <div>
+                    <h3 class="text-base font-semibold text-gray-800"><i class="fas fa-credit-card text-brand mr-2"></i>Pembayaran Booking</h3>
+                    <p class="mt-1 text-sm text-gray-500">Isi pembayaran awal booking.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <x-input name="dp1_amount" label="Nominal DP1" type="number" required placeholder="500000" />
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-1">Bukti Transfer DP1 <span class="text-gray-400 font-normal">(opsional)</span></label>
+                        <input type="file" name="proof" accept="image/jpeg,image/png,image/webp" class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200 border-gray-200">
+                        <p class="text-xs text-gray-400 mt-1">JPG/PNG/WebP, maks 3 MB.</p>
+                        @error('proof')
+                            <p class="text-xs text-red-600 mt-1"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
             </div>
+
+            </div>
+        </x-card>
+
+            @include('admin.bookings.partials.survey-card', [
+                'embedded' => true,
+                'booking' => null,
+                'weddingStages' => $weddingStages,
+                'teamMembers' => $teamMembers,
+            ])
+
+            @include('admin.bookings.partials.fitting-card', [
+                'embedded' => true,
+                'booking' => null,
+                'teamMembers' => $teamMembers,
+            ])
 
             <div class="flex items-center gap-4 pt-5 border-t border-brand-100">
                 <x-button href="{{ route('admin.bookings.index') }}" color="ghost"
                     class="flex-1 justify-center">Batal</x-button>
                 <x-button type="submit" class="flex-1 justify-center"><i class="fas fa-save"></i> Simpan Booking</x-button>
             </div>
-        </form>
-    </x-card>
+    </form>
 
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function() {
+                const eventDate = document.getElementById('event_date');
+                const surveyDate = document.getElementById('survey_date');
+                const fittingDate = document.getElementById('fitting_date');
                 const selectJenis = document.getElementById('package_type');
                 const selectPaket = document.getElementById('package_id');
                 const paketOptions = Array.from(selectPaket.options).slice(1);
@@ -115,6 +138,30 @@
                 const selectClient = document.getElementById('client_id');
                 const preview = document.getElementById('client-preview');
                 const newClientInputs = newClientFields.querySelectorAll('input');
+
+                function oneMonthBefore(value) {
+                    const [year, month, day] = value.split('-').map(Number);
+                    const targetMonth = month - 2;
+                    const targetYear = year + Math.floor(targetMonth / 12);
+                    const normalizedMonth = ((targetMonth % 12) + 12) % 12;
+                    const lastDay = new Date(targetYear, normalizedMonth + 1, 0).getDate();
+                    return `${targetYear}-${String(normalizedMonth + 1).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
+                }
+
+                function setRelatedDates() {
+                    if (!eventDate.value) return;
+                    const date = oneMonthBefore(eventDate.value);
+                    if (!surveyDate.value) surveyDate.value = date;
+                    if (fittingDate && !fittingDate.value) fittingDate.value = date;
+                }
+
+                eventDate.addEventListener('change', function() {
+                    if (!eventDate.value) return;
+                    const date = oneMonthBefore(eventDate.value);
+                    surveyDate.value = date;
+                    if (fittingDate) fittingDate.value = date;
+                });
+                setRelatedDates();
 
                 function applyFilter() {
                     const jenis = selectJenis.value;

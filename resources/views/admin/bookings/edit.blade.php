@@ -5,8 +5,9 @@
 @section('content')
     <x-page-header :title="'Edit Booking - '.$booking->code" />
 
-    <x-card padding="p-6" class="max-w-3xl">
-        <form action="{{ route('admin.bookings.update', $booking) }}" method="POST" class="space-y-5">
+    <form action="{{ route('admin.bookings.update', $booking) }}" method="POST" enctype="multipart/form-data" class="max-w-6xl space-y-5">
+        <x-card title="Data Booking" title-icon="fa-calendar-check" padding="p-6">
+            <div class="space-y-5">
             @csrf
             @method('PATCH')
 
@@ -51,10 +52,9 @@
             @endphp
             @include('admin.bookings.partials.addons-fields', ['addonRows' => $addonRows])
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                <x-input name="event_date" label="Tanggal Acara" type="date" required :value="$booking->event_date?->format('Y-m-d')" />
-                <x-input name="survey_date" label="Tanggal Survey" type="date" :value="$booking->survey_date?->format('Y-m-d')" />
-                <x-input name="fitting_date" label="Tanggal Fitting" type="date" :value="$booking->fitting_date?->format('Y-m-d')" />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <x-input name="event_date" id="event_date" label="Tanggal Acara" type="date" required :value="$booking->event_date?->format('Y-m-d')" />
+                <x-input name="event_time" id="event_time" label="Jam Acara" type="time" :value="$booking->event_time ? substr((string) $booking->event_time, 0, 5) : ''" />
             </div>
 
             <x-input name="location" label="Lokasi Acara" placeholder="Alamat lokasi acara" :value="$booking->location" />
@@ -68,19 +68,53 @@
 
             <x-textarea name="notes" label="Catatan" placeholder="Catatan tambahan untuk booking ini..." :value="$booking->notes" />
 
+            </div>
+        </x-card>
+
+            @include('admin.bookings.partials.survey-card', [
+                'embedded' => true,
+                'booking' => $booking,
+                'weddingStages' => $weddingStages,
+                'teamMembers' => $teamMembers,
+            ])
+
+            @include('admin.bookings.partials.fitting-card', [
+                'embedded' => true,
+                'booking' => $booking,
+                'teamMembers' => $teamMembers,
+            ])
+
             <div class="flex items-center gap-4 pt-5 border-t border-brand-100">
                 <x-button href="{{ route('admin.bookings.show', $booking) }}" color="ghost" class="flex-1 justify-center">Batal</x-button>
                 <x-button type="submit" class="flex-1 justify-center"><i class="fas fa-save"></i> Simpan Perubahan</x-button>
             </div>
-        </form>
-    </x-card>
+    </form>
 
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function() {
+                const eventDate = document.getElementById('event_date');
+                const surveyDate = document.getElementById('survey_date');
+                const fittingDate = document.getElementById('fitting_date');
                 const selectJenis = document.getElementById('package_type');
                 const selectPaket = document.getElementById('package_id');
                 const paketOptions = Array.from(selectPaket.options).slice(1);
+
+                function oneMonthBefore(value) {
+                    const [year, month, day] = value.split('-').map(Number);
+                    const targetMonth = month - 2;
+                    const targetYear = year + Math.floor(targetMonth / 12);
+                    const normalizedMonth = ((targetMonth % 12) + 12) % 12;
+                    const lastDay = new Date(targetYear, normalizedMonth + 1, 0).getDate();
+                    return `${targetYear}-${String(normalizedMonth + 1).padStart(2, '0')}-${String(Math.min(day, lastDay)).padStart(2, '0')}`;
+                }
+
+                eventDate.addEventListener('change', function() {
+                    if (!eventDate.value) return;
+                    const date = oneMonthBefore(eventDate.value);
+                    surveyDate.value = date;
+                    if (fittingDate) fittingDate.value = date;
+                });
 
                 function applyFilter() {
                     const jenis = selectJenis.value;
