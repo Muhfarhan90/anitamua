@@ -3,8 +3,10 @@
 use App\Models\ActivityLog;
 use App\Models\Booking;
 use App\Models\Package;
+use App\Models\Payment;
 use App\Models\Reminder;
 use App\Models\User;
+use App\Models\WeddingStage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -75,9 +77,18 @@ it('team can save survey and fitting data', function () {
     Storage::fake('public');
     $team = User::where('email', 'team@anitamua.com')->first();
     $booking = Booking::first();
+    $weddingStage = WeddingStage::create(['name' => 'Garden Modern', 'is_active' => true]);
 
     $this->actingAs($team)->post('/admin/fieldwork/survey', [
         'booking_id' => $booking->id,
+        'wedding_stage_id' => $weddingStage->id,
+        'flower_color' => 'Putih dan sage',
+        'stage_size' => '6m',
+        'tent_sizes' => ['4X6', '5X5'],
+        'tent_size_quantities' => ['4X6' => 2, '5X5' => 1],
+        'tent_additions' => ['4X4'],
+        'tent_addition_quantities' => ['4X4' => 1],
+        'gallery_booth' => 'Ya',
         'location' => 'The Glass House',
         'maps_url' => 'https://maps.app.goo.gl/abc',
         'pic' => 'Pak Budi',
@@ -88,6 +99,10 @@ it('team can save survey and fitting data', function () {
     $survey = $booking->survey()->first();
     expect($survey)->not->toBeNull();
     expect($survey->location)->toBe('The Glass House');
+    expect($survey->wedding_stage_id)->toBe($weddingStage->id);
+    expect($survey->tent_sizes)->toBe(['4X6', '5X5']);
+    expect($survey->tent_size_quantities)->toBe(['4X6' => 2, '5X5' => 1]);
+    expect($survey->tent_addition_quantities)->toBe(['4X4' => 1]);
     // foto baru tersimpan & dikompres
     $photos = $survey->photos;
     expect(count($photos))->toBeGreaterThanOrEqual(1);
@@ -106,6 +121,82 @@ it('team can save survey and fitting data', function () {
     expect($booking->fittings()->count())->toBeGreaterThan(0);
     $booking->refresh();
     expect($booking->fitting_date->toDateString())->toBe(now()->addDays(5)->toDateString());
+    expect($booking->fittings()->first()->cpw_busana_akad_notes)->toBeNull();
+});
+
+it('admin can manage wedding stages', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->first();
+
+    $this->actingAs($admin)->post('/admin/wedding-stages', [
+        'name' => 'Rustic White',
+        'is_active' => 1,
+        'photo' => UploadedFile::fake()->image('rustic-white.jpg'),
+    ])->assertRedirect();
+
+    $weddingStage = WeddingStage::where('name', 'Rustic White')->firstOrFail();
+    expect($weddingStage->is_active)->toBeTrue();
+    expect($weddingStage->photo_path)->toStartWith('uploads/wedding-stages/');
+    Storage::disk('public')->assertExists($weddingStage->photo_path);
+
+    $this->actingAs($admin)->put('/admin/wedding-stages/'.$weddingStage->id, [
+        'name' => 'Rustic White Updated',
+        'is_active' => 0,
+        'photo' => UploadedFile::fake()->image('rustic-white-updated.jpg'),
+    ])->assertRedirect();
+
+    expect($weddingStage->refresh()->name)->toBe('Rustic White Updated');
+    expect($weddingStage->is_active)->toBeFalse();
+    expect($weddingStage->photo_path)->toStartWith('uploads/wedding-stages/');
+
+    $this->actingAs($admin)->delete('/admin/wedding-stages/'.$weddingStage->id)->assertRedirect();
+    expect(WeddingStage::find($weddingStage->id))->toBeNull();
+});
+
+it('saves fitting checklist notes and keeps an item photo on edit', function () {
+    Storage::fake('public');
+    $team = User::where('email', 'team@anitamua.com')->first();
+    $booking = Booking::first();
+    $photo = UploadedFile::fake()->image('cpp-akad.jpg');
+
+    $this->actingAs($team)->post('/admin/fieldwork/fitting', [
+        'booking_id' => $booking->id,
+        'date' => now()->addDays(8)->toDateString(),
+        'status' => 'on_going',
+        'items' => [
+            'cpp_busana_akad' => ['notes' => 'Jas hitam', 'photo' => $photo],
+            'ukuran_bb_tb_ld' => ['notes' => '70 kg / 175 cm / 92 cm'],
+        ],
+    ])->assertRedirect();
+
+    $fitting = $booking->fittings()->firstOrFail();
+    $photoPath = $fitting->cpp_busana_akad_photo_path;
+    expect($fitting->cpp_busana_akad_notes)->toBe('Jas hitam');
+    expect($photoPath)->toStartWith('uploads/photos/');
+    Storage::disk('public')->assertExists($photoPath);
+
+    $this->actingAs($team)->post('/admin/fieldwork/fitting', [
+        'booking_id' => $booking->id,
+        'date' => now()->addDays(8)->toDateString(),
+        'status' => 'finished',
+        'items' => [
+            'cpp_busana_akad' => ['notes' => 'Jas hitam sudah pas'],
+        ],
+    ])->assertRedirect();
+
+    $fitting->refresh();
+    expect($fitting->cpp_busana_akad_notes)->toBe('Jas hitam sudah pas');
+    expect($fitting->cpp_busana_akad_photo_path)->toBe($photoPath);
+});
+
+it('rejects selecting an inactive decoration for a new survey', function () {
+    $team = User::where('email', 'team@anitamua.com')->first();
+    $booking = Booking::first();
+    $weddingStage = WeddingStage::create(['name' => 'Legacy Decor', 'is_active' => false]);
+
+    $this->actingAs($team)->post('/admin/fieldwork/survey', [
+        'booking_id' => $booking->id,
+        'wedding_stage_id' => $weddingStage->id,
+    ])->assertSessionHasErrors('wedding_stage_id');
 });
 
 it('admin creating booking auto-verifies dp, books it, and adds hari h schedule', function () {
@@ -117,10 +208,13 @@ it('admin creating booking auto-verifies dp, books it, and adds hari h schedule'
     $eventDate = now()->addMonths(2)->toDateString();
 
     $this->actingAs($admin)->post('/admin/bookings', [
+        'client_mode' => 'existing',
         'client_id' => $client->id,
         'package_id' => $package->id,
         'event_date' => $eventDate,
+        'event_time' => '18:30',
         'location' => 'Ballroom Hotel X',
+        'dp1_amount' => 500000,
         'proof' => UploadedFile::fake()->image('bukti-admin.jpg'),
     ])->assertRedirect();
 
@@ -132,7 +226,7 @@ it('admin creating booking auto-verifies dp, books it, and adds hari h schedule'
     expect($booking->phone)->toBe($client->phone);
     expect($booking->email)->toBe($client->email);
 
-    $payment = $booking->payments()->where('type', 'dp10')->first();
+    $payment = $booking->payments()->whereIn('type', ['dp1', 'dp10'])->first();
     expect($payment)->not->toBeNull();
     expect($payment->status)->toBe('verified');
     expect($payment->proof)->not->toBeNull();
@@ -143,7 +237,127 @@ it('admin creating booking auto-verifies dp, books it, and adds hari h schedule'
     $hariH = $booking->schedules()->where('type', 'hari_h')->first();
     expect($hariH)->not->toBeNull();
     expect($hariH->date->toDateString())->toBe($eventDate);
+    expect($hariH->time->format('H:i'))->toBe('18:30');
     expect($hariH->status)->toBe('scheduled');
+});
+
+it('admin can create and edit manual booking add-ons without changing payments', function () {
+    Storage::fake('public');
+    $admin = User::where('email', 'admin@anitamua.com')->first();
+    $client = User::where('email', 'client@anitamua.com')->first();
+    $package = Package::first();
+
+    $this->actingAs($admin)->post('/admin/bookings', [
+        'client_mode' => 'existing',
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'dp1_amount' => 1000000,
+        'addons' => [
+            ['name' => 'Extra Touch Up', 'price' => 250000],
+            ['name' => 'Tambahan Hijab', 'price' => 150000],
+        ],
+    ])->assertRedirect();
+
+    $booking = Booking::where('client_id', $client->id)->latest('id')->firstOrFail();
+    $paidBefore = (float) $booking->payments()->where('status', 'verified')->sum('amount');
+
+    expect($booking->addons()->count())->toBe(2);
+    expect($booking->total_price)->toBe((float) $package->price + 400000.0);
+
+    $this->actingAs($admin)->patch('/admin/bookings/'.$booking->id, [
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'name' => $booking->name,
+        'phone' => $booking->phone,
+        'email' => $booking->email,
+        'event_date' => $booking->event_date->toDateString(),
+        'location' => $booking->location,
+        'notes' => $booking->notes,
+        'status' => $booking->status,
+        'addons' => [
+            ['name' => 'Extra Touch Up Premium', 'price' => 300000],
+        ],
+    ])->assertRedirect();
+
+    $booking->refresh();
+    expect($booking->addons()->count())->toBe(1);
+    expect($booking->addons()->first()->name)->toBe('Extra Touch Up Premium');
+    expect($booking->total_price)->toBe((float) $package->price + 300000.0);
+    expect((float) $booking->payments()->where('status', 'verified')->sum('amount'))->toBe($paidBefore);
+
+    $this->actingAs($client)
+        ->get('/client/booking/'.$booking->id)
+        ->assertOk()
+        ->assertSee('Extra Touch Up Premium')
+        ->assertSee('Rp 300.000');
+});
+
+it('admin booking form saves survey and fitting details', function () {
+    Storage::fake('public');
+    $admin = User::where('email', 'admin@anitamua.com')->first();
+    $client = User::where('email', 'client@anitamua.com')->first();
+    $package = Package::first();
+    $stage = WeddingStage::create(['name' => 'Classic White', 'is_active' => true]);
+
+    $this->actingAs($admin)->post('/admin/bookings', [
+        'client_mode' => 'existing',
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'event_date' => now()->addMonths(3)->toDateString(),
+        'dp1_amount' => 1000000,
+        'survey_wedding_stage_id' => $stage->id,
+        'survey_location' => 'Gedung Serbaguna',
+        'survey_flower_color' => 'Putih',
+        'survey_tent_sizes' => ['4X6', '5X5'],
+        'survey_tent_size_quantities' => ['4X6' => 2, '5X5' => 1],
+        'survey_tent_additions' => ['4X4'],
+        'survey_tent_addition_quantities' => ['4X4' => 1],
+        'fitting_date' => now()->addDays(10)->toDateString(),
+        'fitting_status' => 'scheduled',
+        'items' => [
+            'cpp_busana_akad' => [
+                'notes' => 'Jas hitam',
+                'photo' => UploadedFile::fake()->image('cpp-akad.jpg'),
+            ],
+        ],
+    ])->assertRedirect();
+
+    $booking = Booking::where('client_id', $client->id)->latest('id')->firstOrFail();
+    expect($booking->survey->wedding_stage_id)->toBe($stage->id);
+    expect($booking->survey->tent_sizes)->toBe(['4X6', '5X5']);
+    expect($booking->survey->tent_size_quantities)->toBe(['4X6' => 2, '5X5' => 1]);
+    expect($booking->fittings->first()->cpp_busana_akad_notes)->toBe('Jas hitam');
+    expect($booking->fittings->first()->cpp_busana_akad_photo_path)->not->toBeNull();
+    Storage::disk('public')->assertExists($booking->fittings->first()->cpp_busana_akad_photo_path);
+
+    $this->actingAs($admin)->get('/admin/bookings/'.$booking->id.'/edit')
+        ->assertOk()
+        ->assertSee('Data Survey')
+        ->assertSee('Data Fitting')
+        ->assertSee('Classic White')
+        ->assertSee('CPW', false)
+        ->assertSee('CPP', false)
+        ->assertSee('Nama stylist / hijab')
+        ->assertSee('Foto busana')
+        ->assertSee('TULIS / ISI BB / TB / LD', false);
+});
+
+it('rejects invalid manual booking add-ons', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->first();
+    $client = User::where('email', 'client@anitamua.com')->first();
+    $package = Package::first();
+
+    $this->actingAs($admin)->post('/admin/bookings', [
+        'client_mode' => 'existing',
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'dp1_amount' => 1000000,
+        'addons' => [
+            ['name' => '', 'price' => -1],
+        ],
+    ])->assertSessionHasErrors(['addons.0.name', 'addons.0.price']);
 });
 
 it('guest can create booking without an account', function () {
@@ -411,7 +625,34 @@ it('renders booking detail page for admin', function () {
     $booking = Booking::first();
 
     $this->actingAs($admin)
-        ->get("/admin/bookings/{$booking->id}")->assertOk();
+        ->get("/admin/bookings/{$booking->id}")
+        ->assertOk()
+        ->assertSee('Tambah Pembayaran')
+        ->assertDontSee('Data survey bersifat read-only')
+        ->assertDontSee('Jadwal hanya dapat diubah melalui Edit Booking.');
+});
+
+it('admin can add a pending payment stage from booking detail', function () {
+    Storage::fake('public');
+    $admin = User::where('email', 'admin@anitamua.com')->first();
+    $booking = Booking::first();
+
+    $this->actingAs($admin)
+        ->post("/admin/bookings/{$booking->id}/payment", [
+            'type' => 'Pelunasan Admin',
+            'amount' => 2500000,
+            'method' => 'transfer',
+            'proof' => UploadedFile::fake()->image('pelunasan-admin.jpg'),
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    $payment = $booking->payments()->latest('id')->first();
+    expect($payment->type)->toBe('Pelunasan Admin');
+    expect((float) $payment->amount)->toBe(2500000.0);
+    expect($payment->status)->toBe(Payment::STATUS_PENDING);
+    expect($payment->proof)->toStartWith('uploads/proofs/');
+    Storage::disk('public')->assertExists($payment->proof);
 });
 
 it('generates reminders via command', function () {

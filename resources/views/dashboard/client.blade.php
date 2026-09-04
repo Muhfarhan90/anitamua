@@ -7,9 +7,9 @@
     $booking     = $bookings->first() ?? null;
     $payments    = $booking ? $booking->payments : collect();
     $totalPaid   = $payments->where('status', 'verified')->sum('amount');
-    $totalPaket  = $booking?->package?->price ?? 0;
-    $sisaBayar   = $totalPaket - $totalPaid;
-    $paymentPct  = $totalPaket > 0 ? round(($totalPaid / $totalPaket) * 100) : 0;
+    $totalPaket  = $booking?->total_price ?? 0;
+    $sisaBayar   = max(0, $totalPaket - $totalPaid);
+    $paymentPct  = $totalPaket > 0 ? min(100, round(($totalPaid / $totalPaket) * 100)) : 0;
     $schedules   = $booking && $booking->schedules ? $booking->schedules->sortBy('date') : collect();
     $daysUntil   = $booking && $booking->event_date ? abs((int) round(\Carbon\Carbon::parse($booking->event_date)->diffInDays(now(), false))) : 0;
 @endphp
@@ -111,7 +111,21 @@
         {{-- Paket Saya --}}
         <x-card title="Paket Saya" title-icon="fa-gift">
             <p class="font-display text-lg font-bold text-brand mb-0.5">{{ $booking->package->name ?? 'Paket' }}</p>
+            <p class="text-xs text-gray-400 mb-1">Total Tagihan</p>
             <p class="font-display text-2xl font-bold text-gray-800 mb-5">Rp {{ number_format($totalPaket, 0, ',', '.') }}</p>
+            @if($booking->addons->isNotEmpty())
+                <div class="mb-5 rounded-xl bg-brand-50/60 border border-brand-100 p-3">
+                    <p class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Paket Tambahan</p>
+                    <div class="space-y-1.5 text-sm">
+                        @foreach($booking->addons as $addon)
+                            <div class="flex justify-between gap-3">
+                                <span class="text-gray-600">{{ $addon->name }}</span>
+                                <span class="font-semibold text-gray-800 whitespace-nowrap">Rp {{ number_format($addon->price, 0, ',', '.') }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
             <ul class="space-y-2">
                 @forelse(($booking->package->benefits ?? []) as $benefit)
                     <li class="flex items-start gap-2.5 text-sm text-gray-600">
@@ -149,7 +163,7 @@
                 </div>
                 <div class="flex-1 space-y-2.5 text-sm">
                     <div class="flex justify-between">
-                        <span class="text-gray-400">Total Paket</span>
+                        <span class="text-gray-400">Total Tagihan</span>
                         <span class="font-bold text-gray-800">Rp {{ number_format($totalPaket, 0, ',', '.') }}</span>
                     </div>
                     <div class="flex justify-between">

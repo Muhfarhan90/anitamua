@@ -7,9 +7,12 @@ use App\Models\Booking;
 use App\Models\Fitting;
 use App\Models\Survey;
 use App\Models\User;
+use App\Models\WeddingStage;
 use App\Services\ActivityLogger;
 use App\Services\ImageCompressor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class FieldWorkController extends Controller
 {
@@ -25,17 +28,79 @@ class FieldWorkController extends Controller
 
     public function fieldwork(Booking $booking)
     {
-        $booking->load(['survey', 'fittings', 'package']);
+        $booking->load(['survey.weddingStage', 'fittings', 'package']);
+
+        $currentDecorationId = $booking->survey?->wedding_stage_id;
+        $weddingStages = WeddingStage::query()
+            ->where(function ($query) use ($currentDecorationId) {
+                $query->where('is_active', true);
+                if ($currentDecorationId) {
+                    $query->orWhere('id', $currentDecorationId);
+                }
+            })
+            ->orderBy('name')
+            ->get();
 
         $teamMembers = User::where('role', User::ROLE_TEAM)->where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.fieldwork.booking', compact('booking', 'teamMembers'));
+        return view('admin.fieldwork.booking', compact('booking', 'teamMembers', 'weddingStages'));
     }
 
     public function surveyStore(Request $request)
     {
         $data = $request->validate([
             'booking_id' => ['required', 'exists:bookings,id'],
+            'wedding_stage_id' => ['nullable', 'exists:wedding_stages,id'],
+            'flower_color' => ['nullable', 'string', 'max:255'],
+            'stage_size' => ['nullable', 'string', 'max:255'],
+            'stage_size_other' => ['nullable', 'string', 'max:255'],
+            'chair_option' => ['nullable', 'string', 'max:255'],
+            'chair_option_other' => ['nullable', 'string', 'max:255'],
+            'stage_option' => ['nullable', 'string', 'max:255'],
+            'stage_option_other' => ['nullable', 'string', 'max:255'],
+            'fabric_color' => ['nullable', 'string', 'max:255'],
+            'tent_sizes' => ['nullable', 'array'],
+            'tent_sizes.*' => ['string', 'max:255'],
+            'tent_size_quantities' => ['nullable', 'array'],
+            'tent_size_quantities.*' => ['nullable', 'integer', 'min:0'],
+            'tent_sizes_other' => ['nullable', 'string', 'max:255'],
+            'tent_additions' => ['nullable', 'array'],
+            'tent_additions.*' => ['string', 'max:255'],
+            'tent_addition_quantities' => ['nullable', 'array'],
+            'tent_addition_quantities.*' => ['nullable', 'integer', 'min:0'],
+            'tent_additions_other' => ['nullable', 'string', 'max:255'],
+            'tent_shape' => ['nullable', 'string', 'max:255'],
+            'tent_shape_other' => ['nullable', 'string', 'max:255'],
+            'entrance' => ['nullable', 'string', 'max:255'],
+            'entrance_other' => ['nullable', 'string', 'max:255'],
+            'buffet' => ['nullable', 'string', 'max:255'],
+            'buffet_other' => ['nullable', 'string', 'max:255'],
+            'tableware' => ['nullable', 'string', 'max:255'],
+            'tableware_other' => ['nullable', 'string', 'max:255'],
+            'gallery_booth' => ['nullable', 'string', 'max:255'],
+            'envelope_box' => ['nullable', 'string', 'max:255'],
+            'fruit_shed' => ['nullable', 'string', 'max:255'],
+            'akad_table' => ['nullable', 'string', 'max:255'],
+            'diesel_lights' => ['nullable', 'string', 'max:255'],
+            'photo_stand' => ['nullable', 'string', 'max:255'],
+            'carpet' => ['nullable', 'string', 'max:255'],
+            'vip_table' => ['nullable', 'string', 'max:255'],
+            'snack_shed' => ['nullable', 'string', 'max:255'],
+            'blower' => ['nullable', 'string', 'max:255'],
+            'welcome_sign' => ['nullable', 'string', 'max:255'],
+            'center_point' => ['nullable', 'string', 'max:255'],
+            'gallery_booth_other' => ['nullable', 'string', 'max:255'],
+            'envelope_box_other' => ['nullable', 'string', 'max:255'],
+            'fruit_shed_other' => ['nullable', 'string', 'max:255'],
+            'akad_table_other' => ['nullable', 'string', 'max:255'],
+            'diesel_lights_other' => ['nullable', 'string', 'max:255'],
+            'photo_stand_other' => ['nullable', 'string', 'max:255'],
+            'carpet_other' => ['nullable', 'string', 'max:255'],
+            'vip_table_other' => ['nullable', 'string', 'max:255'],
+            'snack_shed_other' => ['nullable', 'string', 'max:255'],
+            'blower_other' => ['nullable', 'string', 'max:255'],
+            'welcome_sign_other' => ['nullable', 'string', 'max:255'],
+            'center_point_other' => ['nullable', 'string', 'max:255'],
             'location' => ['nullable', 'string', 'max:255'],
             'maps_url' => ['nullable', 'url', 'max:500'],
             'pic' => ['nullable', 'string', 'max:255'],
@@ -46,17 +111,32 @@ class FieldWorkController extends Controller
             'videos.*' => ['max:51200'],
         ]);
 
-        // Simpan file baru, lalu gabungkan dengan foto/video yang sudah ada
-        $photos = $this->storeFiles($request, 'photos');
-        $videos = $this->storeFiles($request, 'videos', false);
-
         $existing = Survey::where('booking_id', $data['booking_id'])->first();
+        $weddingStage = ! empty($data['wedding_stage_id'])
+            ? WeddingStage::findOrFail($data['wedding_stage_id'])
+            : null;
 
-        $data['photos'] = array_merge($existing->photos ?? [], $photos);
-        $data['videos'] = array_merge($existing->videos ?? [], $videos);
-        $data['created_by'] = auth()->id();
+        if ($weddingStage && ! $weddingStage->is_active && $existing?->wedding_stage_id !== $weddingStage->id) {
+            throw ValidationException::withMessages([
+                'wedding_stage_id' => 'Pelaminan yang tidak aktif tidak dapat dipilih.',
+            ]);
+        }
 
-        $survey = Survey::updateOrCreate(['booking_id' => $data['booking_id']], $data);
+        $survey = DB::transaction(function () use ($request, $data, $existing) {
+            $data['tent_sizes'] = array_values($data['tent_sizes'] ?? []);
+            $data['tent_additions'] = array_values($data['tent_additions'] ?? []);
+            $data['tent_size_quantities'] = collect($data['tent_size_quantities'] ?? [])
+                ->map(fn ($quantity) => (int) $quantity)
+                ->all();
+            $data['tent_addition_quantities'] = collect($data['tent_addition_quantities'] ?? [])
+                ->map(fn ($quantity) => (int) $quantity)
+                ->all();
+            $data['photos'] = array_merge($existing?->photos ?? [], $this->storeFiles($request, 'photos'));
+            $data['videos'] = array_merge($existing?->videos ?? [], $this->storeFiles($request, 'videos', false));
+            $data['created_by'] = auth()->id();
+
+            return Survey::updateOrCreate(['booking_id' => $data['booking_id']], $data);
+        });
 
         ActivityLogger::log('survey_saved', 'Survey disimpan', 'Data survey untuk '.$survey->booking->name.' disimpan oleh '.auth()->user()->name, $data['booking_id']);
 
@@ -72,21 +152,44 @@ class FieldWorkController extends Controller
             'pic' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
             'status' => ['required', 'in:scheduled,on_going,finished'],
+            'items' => ['nullable', 'array'],
+            'items.*.notes' => ['nullable', 'string', 'max:2000'],
+            'items.*.photo' => ['nullable', 'image', 'max:5120'],
             'photos' => ['nullable', 'array'],
             'photos.*' => ['image', 'max:5120'],
         ]);
 
         // Simpan file baru, lalu gabungkan dengan foto yang sudah ada
-        $photos = $this->storeFiles($request, 'photos');
         $existing = Fitting::where('booking_id', $data['booking_id'])->first();
-        $data['photos'] = array_merge($existing->photos ?? [], $photos);
+        $data['photos'] = array_merge($existing?->photos ?? [], $this->storeFiles($request, 'photos'));
         $data['created_by'] = auth()->id();
 
         // Fitting hanya 1 per booking (sesuai PRD) — update record yang sama
-        $fitting = Fitting::updateOrCreate(['booking_id' => $data['booking_id']], $data);
+        $fitting = DB::transaction(function () use ($request, $data) {
+            $fitting = Fitting::updateOrCreate(['booking_id' => $data['booking_id']], $data);
+            $items = $request->input('items', []);
+            $checklistData = [];
+
+            foreach (Fitting::CHECKLIST as $category => $checklist) {
+                foreach ($checklist as $itemKey => $label) {
+                    $photoColumn = $itemKey.'_photo_path';
+                    $checklistData[$itemKey.'_notes'] = $items[$itemKey]['notes'] ?? null;
+                    $checklistData[$photoColumn] = $fitting->{$photoColumn};
+
+                    if ($request->hasFile("items.{$itemKey}.photo")) {
+                        $checklistData[$photoColumn] = $this->storeImage($request->file("items.{$itemKey}.photo"));
+                    }
+                }
+            }
+
+            $fitting->forceFill($checklistData)->save();
+
+            $fitting->booking()->update(['fitting_date' => $data['date']]);
+
+            return $fitting;
+        });
 
         $booking = $fitting->booking;
-        $booking->update(['fitting_date' => $data['date']]);
 
         ActivityLogger::log(
             $data['status'] === 'finished' ? 'fitting_finished' : 'fitting_saved',
@@ -111,5 +214,10 @@ class FieldWorkController extends Controller
         }
 
         return $paths;
+    }
+
+    private function storeImage($file): string
+    {
+        return ImageCompressor::compressAndStore($file, 'uploads/photos');
     }
 }

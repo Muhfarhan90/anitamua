@@ -57,6 +57,11 @@ class Booking extends Model
         return $this->belongsTo(Package::class);
     }
 
+    public function addons(): HasMany
+    {
+        return $this->hasMany(BookingAddon::class);
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -137,6 +142,11 @@ class Booking extends Model
         return (float) $this->payments()
             ->where('status', Payment::STATUS_VERIFIED)
             ->sum('amount');
+    }
+
+    public function getTotalPriceAttribute(): float
+    {
+        return (float) ($this->package?->price ?? 0) + (float) $this->addons->sum('price');
     }
 
     public function getIsBookedAttribute(): bool

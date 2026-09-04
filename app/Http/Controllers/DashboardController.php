@@ -90,7 +90,7 @@ class DashboardController extends Controller
 
     private function client()
     {
-        $bookings = Booking::with(['package', 'payments', 'schedules'])
+        $bookings = Booking::with(['package', 'addons', 'payments', 'schedules'])
             ->where('client_id', auth()->id())
             ->orderByDesc('created_at')
             ->get();
