@@ -20,6 +20,12 @@
 </div>
 
 <div class="max-w-[1280px] mx-auto pb-10">
+    @if(in_array($booking->status, [\App\Models\Booking::STATUS_BOOKED, \App\Models\Booking::STATUS_COMPLETED], true))
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-100 bg-brand-50 px-5 py-4">
+        <div><p class="font-semibold text-gray-800">Invoice booking tersedia</p><p class="text-sm text-gray-500">Unduh invoice terbaru setelah pembayaran diverifikasi.</p></div>
+        <a href="{{ route('client.invoice.show', $booking) }}" class="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700"><i class="fas fa-print"></i> Buka / Cetak Invoice</a>
+    </div>
+    @endif
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 items-start">
 
         {{-- MAIN --}}
@@ -105,7 +111,7 @@
                     </div>
                     <div id="newStageFields" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
                         <x-input name="type" id="newStageType" label="Label Tahap" placeholder="Contoh: Pelunasan / Angsuran 2 / DP Tambahan" :value="old('type', 'DP'.($booking->payments->count() + 1))" />
-                        <x-input name="amount" id="newStageAmount" label="Nominal" type="number" min="0" step="1000" placeholder="1000000" />
+                        <x-input name="amount" id="newStageAmount" label="Nominal" type="number" min="1000" step="1000" placeholder="Contoh: 2500000" />
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Bukti Transfer <span class="text-red-500">*</span></label>
@@ -123,7 +129,7 @@
                     <x-button type="submit" class="w-full justify-center">
                         <i class="fas fa-paper-plane"></i> Kirim Bukti Pembayaran
                     </x-button>
-                    <p class="text-xs text-gray-400">Untuk tahap baru, label & nominal ditulis oleh Anda. Setelah diverifikasi admin, tahap tampil di tabel pembayaran.</p>
+                    <p class="text-xs text-gray-400">Untuk tahap baru, isi nominal sesuai bukti. Admin akan memeriksa dan dapat mengoreksinya saat verifikasi.</p>
                 </form>
             </x-card>
 

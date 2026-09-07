@@ -55,6 +55,7 @@
                     ['label' => 'Dashboard',  'icon' => 'fa-solid fa-grip',           'url' => route('dashboard'),              'active' => 'dashboard'],
                     ['label' => 'Booking',    'icon' => 'fa-solid fa-calendar-check', 'url' => route('admin.bookings.index'),   'active' => 'admin.bookings.*'],
                     ['label' => 'Pembayaran', 'icon' => 'fa-solid fa-credit-card',     'url' => route('admin.payments.index'),   'active' => 'admin.payments.*'],
+                    ['label' => 'Invoice',    'icon' => 'fa-solid fa-file-invoice',   'url' => route('admin.invoices.index'),   'active' => 'admin.invoices.*'],
                     ['label' => 'Jadwal',     'icon' => 'fa-solid fa-calendar-week',   'url' => route('admin.calendar'),         'active' => 'admin.calendar'],
                 ]],
                 ['title' => 'Paket', 'items' => [
@@ -86,6 +87,7 @@
                     ['label' => 'Dashboard',  'icon' => 'fa-solid fa-grip',           'url' => route('dashboard'),              'active' => 'dashboard'],
                     ['label' => 'Booking',    'icon' => 'fa-solid fa-calendar-check', 'url' => route('admin.bookings.index'),   'active' => 'admin.bookings.*'],
                     ['label' => 'Pembayaran', 'icon' => 'fa-solid fa-credit-card',     'url' => route('admin.payments.index'),   'active' => 'admin.payments.*'],
+                    ['label' => 'Invoice',    'icon' => 'fa-solid fa-file-invoice',   'url' => route('admin.invoices.index'),   'active' => 'admin.invoices.*'],
                     ['label' => 'Jadwal',     'icon' => 'fa-solid fa-calendar-week',   'url' => route('admin.calendar'),         'active' => 'admin.calendar'],
                 ]],
                 ['title' => 'Paket', 'items' => [

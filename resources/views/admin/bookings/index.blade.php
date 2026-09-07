@@ -13,7 +13,7 @@
     <form method="GET" action="{{ route('admin.bookings.index') }}" class="flex flex-wrap items-end gap-4">
         <div class="flex-1 min-w-[200px]">
             <label class="block text-sm font-medium text-gray-600 mb-1">Cari Booking</label>
-            <input type="text" name="q" value="{{ request('q') }}" placeholder="Kode booking, nama klien..."
+            <input type="text" name="q" value="{{ request('q') }}" placeholder="Kode booking, nama pengantin..."
                    class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
         </div>
         <div class="min-w-[180px]">
@@ -41,7 +41,7 @@
             <thead>
                 <tr class="text-left text-gray-500 border-b border-gray-100 bg-cream/60">
                     <th class="px-5 py-2.5 font-medium">Kode</th>
-                    <th class="px-5 py-2.5 font-medium">Client</th>
+                    <th class="px-5 py-2.5 font-medium">Nama Pengantin</th>
                     <th class="px-5 py-2.5 font-medium">Paket</th>
                     <th class="px-5 py-2.5 font-medium">Tanggal Acara</th>
                     <th class="px-5 py-2.5 font-medium">Status</th>
@@ -53,8 +53,8 @@
                 <tr class="border-b border-gray-50 hover:bg-brand-50/30 transition-colors">
                     <td class="px-5 py-3 whitespace-nowrap"><x-badge>{{ $booking->code }}</x-badge></td>
                     <td class="px-5 py-3 whitespace-nowrap">
-                        <div class="font-semibold text-gray-800">{{ $booking->client->name ?? '-' }}</div>
-                        <div class="text-xs text-gray-500">{{ $booking->client->phone ?? '-' }}</div>
+                        <div class="font-semibold text-gray-800">{{ $booking->name ?: '-' }}</div>
+                        <div class="text-xs text-gray-500">{{ $booking->phone ?: '-' }}</div>
                     </td>
                     <td class="px-5 py-3 whitespace-nowrap text-gray-600">{{ $booking->package->name ?? '-' }}</td>
                     <td class="px-5 py-3 whitespace-nowrap text-gray-600">{{ $booking->event_date ? \Carbon\Carbon::parse($booking->event_date)->format('d M Y') : '-' }}</td>

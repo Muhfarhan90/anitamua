@@ -25,8 +25,8 @@ class BookingProgress
             return self::cancelled($booking);
         }
 
-        $hasVerifiedDp1 = $booking->payments
-            ->contains(fn ($p) => in_array($p->type, [Payment::TYPE_DP1, 'dp10'], true) && $p->status === Payment::STATUS_VERIFIED);
+        $initialPayment = $booking->payments->sortBy('id')->first();
+        $hasVerifiedDp1 = $initialPayment?->status === Payment::STATUS_VERIFIED;
 
         if (! $hasVerifiedDp1) {
             $statuses['dp'] = 'current';
@@ -45,8 +45,8 @@ class BookingProgress
             $statuses['fitting'] = 'done';
         }
 
-        $pelunasanVerified = $booking->payments
-            ->contains(fn ($p) => $p->type === Payment::TYPE_PELUNASAN && $p->status === Payment::STATUS_VERIFIED);
+        $pelunasanVerified = $booking->total_price > 0
+            && (float) $booking->payments->where('status', Payment::STATUS_VERIFIED)->sum('amount') >= $booking->total_price;
 
         if ($pelunasanVerified) {
             $statuses['pelunasan'] = 'done';

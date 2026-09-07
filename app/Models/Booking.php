@@ -31,7 +31,7 @@ class Booking extends Model
     }
 
     protected $fillable = [
-        'code', 'client_id', 'package_id', 'name', 'phone', 'email', 'instagram',
+        'code', 'client_id', 'package_id', 'package_price', 'name', 'phone', 'email', 'instagram',
         'event_date', 'event_time', 'event_type', 'number_of_guests',
         'survey_date', 'fitting_date', 'location', 'notes',
         'status', 'cancelled_reason', 'cancelled_at', 'created_by',
@@ -40,6 +40,7 @@ class Booking extends Model
     protected function casts(): array
     {
         return [
+            'package_price' => 'decimal:2',
             'event_date' => 'date',
             'survey_date' => 'date',
             'fitting_date' => 'date',
@@ -70,6 +71,11 @@ class Booking extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class);
     }
 
     public function bookingVendors(): HasMany
@@ -146,7 +152,7 @@ class Booking extends Model
 
     public function getTotalPriceAttribute(): float
     {
-        return (float) ($this->package?->price ?? 0) + (float) $this->addons->sum('price');
+        return (float) ($this->package_price ?? $this->package?->price ?? 0) + (float) $this->addons->sum('price');
     }
 
     public function getIsBookedAttribute(): bool

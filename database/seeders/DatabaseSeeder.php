@@ -18,6 +18,7 @@ use App\Models\Schedule;
 use App\Models\Survey;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\InvoiceService;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -189,9 +190,10 @@ class DatabaseSeeder extends Seeder
         $eventDate = Carbon::now()->addDays(18)->startOfDay();
 
         $booking = Booking::create([
-            'code' => 'AMU01',
+            'code' => Booking::generateCode(),
             'client_id' => $client->id,
             'package_id' => $package->id,
+            'package_price' => $package->price,
             'name' => 'Dewi & Andi',
             'phone' => $client->phone,
             'email' => $client->email,
@@ -207,13 +209,19 @@ class DatabaseSeeder extends Seeder
             'created_by' => $admin->id,
         ]);
 
+        $booking->addons()->createMany([
+            ['name' => 'Prewedding & Hairdo', 'price' => 1450000],
+            ['name' => 'Transport Tim', 'price' => 300000],
+        ]);
+
+        $totalInvoiceAmount = $booking->total_price;
+
         ActivityLogger::log('booking_created', 'Booking dibuat', 'Booking '.$booking->code.' oleh '.$admin->name.' untuk '.$booking->name, $booking->id);
 
         $payments = [
-            [Payment::TYPE_DP1, 500000, 'transfer', Payment::STATUS_VERIFIED, $eventDate->copy()->subDays(30)],
-            [Payment::TYPE_DP25, round($package->price * 0.25), 'transfer', Payment::STATUS_VERIFIED, $eventDate->copy()->subDays(14)],
-            [Payment::TYPE_DP75, round($package->price * 0.75), 'transfer', Payment::STATUS_PENDING, $eventDate->copy()->subDays(7)],
-            [Payment::TYPE_PELUNASAN, 0, 'transfer', Payment::STATUS_PENDING, $eventDate->copy()->subDays(1)],
+            ['DP1', round($package->price * 0.10), 'transfer', Payment::STATUS_VERIFIED, $eventDate->copy()->subDays(30)],
+            ['DP2', round($package->price * 0.25), 'transfer', Payment::STATUS_VERIFIED, $eventDate->copy()->subDays(14)],
+            ['Pelunasan', round($totalInvoiceAmount - round($package->price * 0.10) - round($package->price * 0.25)), 'transfer', Payment::STATUS_PENDING, $eventDate->copy()->subDay()],
         ];
 
         foreach ($payments as [$type, $amount, $method, $status, $due]) {
@@ -230,6 +238,8 @@ class DatabaseSeeder extends Seeder
                 'verified_at' => $verified ? $due->copy()->subHours(2) : null,
             ]);
         }
+
+        app(InvoiceService::class)->sync($booking->fresh());
 
         ActivityLogger::log('dp_verified', 'DP1 dikonfirmasi', 'DP1 sebesar '.$payments[0][1].' dikonfirmasi oleh '.$admin->name, $booking->id);
 

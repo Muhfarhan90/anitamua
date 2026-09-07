@@ -22,6 +22,7 @@ use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -52,6 +53,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/client/booking/{booking}', [ClientController::class, 'booking'])->name('client.booking');
     Route::post('/client/booking/{booking}/proof', [ClientController::class, 'uploadProof'])->name('client.booking.proof');
+    Route::get('/client/booking/{booking}/invoice', [InvoiceController::class, 'clientShow'])->name('client.invoice.show');
+    Route::get('/client/booking/{booking}/invoice/pdf', [InvoiceController::class, 'clientDownloadPdf'])->name('client.invoice.pdf');
 
     // Profil & ganti password
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
@@ -104,6 +107,10 @@ Route::middleware('auth')->group(function () {
             // Payments (tahap dibuat oleh client; admin hanya verifikasi)
             Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
             Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify'])->name('payments.verify');
+            Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+            Route::patch('/invoices/{invoice}/due-date', [InvoiceController::class, 'updateDueDate'])->name('invoices.due-date.update');
+            Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
+            Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'downloadPdf'])->name('invoices.pdf');
 
             // Packages (dibutuhkan form booking & pricelist)
             Route::resource('/packages', PackageController::class)->names('packages')->except('show');
