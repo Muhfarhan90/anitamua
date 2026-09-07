@@ -15,6 +15,7 @@ use App\Models\WeddingStage;
 use App\Services\ActivityLogger;
 use App\Services\ClientAccountService;
 use App\Services\ImageCompressor;
+use App\Services\InvoiceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -39,14 +40,18 @@ class BookingManagementController extends Controller
         return view('admin.bookings.index', compact('bookings'));
     }
 
-    public function show(Booking $booking)
+    public function show(Booking $booking, InvoiceService $invoiceService)
     {
         $booking->load([
-            'client', 'package', 'payments', 'bookingVendors.vendor.category',
+            'client', 'package', 'payments', 'invoice', 'bookingVendors.vendor.category',
             'addons',
             'schedules.picUser', 'survey.weddingStage', 'fittings', 'packingLists.items.inventoryItem',
             'activityLogs.user', 'packageChangeRequests.oldPackage', 'packageChangeRequests.newPackage',
         ]);
+        if (in_array($booking->status, [Booking::STATUS_BOOKED, Booking::STATUS_COMPLETED], true)) {
+            $invoiceService->sync($booking);
+            $booking->load('invoice');
+        }
         $packages = Package::where('status', 'active')->get();
         $staff = User::whereIn('role', [User::ROLE_OWNER, User::ROLE_ADMIN, User::ROLE_TEAM])->get();
         $teamMembers = User::where('role', User::ROLE_TEAM)->where('is_active', true)->orderBy('name')->get();
@@ -110,7 +115,7 @@ class BookingManagementController extends Controller
         return view('admin.bookings.edit', compact('booking', 'packages', 'clients', 'subTypeLabels', 'weddingStages', 'teamMembers'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, InvoiceService $invoiceService)
     {
         $data = $request->validate([
             'client_mode' => ['required', 'in:existing,new'],
@@ -158,6 +163,7 @@ class BookingManagementController extends Controller
         $data['code'] = Booking::generateCode();
         $data['created_by'] = auth()->id();
         $data['status'] = Booking::STATUS_BOOKED; // dibuat admin → langsung sah
+        $data['package_price'] = Package::findOrFail($data['package_id'])->price;
 
         $booking = Booking::create($data);
         $booking->addons()->createMany($addons);
@@ -167,7 +173,7 @@ class BookingManagementController extends Controller
 
         // Tahap DP langsung diverifikasi (dibuat oleh admin — bukti opsional, tanpa bukti pun verified)
         $paymentData = [
-            'type' => Payment::TYPE_DP1,
+            'type' => 'DP1',
             'amount' => $data['dp1_amount'],
             'due_date' => Carbon::parse($booking->event_date)->subDays(30)->toDateString(),
             'method' => 'transfer',
@@ -182,6 +188,7 @@ class BookingManagementController extends Controller
         }
 
         $booking->payments()->create($paymentData);
+        $invoiceService->sync($booking->fresh());
 
         ActivityLogger::log('dp_verified', 'DP dikonfirmasi', 'DP1 dikonfirmasi oleh '.auth()->user()->name.' (booking dibuat via form admin)', $booking->id);
 
@@ -198,7 +205,7 @@ class BookingManagementController extends Controller
         return redirect()->route('admin.bookings.show', $booking)->with('success', $message);
     }
 
-    public function update(Booking $booking, Request $request)
+    public function update(Booking $booking, Request $request, InvoiceService $invoiceService)
     {
         $data = $request->validate([
             'client_id' => ['nullable', 'exists:users,id'],
@@ -221,6 +228,10 @@ class BookingManagementController extends Controller
         $addons = $data['addons'] ?? [];
         unset($data['addons']);
 
+        if ((int) $data['package_id'] !== (int) $booking->package_id) {
+            $data['package_price'] = Package::findOrFail($data['package_id'])->price;
+        }
+
         $old = $booking->only(array_keys($data));
         DB::transaction(function () use ($booking, $data, $addons, $request) {
             $booking->update($data);
@@ -241,6 +252,8 @@ class BookingManagementController extends Controller
                 ]);
         }
 
+        $invoiceService->sync($booking->fresh());
+
         ActivityLogger::log(
             'booking_updated',
             'Booking diperbarui',
@@ -253,15 +266,15 @@ class BookingManagementController extends Controller
         return redirect()->route('admin.bookings.show', $booking)->with('success', 'Data booking berhasil diperbarui.');
     }
 
-    public function verifyDp(Booking $booking, Request $request)
+    public function verifyDp(Booking $booking, Request $request, InvoiceService $invoiceService)
     {
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:0'],
             'method' => ['required', 'string'],
         ]);
 
-        $payment = $booking->payments()->whereIn('type', [Payment::TYPE_DP1, 'dp10'])->first();
-        $payment ??= new Payment(['booking_id' => $booking->id, 'type' => Payment::TYPE_DP1]);
+        $payment = $booking->payments()->oldest('id')->first();
+        $payment ??= new Payment(['booking_id' => $booking->id, 'type' => 'DP1']);
 
         $payment->fill([
             'amount' => $data['amount'],
@@ -276,7 +289,7 @@ class BookingManagementController extends Controller
 
         $booking->ensureHariHSchedule();
 
-        $this->ensureDp1Payment($booking, $data['amount']);
+        $invoiceService->sync($booking->fresh());
         $account = app(ClientAccountService::class)->ensure($booking);
 
         ActivityLogger::log(
@@ -354,7 +367,7 @@ class BookingManagementController extends Controller
         return back()->with('success', 'Booking dibatalkan. DP dinyatakan hangus.');
     }
 
-    public function changePackage(Booking $booking, Request $request)
+    public function changePackage(Booking $booking, Request $request, InvoiceService $invoiceService)
     {
         $data = $request->validate([
             'package_id' => ['required', 'exists:packages,id'],
@@ -367,9 +380,10 @@ class BookingManagementController extends Controller
         $old = $booking->package;
         $new = Package::findOrFail($data['package_id']);
 
-        $booking->update(['package_id' => $new->id]);
+        $booking->update(['package_id' => $new->id, 'package_price' => $new->price]);
 
         $this->syncVendorsFromPackage($booking);
+        $invoiceService->sync($booking->fresh());
 
         ActivityLogger::log(
             'package_changed',
@@ -383,7 +397,7 @@ class BookingManagementController extends Controller
         return back()->with('success', 'Paket diperbarui ke '.$new->name.'. Vendor disinkronkan dari Master Vendor.');
     }
 
-    public function approvePackageRequest(Booking $booking, Request $request)
+    public function approvePackageRequest(Booking $booking, Request $request, InvoiceService $invoiceService)
     {
         $changeRequest = $booking->packageChangeRequests()
             ->where('status', 'pending')
@@ -401,8 +415,9 @@ class BookingManagementController extends Controller
             $old = $booking->package;
             $new = $changeRequest->newPackage;
 
-            $booking->update(['package_id' => $new->id]);
+            $booking->update(['package_id' => $new->id, 'package_price' => $new->price]);
             $this->syncVendorsFromPackage($booking);
+            $invoiceService->sync($booking->fresh());
 
             ActivityLogger::log(
                 'package_changed',
@@ -674,31 +689,10 @@ class BookingManagementController extends Controller
         }
     }
 
-    /**
-     * Pastikan tahap pembayaran pertama (DP) ada.
-     * Tahap selanjutnya dibuat manual oleh admin (label & nominal bebas).
-     */
-    private function ensureDp1Payment(Booking $booking, float $amount): void
-    {
-        $payment = $booking->payments()->whereIn('type', [Payment::TYPE_DP1, 'dp10'])->first();
-
-        if (! $payment) {
-            $booking->payments()->create([
-                'type' => Payment::TYPE_DP1,
-                'amount' => $amount,
-                'due_date' => Carbon::parse($booking->event_date)->subDays(30)->toDateString(),
-                'method' => 'transfer',
-                'status' => Payment::STATUS_VERIFIED,
-                'paid_at' => now(),
-                'verified_by' => auth()->id(),
-                'verified_at' => now(),
-            ]);
-        }
-    }
-
-    public function complete(Booking $booking)
+    public function complete(Booking $booking, InvoiceService $invoiceService)
     {
         $booking->update(['status' => Booking::STATUS_COMPLETED]);
+        $invoiceService->sync($booking->fresh());
 
         ActivityLogger::log('booking_completed', 'Project selesai', 'Project '.$booking->code.' ditandai selesai.', $booking->id);
 

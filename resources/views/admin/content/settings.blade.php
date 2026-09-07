@@ -51,6 +51,10 @@
             <x-input name="bank_account_name" label="Atas Nama" :value="$settings['bank_account_name'] ?? ''" />
         </div>
 
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 pb-2">Invoice</p>
+        <x-textarea name="invoice_greeting" label="Teks ucapan invoice" rows="3">{{ $settings['invoice_greeting'] ?? '' }}</x-textarea>
+        <p class="text-xs text-gray-400 -mt-2">Teks ini tampil pada bagian bawah invoice dan versi PDF. Maksimal 500 karakter.</p>
+
         <div class="pt-2">
             <x-button color="primary" type="submit"><i class="fas fa-save"></i> Simpan Pengaturan</x-button>
         </div>

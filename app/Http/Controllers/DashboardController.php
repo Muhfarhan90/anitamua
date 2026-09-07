@@ -59,7 +59,7 @@ class DashboardController extends Controller
             ->get()
             ->groupBy(fn ($s) => $s->date->format('Y-m-d'));
 
-        $pendingBookings = Booking::with('package')
+        $pendingBookings = Booking::with(['package', 'payments'])
             ->where('status', Booking::STATUS_PENDING)
             ->orderByDesc('created_at')
             ->limit(5)

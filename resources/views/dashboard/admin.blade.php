@@ -65,12 +65,18 @@
                     <tr class="hover:bg-brand-50/20 transition-colors">
                         <td class="px-5 py-3.5"><x-badge>{{ $payment->booking->code }}</x-badge></td>
                         <td class="px-5 py-3.5 text-gray-800">{{ \App\Models\Payment::typeLabel($payment->type) }}</td>
-                        <td class="px-5 py-3.5 text-gray-600 font-medium">Rp {{ number_format($payment->amount, 0, ',', '.') }}</td>
+                        <td class="px-5 py-3.5 text-gray-600 font-medium">
+                            @if((float) $payment->amount > 0)
+                                Rp {{ number_format($payment->amount, 0, ',', '.') }}
+                            @else
+                                <span class="text-gray-400">Belum diisi</span>
+                            @endif
+                        </td>
                         <td class="px-5 py-3.5 text-center">
-                            <form action="{{ route('admin.payments.verify', $payment->id) }}" method="POST" class="inline">
-                                @csrf
-                                <x-button size="sm" color="success" type="submit">Verifikasi</x-button>
-                            </form>
+                            <a href="{{ route('admin.payments.index', ['status' => \App\Models\Payment::STATUS_PENDING]) }}"
+                               class="inline-flex items-center gap-2 rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-200">
+                                <i class="fas fa-arrow-right"></i> Buka Pembayaran
+                            </a>
                         </td>
                     </tr>
                     @empty
@@ -86,6 +92,8 @@
 </div>
 
 @foreach($pendingBookings as $booking)
+@php($dpPayment = $booking->payments->sortBy('id')->first())
+@php($dpAmount = (float) ($dpPayment?->amount ?? 0))
 <div id="verifyBookingModal-{{ $booking->id }}" tabindex="-1" aria-hidden="true"
      class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
     <div class="relative p-4 w-full max-w-lg max-h-full">
@@ -99,7 +107,18 @@
             </p>
             <form action="{{ route('admin.bookings.verify-dp', $booking) }}" method="POST" class="space-y-4">
                 @csrf
-                <x-input name="amount" label="Nominal DP1" type="number" placeholder="500000" required />
+                <div>
+                    <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Bukti Transfer DP1</span>
+                    @if($dpPayment?->proof)
+                        <img src="{{ asset('storage/' . $dpPayment->proof) }}" alt="Bukti Transfer DP1"
+                             class="mt-2 w-full max-h-64 object-contain rounded-xl border border-brand-100 bg-brand-50/40">
+                    @else
+                        <p class="mt-2 text-sm text-yellow-700 bg-yellow-50 rounded-xl px-4 py-2.5 border border-yellow-200">
+                            <i class="fas fa-circle-info mr-1"></i> Tidak ada bukti transfer yang tersedia.
+                        </p>
+                    @endif
+                </div>
+                <x-input name="amount" label="Nominal sesuai bukti" type="number" min="1000" step="1000" :value="$dpAmount > 0 ? $dpPayment->amount : null" placeholder="Contoh: 2500000" required />
                 <input type="hidden" name="method" value="transfer">
 
                 <div class="flex gap-3 pt-2">

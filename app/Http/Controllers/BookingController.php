@@ -39,10 +39,14 @@ class BookingController extends Controller
             'event_date' => ['required', 'date', 'after_or_equal:today'],
             'location' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
+            'amount' => ['required', 'numeric', 'min:1000'],
             'proof' => ['required', 'image', 'max:3072'], // bukti transfer DP1 wajib
         ]);
 
         $data['code'] = Booking::generateCode();
+        $amount = $data['amount'];
+        unset($data['amount']);
+        $data['package_price'] = Package::findOrFail($data['package_id'])->price;
 
         // Akun dibuat otomatis saat DP diverifikasi admin.
         // Jika email sudah punya akun client, booking melekat ke akun tersebut.
@@ -56,10 +60,10 @@ class BookingController extends Controller
 
         $booking = Booking::create($data);
 
-        // Payment DP1 dibuat langsung; nominal diisi admin saat verifikasi.
+        // Nominal DP dari client menjadi nilai awal; admin tetap memverifikasi dan dapat mengoreksinya.
         $paymentData = [
-            'type' => Payment::TYPE_DP1,
-            'amount' => 0,
+            'type' => 'DP1',
+            'amount' => $amount,
             'due_date' => Carbon::parse($booking->event_date)->subDays(30)->toDateString(),
             'method' => 'transfer',
             'status' => Payment::STATUS_PENDING,
@@ -86,9 +90,7 @@ class BookingController extends Controller
     {
         $booking = Booking::with('package')->where('code', $code)->firstOrFail();
 
-        $payment = $booking->payments()
-            ->whereIn('type', [Payment::TYPE_DP1, 'dp10'])
-            ->first();
+        $payment = $booking->payments()->oldest('id')->first();
 
         return view('landing.booking-success', compact('booking', 'payment'));
     }

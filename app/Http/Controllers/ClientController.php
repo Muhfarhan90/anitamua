@@ -41,7 +41,7 @@ class ClientController extends Controller
             $payment = Payment::findOrFail($data['payment_id']);
             abort_unless($payment->booking_id === $booking->id, 403);
         } else {
-            // Client menambah tahap baru sendiri (label & nominal diketik client)
+            // Nominal dari client menjadi nilai awal; admin tetap memverifikasi dan dapat mengoreksinya.
             $payment = $booking->payments()->create([
                 'type' => $data['type'],
                 'amount' => $data['amount'],

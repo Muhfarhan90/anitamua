@@ -323,13 +323,26 @@
                                 </div>
                             </div>
 
+                            {{-- Nominal DP --}}
+                            <div class="mb-3">
+                                <label class="form-label">Nominal DP yang ditransfer <span class="text-red-600">*</span></label>
+                                <div class="input-group-icon">
+                                    <i class="fa-solid fa-money-bill-wave input-icon"></i>
+                                    <input type="number" name="amount" class="form-control" value="{{ old('amount') }}" min="1000" step="1000" placeholder="Contoh: 2500000" required>
+                                </div>
+                                <small style="color:var(--muted);">Masukkan nominal sesuai bukti transfer. Admin akan memeriksa dan dapat menyesuaikannya saat verifikasi.</small>
+                                @error('amount')
+                                    <div class="rounded-lg bg-red-50 text-red-700 text-sm px-3 py-2 mt-2 mb-0"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ $message }}</div>
+                                @enderror
+                            </div>
+
                             {{-- Bukti Transfer DP (Wajib) --}}
                             <div class="mb-3">
                                 <label class="form-label">Bukti Transfer DP <span class="text-red-600">*</span></label>
                                 <div class="input-group-icon" style="align-items:flex-start">
                                     <i class="fa-solid fa-cloud-arrow-up input-icon" style="top:1.1rem"></i>
                                     <input type="file" name="proof" accept="image/jpeg,image/png,image/webp" class="form-control" style="padding-left:2.6rem; padding-top:.55rem;" required>                                </div>
-                                <small style="color:var(--muted);">JPG/JPEG/PNG/WebP, maks 3 MB. Booking langsung menunggu verifikasi admin setelah dikirim.</small>
+                                <small style="color:var(--muted);">JPG/JPEG/PNG/WebP, maks 3 MB. Booking akan menunggu verifikasi admin setelah dikirim.</small>
                                 @error('proof')
                                     <div class="rounded-lg bg-red-50 text-red-700 text-sm px-3 py-2 mt-2 mb-0"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ $message }}</div>
                                 @enderror

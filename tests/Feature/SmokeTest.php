@@ -2,11 +2,14 @@
 
 use App\Models\ActivityLog;
 use App\Models\Booking;
+use App\Models\Invoice;
 use App\Models\Package;
 use App\Models\Payment;
 use App\Models\Reminder;
+use App\Models\SiteSetting;
 use App\Models\User;
 use App\Models\WeddingStage;
+use App\Services\InvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -27,7 +30,7 @@ it('renders landing pages', function () {
     $this->get('/faq')->assertOk();
     $this->get('/kontak')->assertOk();
     $this->get('/booking')->assertOk();
-    $this->get('/booking/sukses/AMU-'.date('Y').'-0001')->assertOk();
+    $this->get('/booking/sukses/'.Booking::where('name', 'Dewi & Andi')->value('code'))->assertOk();
 });
 
 it('client can login with email or whatsapp number', function () {
@@ -226,7 +229,7 @@ it('admin creating booking auto-verifies dp, books it, and adds hari h schedule'
     expect($booking->phone)->toBe($client->phone);
     expect($booking->email)->toBe($client->email);
 
-    $payment = $booking->payments()->whereIn('type', ['dp1', 'dp10'])->first();
+    $payment = $booking->payments()->where('type', 'DP1')->first();
     expect($payment)->not->toBeNull();
     expect($payment->status)->toBe('verified');
     expect($payment->proof)->not->toBeNull();
@@ -372,6 +375,7 @@ it('guest can create booking without an account', function () {
         'email' => 'renodewi@test.com',
         'event_date' => now()->addMonths(2)->toDateString(),
         'location' => 'Ballroom Hotel X',
+        'amount' => 1800000,
         'proof' => UploadedFile::fake()->image('bukti.jpg'),
     ])->assertRedirect();
 
@@ -379,9 +383,10 @@ it('guest can create booking without an account', function () {
     expect($booking)->not->toBeNull();
     expect($booking->status)->toBe('pending');
     expect($booking->client_id)->toBeNull();
+    expect((float) $booking->package_price)->toBe((float) $package->price);
 });
 
-it('guest can book with compressed dp10 proof upload', function () {
+it('guest can book with compressed initial-payment proof upload', function () {
     Storage::fake('public');
     $package = Package::first();
 
@@ -392,20 +397,21 @@ it('guest can book with compressed dp10 proof upload', function () {
         'email' => 'renodewi@test.com',
         'event_date' => now()->addMonths(2)->toDateString(),
         'location' => 'Ballroom Hotel X',
+        'amount' => 1800000,
         'proof' => UploadedFile::fake()->image('bukti.jpg', 3000, 2000),
     ])->assertRedirect();
 
     $booking = Booking::where('email', 'renodewi@test.com')->firstOrFail();
 
-    $payment = $booking->payments()->where('type', 'dp10')->first();
+    $payment = $booking->payments()->where('type', 'DP1')->first();
     expect($payment)->not->toBeNull();
-    expect((float) $payment->amount)->toBe((float) round($package->price * 0.1));
+    expect((float) $payment->amount)->toBe(1800000.0);
     expect($payment->proof)->not->toBeNull();
     expect($payment->proof)->toStartWith('uploads/proofs/');
     Storage::disk('public')->assertExists($payment->proof);
 });
 
-it('admin verifying dp10 creates client account automatically', function () {
+it('admin verifying the initial payment creates client account automatically', function () {
     Mail::fake();
     $admin = User::where('email', 'admin@anitamua.com')->first();
     $package = Package::first();
@@ -417,6 +423,7 @@ it('admin verifying dp10 creates client account automatically', function () {
         'email' => 'renodewi@test.com',
         'event_date' => now()->addMonths(2)->toDateString(),
         'location' => 'Ballroom Hotel X',
+        'amount' => 1800000,
         'proof' => UploadedFile::fake()->image('bukti.jpg'),
     ]);
 
@@ -431,6 +438,7 @@ it('admin verifying dp10 creates client account automatically', function () {
 
     $booking->refresh();
     expect($booking->status)->toBe('booked');
+    expect((float) $booking->payments()->where('type', 'DP1')->value('amount'))->toBe(1000000.0);
 
     // Jadwal Hari H otomatis masuk kalender saat DP diverifikasi
     $hariH = $booking->schedules()->where('type', 'hari_h')->first();
@@ -464,6 +472,7 @@ it('booking with existing client email attaches to existing account', function (
         'email' => $client->email,
         'event_date' => now()->addMonths(2)->toDateString(),
         'location' => 'The Glass House',
+        'amount' => 1800000,
         'proof' => UploadedFile::fake()->image('bukti.jpg'),
     ]);
 
@@ -473,6 +482,25 @@ it('booking with existing client email attaches to existing account', function (
 
     expect($booking)->not->toBeNull();
     expect(User::where('email', $client->email)->count())->toBe(1);
+});
+
+it('admin payment verification can correct the client submitted nominal', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $payment = $booking->payments()->create([
+        'type' => 'DP1',
+        'amount' => 1800000,
+        'method' => 'transfer',
+        'proof' => 'uploads/proofs/client-proof.jpg',
+        'status' => Payment::STATUS_PENDING,
+    ]);
+
+    $this->actingAs($admin)
+        ->post(route('admin.payments.verify', $payment), ['amount' => 2250000])
+        ->assertRedirect();
+
+    expect($payment->refresh()->amount)->toBe('2250000.00')
+        ->and($payment->status)->toBe(Payment::STATUS_VERIFIED);
 });
 
 it('shows owner dashboard with booking pipeline widgets', function () {
@@ -545,7 +573,7 @@ it('client can add a new payment stage with custom label and nominal', function 
     $before = $booking->payments()->count();
 
     $this->actingAs($client)->post("/client/booking/{$booking->id}/proof", [
-        'type' => 'Pelunasan',
+        'type' => 'Tambahan Keluarga',
         'amount' => 2500000,
         'method' => 'transfer',
         'proof' => UploadedFile::fake()->image('pelunasan.jpg'),
@@ -554,7 +582,8 @@ it('client can add a new payment stage with custom label and nominal', function 
     $payment = $booking->payments()->latest('id')->first();
     expect($payment)->not->toBeNull();
     expect($booking->payments()->count())->toBe($before + 1);
-    expect($payment->type)->toBe('Pelunasan');
+    expect($payment->type)->toBe('Tambahan Keluarga');
+    expect(Payment::typeLabel($payment->type))->toBe('Tambahan Keluarga');
     expect((float) $payment->amount)->toBe(2500000.0);
     expect($payment->status)->toBe('pending');
     expect($payment->proof)->toStartWith('uploads/proofs/');
@@ -575,6 +604,150 @@ it('admin can verify pending booking DP', function () {
     $booking->refresh();
     expect($booking->status)->toBe('booked');
     expect(ActivityLog::where('booking_id', $booking->id)->exists())->toBeTrue();
+});
+
+it('creates one invoice per booked booking and updates it from verified payments', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+
+    $booking = Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => 'Andi & Siska',
+        'phone' => '081234567890',
+        'email' => $client->email,
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'location' => 'Gedung Anita',
+        'status' => Booking::STATUS_BOOKED,
+    ]);
+    $booking->addons()->create(['name' => 'Extra Touch Up', 'price' => 250000]);
+    $booking->payments()->create([
+        'type' => 'DP1',
+        'amount' => 1000000,
+        'method' => 'transfer',
+        'status' => Payment::STATUS_VERIFIED,
+        'paid_at' => now(),
+        'verified_by' => $admin->id,
+        'verified_at' => now(),
+    ]);
+
+    $invoice = app(InvoiceService::class)->sync($booking);
+
+    expect($invoice)->toBeInstanceOf(Invoice::class)
+        ->and($invoice->invoice_number)->toBe('INV-AS-'.$booking->code)
+        ->and((float) $invoice->total_amount)->toBe((float) $package->price + 250000.0)
+        ->and((float) $invoice->paid_amount)->toBe(1000000.0)
+        ->and($invoice->status)->toBe(Invoice::STATUS_PARTIAL);
+    expect($invoice->statusLabel())->toBe('Partial');
+
+    $package->update(['price' => (float) $package->price + 1000000]);
+    $invoice = app(InvoiceService::class)->sync($booking->fresh());
+    expect((float) $invoice->total_amount)->toBe((float) $booking->package_price + 250000.0);
+
+    $newDueDate = now()->addMonths(2)->subDays(7)->toDateString();
+    $this->actingAs($admin)
+        ->patch(route('admin.invoices.due-date.update', $invoice), ['due_date' => $newDueDate])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+    expect($invoice->refresh()->due_date->toDateString())->toBe($newDueDate);
+
+    $booking->payments()->create([
+        'type' => 'Pelunasan',
+        'amount' => max(1000, (float) $invoice->remaining_amount),
+        'method' => 'transfer',
+        'status' => Payment::STATUS_PENDING,
+    ]);
+    $pending = app(InvoiceService::class)->sync($booking->fresh());
+    expect($pending->status)->toBe(Invoice::STATUS_PARTIAL);
+
+    $booking->payments()->latest('id')->first()->update([
+        'status' => Payment::STATUS_VERIFIED,
+        'paid_at' => now(),
+        'verified_by' => $admin->id,
+        'verified_at' => now(),
+    ]);
+    $paid = app(InvoiceService::class)->sync($booking->fresh());
+    expect($paid->status)->toBe(Invoice::STATUS_PAID)
+        ->and($paid->statusLabel())->toBe('Paid')
+        ->and(Invoice::where('booking_id', $booking->id)->count())->toBe(1);
+
+    SiteSetting::set('company_name', 'ANITA Makeup Art');
+    SiteSetting::set('address', 'Jl. Mawar No. 1, Cirebon');
+    SiteSetting::set('bank_name', 'BCA');
+    SiteSetting::set('bank_account_number', '1234567890');
+    SiteSetting::set('bank_account_name', 'Anita Makeup Art');
+    SiteSetting::set('invoice_greeting', 'Terima kasih atas kepercayaan Anda.');
+
+    $this->actingAs($admin)
+        ->get(route('admin.invoices.show', $paid))
+        ->assertOk()
+        ->assertSee('Cetak Invoice')
+        ->assertSee('Jl. Mawar No. 1, Cirebon')
+        ->assertSee('Terima kasih atas kepercayaan Anda.')
+        ->assertDontSee('Kirim via WhatsApp');
+
+    $this->actingAs($admin)
+        ->get(route('admin.invoices.pdf', $paid))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf')
+        ->assertHeader('content-disposition', 'inline; filename="Invoice-'.$paid->invoice_number.'.pdf"');
+});
+
+it('admin can update the invoice greeting from site settings', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $greeting = 'Terima kasih, pembayaran Anda sudah kami terima.';
+
+    $this->actingAs($admin)
+        ->post(route('admin.content.settings.store'), ['invoice_greeting' => $greeting])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect(SiteSetting::get('invoice_greeting'))->toBe($greeting);
+});
+
+it('backfills only missing invoices and uses the first verified payment date', function () {
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+    $paymentDate = now()->subDays(12)->startOfDay();
+    $booking = Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => 'Rina & Fajar',
+        'phone' => '081234567891',
+        'email' => 'rinafajar@example.com',
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'status' => Booking::STATUS_BOOKED,
+    ]);
+    $booking->payments()->create([
+        'type' => 'DP Awal',
+        'amount' => 1000000,
+        'method' => 'transfer',
+        'status' => Payment::STATUS_VERIFIED,
+        'paid_at' => $paymentDate,
+        'verified_at' => $paymentDate,
+    ]);
+
+    $this->artisan('invoices:backfill')
+        ->expectsOutput('Preview: 1 invoice akan dibuat. Jalankan dengan --force untuk menyimpan.')
+        ->assertSuccessful();
+    expect(Invoice::where('booking_id', $booking->id)->exists())->toBeFalse();
+
+    $this->artisan('invoices:backfill --force')
+        ->expectsOutput('Invoice dibuat: 1')
+        ->assertSuccessful();
+
+    $invoice = Invoice::where('booking_id', $booking->id)->firstOrFail();
+    expect($invoice->issue_date->toDateString())->toBe($paymentDate->toDateString());
+
+    $this->artisan('invoices:backfill --force')
+        ->expectsOutput('Invoice dibuat: 0')
+        ->assertSuccessful();
+    expect(Invoice::where('booking_id', $booking->id)->count())->toBe(1);
 });
 
 it('admin can cancel booking and dp is forfeited', function () {

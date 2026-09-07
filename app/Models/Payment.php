@@ -10,16 +10,6 @@ class Payment extends Model
 {
     use HasFactory;
 
-    public const TYPE_DP1 = 'dp1';
-
-    public const TYPE_DP10 = self::TYPE_DP1;
-
-    public const TYPE_DP25 = 'dp25';
-
-    public const TYPE_DP75 = 'dp75';
-
-    public const TYPE_PELUNASAN = 'pelunasan';
-
     public const STATUS_PENDING = 'pending';
 
     public const STATUS_VERIFIED = 'verified';
@@ -53,14 +43,6 @@ class Payment extends Model
 
     public static function typeLabel(string $type): string
     {
-        // Label tahap pembayaran fleksibel: label lama tetap dipetakan,
-        // selain itu tampilkan label yang diketik admin apa adanya.
-        return match ($type) {
-            self::TYPE_DP1, 'dp10' => 'DP1',
-            self::TYPE_DP25 => 'DP 25% (Saat Fitting)',
-            self::TYPE_DP75 => 'DP 75% (H-7)',
-            self::TYPE_PELUNASAN => 'Pelunasan',
-            default => $type !== '' ? $type : 'Tahap',
-        };
+        return trim($type) !== '' ? trim($type) : 'Tahap';
     }
 }

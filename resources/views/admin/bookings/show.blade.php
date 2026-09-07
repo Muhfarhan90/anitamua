@@ -16,6 +16,11 @@
 <x-page-header :title="'Detail Booking — '.($booking->client->name ?? $booking->name)">
     <x-slot:actions>
         <x-button href="{{ route('admin.bookings.edit', $booking) }}" color="ghost"><i class="fas fa-pen"></i> Edit Booking</x-button>
+        @if($booking->status === \App\Models\Booking::STATUS_BOOKED || $booking->status === \App\Models\Booking::STATUS_COMPLETED)
+        @if($booking->invoice)
+        <a href="{{ route('admin.invoices.show', $booking->invoice) }}" class="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"><i class="fas fa-file-invoice"></i> Lihat Invoice</a>
+        @endif
+        @endif
         @php $hasFitting = $booking->schedules->where('type', 'fitting')->where('status', '!=', 'cancelled')->isNotEmpty(); @endphp
         @if($hasFitting)
         <x-button href="{{ route('admin.bookings.packing', $booking) }}" color="primary"><i class="fas fa-box"></i> Packing Checklist</x-button>
@@ -73,7 +78,7 @@
                         <x-button color="success" type="button" data-modal-target="verifyDpModal" data-modal-toggle="verifyDpModal">
                             <i class="fas fa-check"></i> Verifikasi DP
                         </x-button>
-                        @php $dp1Payment = $booking->payments->firstWhere('type', \App\Models\Payment::TYPE_DP1) ?? $booking->payments->firstWhere('type', 'dp10'); @endphp
+                        @php $dp1Payment = $booking->payments->sortBy('id')->first(); @endphp
                         <a href="{{ asset('storage/' . ($dp1Payment?->proof ?? '')) }}" onclick="openProof(event, this.href)"
                            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border-2 border-yellow-400/60 text-yellow-800 hover:bg-yellow-100/70 transition-all {{ $dp1Payment?->proof ? '' : 'opacity-40 pointer-events-none' }}">
                             <i class="fas fa-image"></i> Lihat Bukti
@@ -344,7 +349,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 <div>
                     <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Bukti Transfer</span>
-                    @php $dp1Payment = $booking->payments->firstWhere('type', \App\Models\Payment::TYPE_DP1) ?? $booking->payments->firstWhere('type', 'dp10'); @endphp
+                    @php $dp1Payment = $booking->payments->sortBy('id')->first(); @endphp
                     @if($dp1Payment?->proof)
                         <img src="{{ asset('storage/' . $dp1Payment->proof) }}" alt="Bukti DP"
                              class="mt-2 w-full max-h-64 object-contain rounded-xl border border-brand-100 bg-brand-50/40">

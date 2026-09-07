@@ -157,7 +157,7 @@ class ContentController extends Controller
 
     public function settings()
     {
-        $keys = ['company_name', 'tagline', 'about', 'address', 'phone', 'email', 'instagram', 'whatsapp', 'bank_name', 'bank_account_number', 'bank_account_name', 'logo'];
+        $keys = ['company_name', 'tagline', 'about', 'address', 'phone', 'email', 'instagram', 'whatsapp', 'bank_name', 'bank_account_number', 'bank_account_name', 'invoice_greeting', 'logo'];
 
         $settings = SiteSetting::whereIn('key', $keys)->pluck('value', 'key');
 
@@ -178,6 +178,7 @@ class ContentController extends Controller
             'bank_name' => ['nullable', 'string', 'max:50'],
             'bank_account_number' => ['nullable', 'string', 'max:50'],
             'bank_account_name' => ['nullable', 'string', 'max:100'],
+            'invoice_greeting' => ['nullable', 'string', 'max:500'],
             'logo' => ['nullable', 'image', 'max:2048'],
         ]);
 

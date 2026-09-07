@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Payment;
 use App\Services\ActivityLogger;
 use App\Services\ClientAccountService;
+use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -15,9 +16,6 @@ class PaymentController extends Controller
     {
         $payments = Payment::with('booking')
             ->when($request->status, fn ($q, $status) => $q->where('status', $status))
-            ->when($request->type, fn ($q, $type) => $type === Payment::TYPE_DP1
-                ? $q->whereIn('type', [Payment::TYPE_DP1, 'dp10'])
-                : $q->where('type', $type))
             ->orderByDesc('created_at')
             ->paginate(20)
             ->withQueryString();
@@ -27,16 +25,22 @@ class PaymentController extends Controller
         return view('admin.payments.index', compact('payments', 'totalOutstanding'));
     }
 
-    public function verify(Payment $payment)
+    public function verify(Request $request, Payment $payment, InvoiceService $invoiceService)
     {
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:1000'],
+        ]);
+
         $payment->update([
+            'amount' => $data['amount'],
             'status' => Payment::STATUS_VERIFIED,
             'paid_at' => now(),
             'verified_by' => auth()->id(),
             'verified_at' => now(),
         ]);
 
-        $this->bookIfDp10($payment->booking);
+        $this->bookIfFirstPayment($payment->booking);
+        $invoiceService->sync($payment->booking->fresh());
 
         ActivityLogger::log(
             'payment_verified',
@@ -48,7 +52,7 @@ class PaymentController extends Controller
         return back()->with('success', 'Pembayaran diverifikasi.');
     }
 
-    private function bookIfDp10(Booking $booking): void
+    private function bookIfFirstPayment(Booking $booking): void
     {
         if ($booking->status === Booking::STATUS_PENDING) {
             $hasVerifiedPayment = $booking->payments()
