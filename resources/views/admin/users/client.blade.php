@@ -5,7 +5,9 @@
 @section('content')
 <x-page-header title="Manajemen Klien" subtitle="Kelola akun client (biasanya dibuat otomatis saat DP1 diverifikasi)">
     <x-slot:actions>
-        <x-button href="{{ route('admin.users.staff') }}" color="ghost"><i class="fas fa-user-tie"></i> Manajemen Staff</x-button>
+        @if(auth()->user()->role === \App\Models\User::ROLE_OWNER)
+            <x-button href="{{ route('admin.users.staff') }}" color="ghost"><i class="fas fa-user-tie"></i> Manajemen Staff</x-button>
+        @endif
         <x-button color="primary" onclick="document.getElementById('addModal').classList.remove('hidden')"><i class="fas fa-plus"></i> Tambah Klien</x-button>
     </x-slot:actions>
 </x-page-header>
