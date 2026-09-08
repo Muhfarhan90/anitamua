@@ -106,6 +106,9 @@ Route::middleware('auth')->group(function () {
             Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
             Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify'])->name('payments.verify');
             Route::patch('/payments/{payment}/amount', [PaymentController::class, 'correctAmount'])->name('payments.amount.update');
+            Route::get('/finances', [FinanceController::class, 'index'])->name('finances.index');
+            Route::post('/finances', [FinanceController::class, 'store'])->name('finances.store');
+            Route::delete('/finances/{finance}', [FinanceController::class, 'destroy'])->name('finances.destroy');
             Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
             Route::patch('/invoices/{invoice}/due-date', [InvoiceController::class, 'updateDueDate'])->name('invoices.due-date.update');
             Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
@@ -169,16 +172,18 @@ Route::middleware('auth')->group(function () {
             Route::put('/promo-banners/{banner}', [PromoBannerController::class, 'update'])->name('promo-banners.update');
             Route::delete('/promo-banners/{banner}', [PromoBannerController::class, 'destroy'])->name('promo-banners.destroy');
 
-                // Manajemen User (Owner only) — Staff & Klien
+                // Manajemen Klien (Owner & Admin)
+                Route::get('/users/clients', [AdminController::class, 'clients'])->name('users.clients');
+                Route::post('/users/clients', [AdminController::class, 'storeClient'])->name('users.clients.store');
+                Route::patch('/users/{user}/toggle', [AdminController::class, 'toggleUser'])->name('users.toggle');
+                Route::get('/users/{user}/edit', [AdminController::class, 'edit'])->name('users.edit');
+                Route::patch('/users/{user}', [AdminController::class, 'update'])->name('users.update');
+                Route::delete('/users/{user}', [AdminController::class, 'destroy'])->name('users.destroy');
+
+                // Manajemen Staff (Owner only)
                 Route::middleware('role:owner')->group(function () {
                     Route::get('/users/staff', [AdminController::class, 'staffs'])->name('users.staff');
                     Route::post('/users/staff', [AdminController::class, 'storeStaff'])->name('users.staff.store');
-                    Route::get('/users/clients', [AdminController::class, 'clients'])->name('users.clients');
-                    Route::post('/users/clients', [AdminController::class, 'storeClient'])->name('users.clients.store');
-                    Route::patch('/users/{user}/toggle', [AdminController::class, 'toggleUser'])->name('users.toggle');
-                    Route::get('/users/{user}/edit', [AdminController::class, 'edit'])->name('users.edit');
-                    Route::patch('/users/{user}', [AdminController::class, 'update'])->name('users.update');
-                    Route::delete('/users/{user}', [AdminController::class, 'destroy'])->name('users.destroy');
                 });
 
                 // Konten Website — Owner only

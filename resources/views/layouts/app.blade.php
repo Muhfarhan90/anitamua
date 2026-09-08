@@ -58,6 +58,9 @@
                     ['label' => 'Invoice',    'icon' => 'fa-solid fa-file-invoice',   'url' => route('admin.invoices.index'),   'active' => 'admin.invoices.*'],
                     ['label' => 'Jadwal',     'icon' => 'fa-solid fa-calendar-week',   'url' => route('admin.calendar'),         'active' => 'admin.calendar'],
                 ]],
+                ['title' => 'Laporan', 'items' => [
+                    ['label' => 'Keuangan',   'icon' => 'fa-solid fa-wallet',          'url' => route('admin.finances.index'),   'active' => 'admin.finances.*'],
+                ]],
                 ['title' => 'Paket', 'items' => [
                     ['label' => 'Paket',      'icon' => 'fa-solid fa-box',             'url' => route('admin.packages.index'),   'active' => 'admin.packages.*'],
                     ['label' => 'Pelaminan',  'icon' => 'fa-solid fa-panorama',        'url' => route('admin.wedding-stages.index'), 'active' => 'admin.wedding-stages.*'],
@@ -94,6 +97,9 @@
                     ['label' => 'Invoice',    'icon' => 'fa-solid fa-file-invoice',   'url' => route('admin.invoices.index'),   'active' => 'admin.invoices.*'],
                     ['label' => 'Jadwal',     'icon' => 'fa-solid fa-calendar-week',   'url' => route('admin.calendar'),         'active' => 'admin.calendar'],
                 ]],
+                ['title' => 'Laporan', 'items' => [
+                    ['label' => 'Keuangan',   'icon' => 'fa-solid fa-wallet',          'url' => route('admin.finances.index'),   'active' => 'admin.finances.*'],
+                ]],
                 ['title' => 'Paket', 'items' => [
                     ['label' => 'Paket',      'icon' => 'fa-solid fa-box',             'url' => route('admin.packages.index'),   'active' => 'admin.packages.*'],
                     ['label' => 'Pelaminan',  'icon' => 'fa-solid fa-panorama',        'url' => route('admin.wedding-stages.index'), 'active' => 'admin.wedding-stages.*'],
@@ -107,6 +113,9 @@
                 ['title' => 'Vendor', 'items' => [
                     ['label' => 'Master Vendor', 'icon' => 'fa-solid fa-store',         'url' => route('admin.vendors.index'), 'active' => 'admin.vendors.*'],
                     ['label' => 'Kat. Vendor',   'icon' => 'fa-solid fa-tags',          'url' => route('admin.vendor-categories.index'), 'active' => 'admin.vendor-categories.*'],
+                ]],
+                ['title' => 'Users', 'items' => [
+                    ['label' => 'Manajemen Klien', 'icon' => 'fa-solid fa-users',       'url' => route('admin.users.clients'), 'active' => 'admin.users.clients*'],
                 ]],
                 ['title' => 'Settings', 'items' => [
                     ['label' => 'Testimoni',  'icon' => 'fa-solid fa-quote-right',     'url' => route('admin.content.testimonials'), 'active' => 'admin.content.testimonials*'],
@@ -166,7 +175,7 @@
         {{-- Navigation (grup menu + scrollable) --}}
         <nav class="flex-1 px-3 pt-5 pb-3 overflow-y-auto">
             @foreach($menus as $section)
-            <p class="px-3 {{ $loop->first ? 'mt-4' : 'mt-8' }} mb-4 pb-2 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">{{ $section['title'] }}</p>
+            <p class="px-3 {{ $loop->first ? 'mt-2' : 'mt-5' }} mb-1 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 border-b border-gray-100">{{ $section['title'] }}</p>
             @foreach($section['items'] as $item)
             @php $isActive = request()->routeIs($item['active']); @endphp
             <a href="{{ $item['url'] }}"

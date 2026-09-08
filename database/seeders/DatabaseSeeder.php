@@ -326,18 +326,6 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        $income = $booking->payments()->where('status', Payment::STATUS_VERIFIED)->sum('amount');
-
-        FinanceModel::create([
-            'booking_id' => $booking->id,
-            'type' => 'income',
-            'category' => 'dp',
-            'amount' => $income,
-            'description' => 'Pembayaran DP project '.$booking->code,
-            'transaction_date' => $eventDate->copy()->subDays(14)->toDateString(),
-            'created_by' => $owner->id,
-        ]);
-
         FinanceModel::create([
             'booking_id' => null,
             'type' => 'expense',

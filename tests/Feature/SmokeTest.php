@@ -6,6 +6,7 @@ use App\Models\Gallery;
 use App\Models\Invoice;
 use App\Models\Package;
 use App\Models\Payment;
+use App\Models\Finance;
 use App\Models\Reminder;
 use App\Models\SiteSetting;
 use App\Models\User;
@@ -929,10 +930,74 @@ it('renders MVP back office pages and hides deferred features', function () {
         $this->actingAs($owner)->get($url)->assertOk();
     }
 
-    // Keuangan, Timeline, Reminder dinonaktifkan sementara
-    foreach (['/admin/finances', '/admin/timeline', '/admin/reminders'] as $url) {
+    // Timeline dan Reminder masih dinonaktifkan sementara
+    $this->actingAs($owner)->get('/admin/finances')->assertOk();
+    foreach (['/admin/timeline', '/admin/reminders'] as $url) {
         $this->actingAs($owner)->get($url)->assertNotFound();
     }
+});
+
+it('owner can record a finance transaction', function () {
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+
+    $this->actingAs($owner)
+        ->post('/admin/finances', [
+            'booking_id' => $booking->id,
+            'type' => Finance::TYPE_EXPENSE,
+            'category' => 'Vendor',
+            'amount' => 2480000,
+            'description' => 'Pembayaran vendor makeup',
+            'transaction_date' => now()->toDateString(),
+        ])
+        ->assertRedirect();
+
+    $finance = Finance::where('description', 'Pembayaran vendor makeup')->latest('id')->first();
+    expect($finance)->not->toBeNull();
+    expect($finance->booking_id)->toBe($booking->id);
+    expect($finance->type)->toBe(Finance::TYPE_EXPENSE);
+    expect((float) $finance->amount)->toBe(2480000.0);
+});
+
+it('admin can manage clients without gaining staff management access', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+
+    $this->actingAs($admin)->get('/admin/users/clients')->assertOk();
+    $this->actingAs($admin)->post('/admin/users/clients', [
+        'name' => 'Klien Admin',
+        'email' => 'klien-admin@example.com',
+        'phone' => '081234567899',
+        'password' => 'rahasia123',
+    ])->assertRedirect();
+
+    $this->actingAs($admin)->patch('/admin/users/'.$client->id, [
+        'name' => $client->name,
+        'email' => $client->email,
+        'phone' => $client->phone,
+        'role' => User::ROLE_ADMIN,
+    ])->assertRedirect();
+
+    expect($client->refresh()->role)->toBe(User::ROLE_CLIENT);
+    $this->actingAs($admin)->get('/admin/users/'.$owner->id.'/edit')->assertForbidden();
+    $this->actingAs($admin)->get('/admin/users/staff')->assertForbidden();
+});
+
+it('calculates finance from verified payments and booking vendor prices', function () {
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $year = now()->year;
+    $expectedIncome = (float) Payment::where('status', Payment::STATUS_VERIFIED)->sum('amount');
+    $expectedVendorExpense = (float) $booking->bookingVendors()
+        ->where('status', '!=', 'cancelled')
+        ->whereNotNull('price')
+        ->sum('price');
+    $response = $this->actingAs($owner)->get('/admin/finances?year='.$year);
+
+    $response->assertOk();
+    expect((float) $response->viewData('incomes'))->toBe($expectedIncome)
+        ->and((float) $response->viewData('expenses'))->toBe($expectedVendorExpense);
 });
 
 it('renders booking detail page for admin', function () {

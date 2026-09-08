@@ -80,6 +80,8 @@ class AdminController extends Controller
 
     public function toggleUser(User $user)
     {
+        $this->ensureAdminOnlyManagesClients($user);
+
         $user->update(['is_active' => ! $user->is_active]);
 
         ActivityLogger::log('user_status_changed', 'Status user diubah', 'User '.$user->name.' '.($user->is_active ? 'diaktifkan' : 'dinonaktifkan').' oleh '.auth()->user()->name);
@@ -89,6 +91,7 @@ class AdminController extends Controller
 
     public function update(User $user, Request $request)
     {
+        $this->ensureAdminOnlyManagesClients($user);
         abort_if($user->id === auth()->id(), 403, 'Tidak dapat mengedit akun sendiri.');
 
         $data = $request->validate([
@@ -99,6 +102,10 @@ class AdminController extends Controller
             'password' => ['nullable', 'min:6'],
             'is_active' => ['nullable', 'boolean'],
         ]);
+
+        if (auth()->user()->role === User::ROLE_ADMIN) {
+            unset($data['role']);
+        }
 
         $user->update([
             'name' => $data['name'],
@@ -119,6 +126,7 @@ class AdminController extends Controller
 
     public function edit(User $user)
     {
+        $this->ensureAdminOnlyManagesClients($user);
         abort_if($user->id === auth()->id(), 403, 'Tidak dapat mengedit akun sendiri.');
 
         return view('admin.users.edit', ['user' => $user]);
@@ -126,6 +134,7 @@ class AdminController extends Controller
 
     public function destroy(User $user)
     {
+        $this->ensureAdminOnlyManagesClients($user);
         abort_if($user->id === auth()->id(), 403, 'Tidak dapat menghapus akun sendiri.');
 
         $bookingCount = Booking::where('client_id', $user->id)->count();
@@ -140,6 +149,15 @@ class AdminController extends Controller
         ActivityLogger::log('user_deleted', 'User dihapus', 'User '.$name.' dihapus oleh '.auth()->user()->name);
 
         return back()->with('success', 'User '.$name.' berhasil dihapus.');
+    }
+
+    private function ensureAdminOnlyManagesClients(User $user): void
+    {
+        abort_if(
+            auth()->user()->role === User::ROLE_ADMIN && $user->role !== User::ROLE_CLIENT,
+            403,
+            'Admin hanya dapat mengelola akun klien.'
+        );
     }
 
     public function timeline(Request $request)
