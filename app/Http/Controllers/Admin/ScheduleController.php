@@ -165,7 +165,8 @@ class ScheduleController extends Controller
     private function buildCalendar(int $year, int $month, $grouped): array
     {
         $firstDay = Carbon::create($year, $month, 1);
-        $start = $firstDay->copy()->startOfWeek();
+        // Header kalender dimulai dari Minggu, jadi grid juga harus dimulai dari Minggu.
+        $start = $firstDay->copy()->startOfWeek(Carbon::SUNDAY);
         $daysInCalendar = 42;
 
         $calendar = [];
