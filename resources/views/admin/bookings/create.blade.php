@@ -88,7 +88,7 @@
                     <p class="mt-1 text-sm text-gray-500">Isi pembayaran awal booking.</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <x-input name="dp1_amount" label="Nominal DP1" type="number" required placeholder="500000" />
+                    <x-input name="dp1_amount" label="Nominal DP1" currency required placeholder="500.000" />
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Bukti Transfer DP1 <span class="text-gray-400 font-normal">(opsional)</span></label>
                         <input type="file" name="proof" accept="image/jpeg,image/png,image/webp" class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200 border-gray-200">

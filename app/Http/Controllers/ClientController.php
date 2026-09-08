@@ -31,7 +31,7 @@ class ClientController extends Controller
         $data = $request->validate([
             'payment_id' => ['nullable', 'exists:payments,id'],
             'type' => ['required_without:payment_id', 'nullable', 'string', 'max:100'],
-            'amount' => ['required_without:payment_id', 'nullable', 'numeric', 'min:1000'],
+            'amount' => ['required_without:payment_id', 'nullable', 'numeric', 'min:0'],
             'proof' => ['required', 'image', 'max:5120'],
             'method' => ['required', 'string'],
         ]);
@@ -40,6 +40,10 @@ class ClientController extends Controller
             // Bayar tahap yang sudah ada (mis. DP1)
             $payment = Payment::findOrFail($data['payment_id']);
             abort_unless($payment->booking_id === $booking->id, 403);
+
+            if ($payment->status !== Payment::STATUS_PENDING) {
+                return back()->with('warning', 'Bukti hanya dapat diunggah untuk pembayaran berstatus Pending.');
+            }
         } else {
             // Nominal dari client menjadi nilai awal; admin tetap memverifikasi dan dapat mengoreksinya.
             $payment = $booking->payments()->create([

@@ -217,7 +217,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Amount (Rp)</label>
-                        <input type="number" name="amount" required min="0" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-primary bg-gray-50" placeholder="0">
+                        <input type="text" name="amount" inputmode="numeric" data-money-input pattern="[0-9.]*" required min="0" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-rose-primary bg-gray-50" placeholder="0">
                     </div>
                 </div>
                 <div class="flex justify-end gap-3 pt-2">

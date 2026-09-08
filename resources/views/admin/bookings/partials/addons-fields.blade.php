@@ -108,7 +108,7 @@
             }
 
             function formatMoney(input) {
-                const digits = input.value.replace(/\D/g, '');
+                const digits = input.value.replace(/[,.]\d{1,2}$/, '').replace(/\D/g, '');
                 input.value = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
             }
 

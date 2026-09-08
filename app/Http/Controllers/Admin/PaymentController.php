@@ -27,8 +27,12 @@ class PaymentController extends Controller
 
     public function verify(Request $request, Payment $payment, InvoiceService $invoiceService)
     {
+        if ($payment->status !== Payment::STATUS_PENDING) {
+            return back()->with('warning', 'Hanya pembayaran berstatus Pending yang dapat diverifikasi.');
+        }
+
         $data = $request->validate([
-            'amount' => ['required', 'numeric', 'min:1000'],
+            'amount' => ['required', 'numeric', 'min:0'],
         ]);
 
         $payment->update([
@@ -50,6 +54,32 @@ class PaymentController extends Controller
         );
 
         return back()->with('success', 'Pembayaran diverifikasi.');
+    }
+
+    public function correctAmount(Request $request, Payment $payment, InvoiceService $invoiceService)
+    {
+        if ($payment->status !== Payment::STATUS_VERIFIED) {
+            return back()->with('warning', 'Nominal hanya dapat diedit pada pembayaran berstatus Verified.');
+        }
+
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $oldAmount = $payment->amount;
+        $payment->update(['amount' => $data['amount']]);
+        $invoiceService->sync($payment->booking->fresh());
+
+        ActivityLogger::log(
+            'payment_amount_corrected',
+            'Nominal pembayaran diedit',
+            Payment::typeLabel($payment->type).' diedit dari '.number_format($oldAmount).' menjadi '.number_format($payment->amount).' oleh '.auth()->user()->name,
+            $payment->booking_id,
+            ['amount' => $oldAmount],
+            ['amount' => $payment->amount],
+        );
+
+        return back()->with('success', 'Nominal pembayaran berhasil diedit. Status tetap Verified.');
     }
 
     private function bookIfFirstPayment(Booking $booking): void

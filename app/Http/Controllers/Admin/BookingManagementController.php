@@ -274,12 +274,19 @@ class BookingManagementController extends Controller
 
     public function verifyDp(Booking $booking, Request $request, InvoiceService $invoiceService)
     {
+        if ($booking->status !== Booking::STATUS_PENDING) {
+            return back()->with('warning', 'DP hanya dapat diverifikasi saat booking berstatus Pending. Gunakan edit nominal untuk pembayaran yang sudah Verified.');
+        }
+
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:0'],
             'method' => ['required', 'string'],
         ]);
 
         $payment = $booking->payments()->oldest('id')->first();
+        if ($payment && $payment->status !== Payment::STATUS_PENDING) {
+            return back()->with('warning', 'Pembayaran awal tidak lagi berstatus Pending.');
+        }
         $payment ??= new Payment(['booking_id' => $booking->id, 'type' => 'DP1']);
 
         $payment->fill([
@@ -325,7 +332,7 @@ class BookingManagementController extends Controller
     {
         $data = $request->validate([
             'type' => ['required', 'string', 'max:100'],
-            'amount' => ['required', 'numeric', 'min:1000'],
+            'amount' => ['required', 'numeric', 'min:0'],
             'proof' => ['required', 'image', 'max:5120'],
             'method' => ['required', 'string', 'in:transfer,qris,cash'],
         ]);

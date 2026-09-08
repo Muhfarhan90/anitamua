@@ -29,7 +29,7 @@
             <x-input name="phone" label="No HP" :value="$vendor->phone ?? ''" placeholder="08xxxxxxxxxx" />
             <x-input name="instagram" label="Instagram" :value="$vendor->instagram ?? ''" placeholder="@username" />
             <x-input name="address" label="Alamat" :value="$vendor->address ?? ''" />
-            <x-input name="price" label="Harga (Rp)" type="number" :value="$vendor->price ?? ''" min="0" step="1000" placeholder="Kosongkan jika belum ada" />
+            <x-input name="price" label="Harga (Rp)" currency :value="$vendor->price ?: ''" min="0" step="1000" placeholder="Kosongkan jika belum ada" />
             <div>
                 <label for="status" class="block text-sm font-medium text-gray-600 mb-1">Status</label>
                 <select name="status" id="status"

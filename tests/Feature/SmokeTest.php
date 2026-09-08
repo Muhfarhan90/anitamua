@@ -557,6 +557,57 @@ it('admin payment verification can correct the client submitted nominal', functi
 
     expect($payment->refresh()->amount)->toBe('2250000.00')
         ->and($payment->status)->toBe(Payment::STATUS_VERIFIED);
+
+    $this->actingAs($admin)
+        ->post(route('admin.payments.verify', $payment), ['amount' => 3000000])
+        ->assertRedirect()
+        ->assertSessionHas('warning');
+
+    $this->actingAs($admin)
+        ->patch(route('admin.payments.amount.update', $payment), ['amount' => 0])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect($payment->refresh()->amount)->toBe('0.00')
+        ->and($payment->status)->toBe(Payment::STATUS_VERIFIED);
+});
+
+it('keeps verified payments immutable to client proof uploads', function () {
+    Storage::fake('public');
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $booking = $client->bookings()->firstOrFail();
+    $payment = $booking->payments()->where('status', Payment::STATUS_VERIFIED)->firstOrFail();
+    $amount = $payment->amount;
+
+    $this->actingAs($client)
+        ->post(route('client.booking.proof', $booking), [
+            'payment_id' => $payment->id,
+            'method' => 'transfer',
+            'proof' => UploadedFile::fake()->image('ulang-bukti.jpg'),
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('warning');
+
+    expect($payment->refresh()->status)->toBe(Payment::STATUS_VERIFIED)
+        ->and($payment->amount)->toBe($amount);
+});
+
+it('does not reverify DP for a booking that is already booked', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $payment = $booking->payments()->oldest('id')->firstOrFail();
+    $amount = $payment->amount;
+
+    $this->actingAs($admin)
+        ->post(route('admin.bookings.verify-dp', $booking), [
+            'amount' => 3000000,
+            'method' => 'transfer',
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('warning');
+
+    expect($payment->refresh()->amount)->toBe($amount)
+        ->and($booking->refresh()->status)->toBe(Booking::STATUS_BOOKED);
 });
 
 it('shows owner dashboard with booking pipeline widgets', function () {
@@ -630,7 +681,7 @@ it('client can add a new payment stage with custom label and nominal', function 
 
     $this->actingAs($client)->post("/client/booking/{$booking->id}/proof", [
         'type' => 'Tambahan Keluarga',
-        'amount' => 2500000,
+        'amount' => 0,
         'method' => 'transfer',
         'proof' => UploadedFile::fake()->image('pelunasan.jpg'),
     ])->assertRedirect()->assertSessionHas('success');
@@ -640,7 +691,7 @@ it('client can add a new payment stage with custom label and nominal', function 
     expect($booking->payments()->count())->toBe($before + 1);
     expect($payment->type)->toBe('Tambahan Keluarga');
     expect(Payment::typeLabel($payment->type))->toBe('Tambahan Keluarga');
-    expect((float) $payment->amount)->toBe(2500000.0);
+    expect((float) $payment->amount)->toBe(0.0);
     expect($payment->status)->toBe('pending');
     expect($payment->proof)->toStartWith('uploads/proofs/');
     Storage::disk('public')->assertExists($payment->proof);

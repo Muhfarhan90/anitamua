@@ -105,7 +105,7 @@
                     </div>
                     <div id="newStageFields" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
                         <x-input name="type" id="newStageType" label="Label Tahap" placeholder="Contoh: Pelunasan / Angsuran 2 / DP Tambahan" :value="old('type', 'DP'.($booking->payments->count() + 1))" />
-                        <x-input name="amount" id="newStageAmount" label="Nominal" type="number" min="1000" step="1000" placeholder="Contoh: 2500000" />
+                        <x-input name="amount" id="newStageAmount" label="Nominal" currency min="0" step="1000" placeholder="Contoh: 2.500.000" />
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Bukti Transfer <span class="text-red-500">*</span></label>

@@ -105,6 +105,7 @@ Route::middleware('auth')->group(function () {
             // Payments (tahap dibuat oleh client; admin hanya verifikasi)
             Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
             Route::post('/payments/{payment}/verify', [PaymentController::class, 'verify'])->name('payments.verify');
+            Route::patch('/payments/{payment}/amount', [PaymentController::class, 'correctAmount'])->name('payments.amount.update');
             Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
             Route::patch('/invoices/{invoice}/due-date', [InvoiceController::class, 'updateDueDate'])->name('invoices.due-date.update');
             Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');

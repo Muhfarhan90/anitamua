@@ -131,9 +131,11 @@
                                 }">{{ ucfirst($payment->status) }}</x-badge>
                             </td>
                             <td class="px-5 py-3 text-center">
-                                @if($payment->status === 'pending')
-                                <x-button size="sm" color="success" type="button" data-modal-target="verifyPayModal-{{ $payment->id }}" data-modal-toggle="verifyPayModal-{{ $payment->id }}">Verifikasi</x-button>
-                                @else
+                                 @if($payment->status === 'pending')
+                                 <x-button size="sm" color="success" type="button" data-modal-target="verifyPayModal-{{ $payment->id }}" data-modal-toggle="verifyPayModal-{{ $payment->id }}">Verifikasi</x-button>
+                                 @elseif($payment->status === 'verified')
+                                 <x-button size="sm" color="ghost" type="button" data-modal-target="correctPayModal-{{ $payment->id }}" data-modal-toggle="correctPayModal-{{ $payment->id }}">Edit</x-button>
+                                 @else
                                 <span class="text-gray-400 text-xs">-</span>
                                 @endif
                             </td>
@@ -159,7 +161,7 @@
                         <option value="cash">Cash</option>
                     </x-select>
                 </div>
-                <x-input name="amount" label="Nominal" type="number" min="1000" step="1000" placeholder="1000000" required />
+                <x-input name="amount" label="Nominal" currency min="0" step="1000" placeholder="1.000.000" required />
                 <div>
                     <label for="adminProof" class="block text-sm font-medium text-gray-600 mb-1">Bukti Pembayaran <span class="text-red-500">*</span></label>
                     <input id="adminProof" type="file" name="proof" accept="image/*" required class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200">
@@ -318,10 +320,11 @@
 document.addEventListener('DOMContentLoaded', function () {
     const toggle = document.getElementById('toggleAdminPaymentForm');
     const panel = document.getElementById('adminPaymentPanel');
+    const form = document.getElementById('adminPaymentForm');
     const label = toggle?.querySelector('[data-admin-payment-button-label]');
     const icon = toggle?.querySelector('[data-admin-payment-button-icon]');
 
-    if (!toggle || !panel || !label || !icon) return;
+    if (!toggle || !panel || !form || !label || !icon) return;
 
     toggle.addEventListener('click', function () {
         const isHidden = panel.classList.toggle('hidden');
@@ -329,6 +332,10 @@ document.addEventListener('DOMContentLoaded', function () {
         label.textContent = isHidden ? 'Tambah Pembayaran' : 'Tutup Form';
         icon.classList.toggle('fa-plus', isHidden);
         icon.classList.toggle('fa-xmark', !isHidden);
+        if (!isHidden) requestAnimationFrame(() => {
+            panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            form.querySelector('[name="type"]')?.focus({ preventScroll: true });
+        });
     });
 });
 </script>
@@ -361,7 +368,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <x-input name="amount" label="Nominal DP1" type="number" placeholder="500000" :value="$dp1Payment?->amount > 0 ? $dp1Payment->amount : ''" />
+                    <x-input name="amount" label="Nominal DP1" currency placeholder="500.000" :value="$dp1Payment?->amount > 0 ? $dp1Payment->amount : ''" />
                     <x-select name="method" label="Metode">
                         <option value="transfer">Transfer</option>
                         <option value="cash">Cash</option>
@@ -411,12 +418,49 @@ document.addEventListener('DOMContentLoaded', function () {
                             @endif
                         </div>
 
+                        <div>
+                            <label for="verify-payment-amount-{{ $payment->id }}" class="block text-xs font-semibold uppercase tracking-wide text-gray-400">Nominal sesuai bukti</label>
+                            <input id="verify-payment-amount-{{ $payment->id }}" name="amount" type="text" inputmode="numeric" data-money-input pattern="[0-9.]*" min="0" step="1000" value="{{ (float) $payment->amount > 0 ? $payment->amount : '' }}" required
+                                   class="mt-2 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                        </div>
+
                         <div class="flex gap-3 pt-2">
                             <button type="button" data-modal-hide="verifyPayModal-{{ $payment->id }}"
                                     class="flex-1 px-6 py-2.5 rounded-xl text-sm font-semibold border-2 border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">
                                 Batal
                             </button>
                             <x-button type="submit" class="flex-1 justify-center bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"><i class="fas fa-check"></i> Ya, Verifikasi</x-button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @elseif($payment->status === 'verified')
+        <div id="correctPayModal-{{ $payment->id }}" tabindex="-1" aria-hidden="true"
+             class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+            <div class="relative p-4 w-full max-w-lg max-h-full">
+                <div class="relative bg-white rounded-2xl shadow-xl p-8">
+                    <div class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-amber-100">
+                        <i class="fas fa-pen-to-square text-2xl text-amber-600"></i>
+                    </div>
+                    <h3 class="font-display text-xl font-bold text-center mb-2 text-gray-900">Edit Nominal</h3>
+                    <p class="text-sm text-center text-gray-500 mb-4">Status pembayaran tetap Verified setelah nominal diedit.</p>
+                    <form action="{{ route('admin.payments.amount.update', $payment) }}" method="POST" class="space-y-4">
+                        @csrf
+                        @method('PATCH')
+
+                        <div>
+                            <label for="correct-payment-amount-{{ $payment->id }}" class="block text-xs font-semibold uppercase tracking-wide text-gray-400">Nominal yang benar</label>
+                            <input id="correct-payment-amount-{{ $payment->id }}" name="amount" type="text" inputmode="numeric" data-money-input pattern="[0-9.]*" min="0" step="1000" value="{{ $payment->amount }}" required
+                                   class="mt-2 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                        </div>
+
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" data-modal-hide="correctPayModal-{{ $payment->id }}"
+                                    class="flex-1 px-6 py-2.5 rounded-xl text-sm font-semibold border-2 border-gray-200 text-gray-600 hover:bg-gray-50 transition-all">
+                                Batal
+                            </button>
+                            <x-button type="submit" class="flex-1 justify-center"><i class="fas fa-save"></i> Simpan Edit</x-button>
                         </div>
                     </form>
                 </div>

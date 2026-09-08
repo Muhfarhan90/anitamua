@@ -20,7 +20,7 @@
                     <option value="full" @selected(old('type', $package->type ?? '') === 'full')>Full WO Package</option>
                 </select>
             </div>
-            <x-input name="price" label="Harga" type="number" :value="$package->price ?? 0" min="0" step="1000" required />
+            <x-input name="price" label="Harga" currency :value="$package->price ?? 0" min="0" step="1000" required />
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">

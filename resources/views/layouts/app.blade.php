@@ -362,6 +362,20 @@
             overlay.classList.add('hidden');
         });
 
+        const formatMoney = (input) => {
+            const digits = input.value.replace(/[,.]\d{1,2}$/, '').replace(/\D/g, '');
+            input.value = digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        };
+        document.querySelectorAll('[data-money-input]').forEach(formatMoney);
+        document.addEventListener('input', (event) => {
+            if (event.target.matches('[data-money-input]')) formatMoney(event.target);
+        });
+        document.addEventListener('submit', (event) => {
+            event.target.querySelectorAll?.('[data-money-input]').forEach(input => {
+                input.value = input.value.replaceAll('.', '');
+            });
+        });
+
         // Proof lightbox
         function openProof(event, src) {
             event.preventDefault();
