@@ -68,6 +68,10 @@
                     ['label' => 'Inventory',  'icon' => 'fa-solid fa-shirt',           'url' => route('admin.inventory.index'),  'active' => 'admin.inventory.*'],
                     ['label' => 'Kat. Inventory', 'icon' => 'fa-solid fa-tags',        'url' => route('admin.inventory-categories.index'), 'active' => 'admin.inventory-categories.*'],
                 ]],
+                ['title' => 'Vendor', 'items' => [
+                    ['label' => 'Master Vendor', 'icon' => 'fa-solid fa-store',         'url' => route('admin.vendors.index'), 'active' => 'admin.vendors.*'],
+                    ['label' => 'Kat. Vendor',   'icon' => 'fa-solid fa-tags',          'url' => route('admin.vendor-categories.index'), 'active' => 'admin.vendor-categories.*'],
+                ]],
                 ['title' => 'Users', 'items' => [
                     ['label' => 'Manajemen Staff', 'icon' => 'fa-solid fa-user-tie',     'url' => route('admin.users.staff'),      'active' => 'admin.users.staff*'],
                     ['label' => 'Manajemen Klien', 'icon' => 'fa-solid fa-users',        'url' => route('admin.users.clients'),    'active' => 'admin.users.clients*'],
@@ -99,6 +103,10 @@
                 ['title' => 'Wardrobe', 'items' => [
                     ['label' => 'Inventory',  'icon' => 'fa-solid fa-shirt',           'url' => route('admin.inventory.index'),  'active' => 'admin.inventory.*'],
                     ['label' => 'Kat. Inventory', 'icon' => 'fa-solid fa-tags',        'url' => route('admin.inventory-categories.index'), 'active' => 'admin.inventory-categories.*'],
+                ]],
+                ['title' => 'Vendor', 'items' => [
+                    ['label' => 'Master Vendor', 'icon' => 'fa-solid fa-store',         'url' => route('admin.vendors.index'), 'active' => 'admin.vendors.*'],
+                    ['label' => 'Kat. Vendor',   'icon' => 'fa-solid fa-tags',          'url' => route('admin.vendor-categories.index'), 'active' => 'admin.vendor-categories.*'],
                 ]],
                 ['title' => 'Settings', 'items' => [
                     ['label' => 'Testimoni',  'icon' => 'fa-solid fa-quote-right',     'url' => route('admin.content.testimonials'), 'active' => 'admin.content.testimonials*'],

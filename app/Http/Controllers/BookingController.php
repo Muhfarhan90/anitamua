@@ -59,6 +59,7 @@ class BookingController extends Controller
         $data['status'] = Booking::STATUS_PENDING;
 
         $booking = Booking::create($data);
+        $booking->syncVendorsFromPackage();
 
         // Nominal DP dari client menjadi nilai awal; admin tetap memverifikasi dan dapat mengoreksinya.
         $paymentData = [

@@ -8,6 +8,8 @@ use App\Models\Payment;
 use App\Models\Reminder;
 use App\Models\SiteSetting;
 use App\Models\User;
+use App\Models\Vendor;
+use App\Models\VendorCategory;
 use App\Models\WeddingStage;
 use App\Services\InvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -207,6 +209,15 @@ it('admin creating booking auto-verifies dp, books it, and adds hari h schedule'
     $admin = User::where('email', 'admin@anitamua.com')->first();
     $client = User::where('email', 'client@anitamua.com')->first();
     $package = Package::first();
+    $vendorCategory = VendorCategory::firstOrCreate(['name' => 'Live Music'], ['slug' => 'live-music']);
+    $vendor = Vendor::create([
+        'vendor_category_id' => $vendorCategory->id,
+        'name' => 'Harmoni Musik',
+        'phone' => '081255555555',
+        'price' => 3000000,
+        'status' => 'active',
+    ]);
+    $package->vendors()->attach($vendor->id, ['price' => 2750000]);
 
     $eventDate = now()->addMonths(2)->toDateString();
 
@@ -228,6 +239,8 @@ it('admin creating booking auto-verifies dp, books it, and adds hari h schedule'
     expect($booking->name)->toBe($client->name);
     expect($booking->phone)->toBe($client->phone);
     expect($booking->email)->toBe($client->email);
+    expect($booking->bookingVendors()->value('vendor_id'))->toBe($vendor->id);
+    expect((float) $booking->bookingVendors()->value('price'))->toBe(2750000.0);
 
     $payment = $booking->payments()->where('type', 'DP1')->first();
     expect($payment)->not->toBeNull();
@@ -242,6 +255,11 @@ it('admin creating booking auto-verifies dp, books it, and adds hari h schedule'
     expect($hariH->date->toDateString())->toBe($eventDate);
     expect($hariH->time->format('H:i'))->toBe('18:30');
     expect($hariH->status)->toBe('scheduled');
+
+    $this->actingAs($client)->get("/client/booking/{$booking->id}")
+        ->assertOk()
+        ->assertSee('Vendor yang Digunakan')
+        ->assertSee('Harmoni Musik');
 });
 
 it('admin can create and edit manual booking add-ons without changing payments', function () {
@@ -294,6 +312,44 @@ it('admin can create and edit manual booking add-ons without changing payments',
         ->assertOk()
         ->assertSee('Extra Touch Up Premium')
         ->assertSee('Rp 300.000');
+});
+
+it('updates the vendor snapshot when an admin changes a booking package', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $sourcePackage = Package::firstOrFail();
+    $targetPackage = Package::where('id', '!=', $sourcePackage->id)->firstOrFail();
+    $vendors = Vendor::limit(2)->get();
+    $sourcePackage->vendors()->sync([$vendors[0]->id => ['price' => 1000000]]);
+    $targetPackage->vendors()->sync([$vendors[1]->id => ['price' => 2000000]]);
+    $booking = Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $client->id,
+        'package_id' => $sourcePackage->id,
+        'package_price' => $sourcePackage->price,
+        'name' => 'Maya & Arga',
+        'phone' => $client->phone,
+        'email' => $client->email,
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'status' => Booking::STATUS_BOOKED,
+    ]);
+    $booking->syncVendorsFromPackage();
+
+    $this->actingAs($admin)->patch("/admin/bookings/{$booking->id}", [
+        'client_id' => $client->id,
+        'package_id' => $targetPackage->id,
+        'name' => $booking->name,
+        'phone' => $booking->phone,
+        'email' => $booking->email,
+        'event_date' => $booking->event_date->toDateString(),
+        'location' => $booking->location,
+        'notes' => $booking->notes,
+        'status' => Booking::STATUS_BOOKED,
+    ])->assertRedirect();
+
+    $booking->refresh();
+    expect($booking->bookingVendors()->value('vendor_id'))->toBe($vendors[1]->id);
+    expect((float) $booking->package_price)->toBe((float) $targetPackage->price);
 });
 
 it('admin booking form saves survey and fitting details', function () {
@@ -750,6 +806,36 @@ it('backfills only missing invoices and uses the first verified payment date', f
     expect(Invoice::where('booking_id', $booking->id)->count())->toBe(1);
 });
 
+it('backfills missing vendor snapshots without changing existing booking vendors', function () {
+    $package = Package::firstOrFail();
+    $vendor = Vendor::firstOrFail();
+    $package->vendors()->sync([$vendor->id => ['price' => 1234567]]);
+    $booking = Booking::create([
+        'code' => Booking::generateCode(),
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => 'Sari & Bima',
+        'phone' => '081234567892',
+        'email' => 'saribima@example.com',
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'status' => Booking::STATUS_BOOKED,
+    ]);
+
+    $this->artisan('bookings:backfill-vendors')
+        ->expectsOutput('Preview: 1 booking akan diberi snapshot vendor. Jalankan dengan --force untuk menyimpan.')
+        ->assertSuccessful();
+    expect($booking->bookingVendors()->exists())->toBeFalse();
+
+    $this->artisan('bookings:backfill-vendors --force')
+        ->expectsOutput('Snapshot vendor dibuat: 1')
+        ->assertSuccessful();
+    expect((float) $booking->bookingVendors()->value('price'))->toBe(1234567.0);
+
+    $this->artisan('bookings:backfill-vendors --force')
+        ->expectsOutput('Snapshot vendor dibuat: 0')
+        ->assertSuccessful();
+});
+
 it('admin can cancel booking and dp is forfeited', function () {
     $admin = User::where('email', 'admin@anitamua.com')->first();
     $booking = Booking::first();
@@ -786,9 +872,12 @@ it('renders MVP back office pages and hides deferred features', function () {
         $this->actingAs($owner)->get($url)->assertOk();
     }
 
-    // Vendor, Keuangan, Timeline, Reminder dinonaktifkan sementara
-    foreach (['/admin/vendors', '/admin/vendor-categories',
-              '/admin/finances', '/admin/timeline', '/admin/reminders'] as $url) {
+    foreach (['/admin/vendors', '/admin/vendor-categories'] as $url) {
+        $this->actingAs($owner)->get($url)->assertOk();
+    }
+
+    // Keuangan, Timeline, Reminder dinonaktifkan sementara
+    foreach (['/admin/finances', '/admin/timeline', '/admin/reminders'] as $url) {
         $this->actingAs($owner)->get($url)->assertNotFound();
     }
 });

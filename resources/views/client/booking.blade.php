@@ -20,12 +20,6 @@
 </div>
 
 <div class="max-w-[1280px] mx-auto pb-10">
-    @if(in_array($booking->status, [\App\Models\Booking::STATUS_BOOKED, \App\Models\Booking::STATUS_COMPLETED], true))
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-100 bg-brand-50 px-5 py-4">
-        <div><p class="font-semibold text-gray-800">Invoice booking tersedia</p><p class="text-sm text-gray-500">Unduh invoice terbaru setelah pembayaran diverifikasi.</p></div>
-        <a href="{{ route('client.invoice.show', $booking) }}" class="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-700"><i class="fas fa-print"></i> Buka / Cetak Invoice</a>
-    </div>
-    @endif
     <div class="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 items-start">
 
         {{-- MAIN --}}
@@ -202,6 +196,29 @@
                     </div>
                 </div>
             </x-card>
+
+            @if($booking->bookingVendors->isNotEmpty())
+            <x-card title="Vendor yang Digunakan" title-icon="fa-store">
+                <p class="mb-3 text-xs text-gray-500">Tim vendor yang dialokasikan untuk acara Anda.</p>
+                <div class="divide-y divide-brand-100">
+                    @foreach($booking->bookingVendors as $bookingVendor)
+                    @php($vendor = $bookingVendor->vendor)
+                    <div class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
+                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand">
+                            <i class="fas fa-store text-sm"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="truncate text-sm font-semibold text-gray-800">{{ $vendor?->name ?? 'Vendor' }}</p>
+                            <p class="mt-0.5 text-xs font-medium text-brand">{{ $bookingVendor->role ?: $vendor?->category?->name ?: 'Vendor acara' }}</p>
+                            @if($vendor?->phone || $vendor?->instagram)
+                            <p class="mt-1 text-xs text-gray-500">{{ $vendor?->phone }}{{ $vendor?->phone && $vendor?->instagram ? ' · ' : '' }}{{ $vendor?->instagram }}</p>
+                            @endif
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </x-card>
+            @endif
 
             <x-card title="Ringkasan Keuangan" title-icon="fa-wallet">
                 <div class="space-y-2 text-sm mb-4">

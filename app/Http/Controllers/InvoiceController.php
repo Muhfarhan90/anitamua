@@ -68,33 +68,6 @@ class InvoiceController extends Controller
         return $this->pdf($invoice->fresh(['booking.client', 'booking.package', 'booking.addons', 'booking.payments']));
     }
 
-    public function clientShow(Booking $booking, InvoiceService $invoiceService)
-    {
-        $this->authorizeClientBooking($booking);
-        abort_unless(in_array($booking->status, [Booking::STATUS_BOOKED, Booking::STATUS_COMPLETED], true), 404);
-
-        $invoice = $invoiceService->sync($booking);
-        $invoice->load(['booking.client', 'booking.package', 'booking.addons', 'booking.payments']);
-        $settings = $this->settings();
-
-        return view('invoices.show', compact('invoice', 'settings'));
-    }
-
-    public function clientDownloadPdf(Booking $booking, InvoiceService $invoiceService)
-    {
-        $this->authorizeClientBooking($booking);
-        abort_unless(in_array($booking->status, [Booking::STATUS_BOOKED, Booking::STATUS_COMPLETED], true), 404);
-
-        $invoice = $invoiceService->sync($booking);
-
-        return $this->pdf($invoice->fresh(['booking.client', 'booking.package', 'booking.addons', 'booking.payments']));
-    }
-
-    private function authorizeClientBooking(Booking $booking): void
-    {
-        abort_unless($booking->client_id === auth()->id(), 403);
-    }
-
     private function pdf(Invoice $invoice)
     {
         $settings = $this->settings();

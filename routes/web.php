@@ -53,8 +53,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/client/booking/{booking}', [ClientController::class, 'booking'])->name('client.booking');
     Route::post('/client/booking/{booking}/proof', [ClientController::class, 'uploadProof'])->name('client.booking.proof');
-    Route::get('/client/booking/{booking}/invoice', [InvoiceController::class, 'clientShow'])->name('client.invoice.show');
-    Route::get('/client/booking/{booking}/invoice/pdf', [InvoiceController::class, 'clientDownloadPdf'])->name('client.invoice.pdf');
 
     // Profil & ganti password
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
@@ -133,14 +131,14 @@ Route::middleware('auth')->group(function () {
             Route::put('/benefit-categories/{category}', [BenefitCategoryController::class, 'update'])->name('benefit-categories.update');
             Route::delete('/benefit-categories/{category}', [BenefitCategoryController::class, 'destroy'])->name('benefit-categories.destroy');
 
-            // // Master Vendor (Owner & Admin) — dinonaktifkan (modul vendor tidak dipakai)
-            // Route::resource('/vendors', VendorController::class)->names('vendors')->except('show');
+            // Master Vendor (Owner & Admin)
+            Route::resource('/vendors', VendorController::class)->names('vendors')->except('show');
 
-            // // Kategori Vendor (Owner & Admin) — dinonaktifkan
-            // Route::get('/vendor-categories', [VendorCategoryController::class, 'index'])->name('vendor-categories.index');
-            // Route::post('/vendor-categories', [VendorCategoryController::class, 'store'])->name('vendor-categories.store');
-            // Route::put('/vendor-categories/{category}', [VendorCategoryController::class, 'update'])->name('vendor-categories.update');
-            // Route::delete('/vendor-categories/{category}', [VendorCategoryController::class, 'destroy'])->name('vendor-categories.destroy');
+            // Kategori Vendor (Owner & Admin)
+            Route::get('/vendor-categories', [VendorCategoryController::class, 'index'])->name('vendor-categories.index');
+            Route::post('/vendor-categories', [VendorCategoryController::class, 'store'])->name('vendor-categories.store');
+            Route::put('/vendor-categories/{category}', [VendorCategoryController::class, 'update'])->name('vendor-categories.update');
+            Route::delete('/vendor-categories/{category}', [VendorCategoryController::class, 'destroy'])->name('vendor-categories.destroy');
 
             // Inventory Wardrobe (Owner & Admin)
             Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');

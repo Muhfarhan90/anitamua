@@ -185,4 +185,19 @@ class Booking extends Model
             'status' => Schedule::STATUS_SCHEDULED,
         ]);
     }
+
+    public function syncVendorsFromPackage(): void
+    {
+        $this->loadMissing('package.vendors.category');
+        $this->bookingVendors()->delete();
+
+        foreach ($this->package?->vendors ?? [] as $vendor) {
+            $this->bookingVendors()->create([
+                'vendor_id' => $vendor->id,
+                'role' => $vendor->category?->name,
+                'price' => $vendor->pivot->price ?? $vendor->price,
+                'status' => 'confirmed',
+            ]);
+        }
+    }
 }

@@ -17,6 +17,8 @@ use App\Models\Reminder;
 use App\Models\Schedule;
 use App\Models\Survey;
 use App\Models\User;
+use App\Models\Vendor;
+use App\Models\VendorCategory;
 use App\Services\ActivityLogger;
 use App\Services\InvoiceService;
 use Carbon\Carbon;
@@ -38,41 +40,30 @@ class DatabaseSeeder extends Seeder
 
     private function seedMasterData(): void
     {
-        // // VENDOR (modul dinonaktifkan sementara)
-        // $categories = [
-        //     'Photography', 'Videography', 'Decoration', 'Catering',
-        //     'MC', 'Entertainment', 'Wardrobe', 'Venue', 'Cake',
-        // ];
+        $vendorCategories = collect(['Photography', 'Decoration', 'Catering', 'MC'])
+            ->mapWithKeys(fn ($name) => [$name => VendorCategory::create(['name' => $name, 'slug' => Str::slug($name)])]);
 
-        // foreach ($categories as $name) {
-        //     VendorCategory::create(['name' => $name, 'slug' => Str::slug($name)]);
-        // }
+        $vendors = [];
+        foreach ([
+            ['Eterna Photography', 'Photography', '081211111111', '@eternaphoto', 8500000],
+            ['Arunika Decoration', 'Decoration', '081222222222', '@arunikadecoration', 7200000],
+            ['Rasa Nusantara Catering', 'Catering', '081233333333', '@rasanusantara', 12500000],
+            ['Nadya Pratama MC', 'MC', '081244444444', '@nadyapratama', 2500000],
+        ] as [$name, $category, $phone, $instagram, $price]) {
+            $vendors[$name] = Vendor::create([
+                'vendor_category_id' => $vendorCategories[$category]->id,
+                'name' => $name,
+                'phone' => $phone,
+                'instagram' => $instagram,
+                'price' => $price,
+                'status' => 'active',
+            ]);
+        }
 
         $inventoryCategories = ['Wardrobe', 'Accessory', 'Makeup Kit', 'Footwear', 'Perlengkapan'];
         foreach ($inventoryCategories as $name) {
             InventoryCategory::create(['name' => $name]);
         }
-
-        // // VENDOR DATA (modul dinonaktifkan sementara)
-        // $vendorData = [
-        //     ['Eterna Photography', 'Photography', 8500000, 4.8, '...', 'active', 'jakarta', 'eterna.jpg'],
-        // ];
-
-        // foreach ($vendorData as [$name, $cat, $price, $rating, $notes, $status, $address, $logo]) {
-        //     Vendor::create([
-        //         'vendor_category_id' => VendorCategory::where('name', $cat)->first()->id,
-        //         'name' => $name,
-        //         'phone' => '08'.random_int(1000000000, 9999999999),
-        //         'email' => strtolower(str_replace([' ', "'"], ['.', ''], $name)).'@example.com',
-        //         'instagram' => '@'.Str::slug($name),
-        //         'address' => ucfirst($address),
-        //         'logo' => $logo,
-        //         'price' => $price,
-        //         'rating' => $rating,
-        //         'status' => $status,
-        //         'notes' => $notes,
-        //     ]);
-        // }
 
         // ── MASTER BENEFIT & KATEGORI (dipakai ulang di banyak paket) ──
         $benefitCategories = [
@@ -105,12 +96,12 @@ class DatabaseSeeder extends Seeder
         }
 
         $packageData = [
-            'Diamond Wedding' => ['type' => 'full', 'sub_type' => 'gedung', 'price' => 24800000, 'color' => '#60a5fa', 'benefits' => [
+            'Diamond Wedding' => ['type' => 'full', 'sub_type' => 'gedung', 'price' => 24800000, 'color' => '#60a5fa', 'vendors' => ['Eterna Photography', 'Arunika Decoration', 'Nadya Pratama MC'], 'benefits' => [
                 'Makeup & Retouch', 'Hair Do', 'Touch Up', 'Premium Wardrobe',
                 'Premium Accessories', 'VIP Consultation', 'Free Trial Make Up', 'Documentation Support',
                 'Pelaminan 4m', 'Backdrop', 'Album 2 Roll', 'Video Cinematic',
             ]],
-            'Luxury Wedding' => ['type' => 'full', 'sub_type' => 'gedung', 'price' => 35000000, 'color' => '#a855f7', 'benefits' => [
+            'Luxury Wedding' => ['type' => 'full', 'sub_type' => 'gedung', 'price' => 35000000, 'color' => '#a855f7', 'vendors' => ['Eterna Photography', 'Arunika Decoration', 'Rasa Nusantara Catering', 'Nadya Pratama MC'], 'benefits' => [
                 'Makeup & Retouch', 'Hair Do', 'Touch Up', 'Premium Wardrobe',
                 'Premium Accessories', 'VIP Consultation', 'Free Trial Make Up', 'Documentation Support',
                 'Premium Photo Session', 'Bridal Shower Planning', 'Pelaminan 4m', 'Backdrop',
@@ -130,6 +121,9 @@ class DatabaseSeeder extends Seeder
             ]);
 
             $package->benefits()->sync(array_values(array_intersect_key($benefitIds, array_flip($data['benefits']))));
+            $package->vendors()->sync(collect($data['vendors'])->mapWithKeys(fn ($name) => [
+                $vendors[$name]->id => ['price' => $vendors[$name]->price],
+            ])->all());
 
             // Kategori yang dipakai = kategori dari benefit terpilih
             $usedCategoryIds = $package->benefits->map(fn ($b) => $b->benefit_category_id)->unique()->values();
@@ -208,6 +202,7 @@ class DatabaseSeeder extends Seeder
             'status' => Booking::STATUS_BOOKED,
             'created_by' => $admin->id,
         ]);
+        $booking->syncVendorsFromPackage();
 
         $booking->addons()->createMany([
             ['name' => 'Prewedding & Hairdo', 'price' => 1450000],
