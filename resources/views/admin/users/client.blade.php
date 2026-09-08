@@ -43,6 +43,14 @@
                     </td>
                     <td class="px-5 py-3">
                         <div class="flex items-center justify-center gap-2">
+                            @php
+                                $whatsapp = preg_replace('/\D+/', '', (string) $user->phone);
+                                $whatsapp = str_starts_with($whatsapp, '0') ? '62'.substr($whatsapp, 1) : $whatsapp;
+                                $accountMessage = "Halo {$user->name}!\n\nTerima kasih telah mempercayakan momen spesial kepada ANITA MUA. Pembayaran sudah berhasil diverifikasi.\n\nBerikut informasi akun dashboard ANITA MUA:\nEmail: {$user->email}\nPassword: ".\App\Models\User::generateDefaultPassword($user->name)."\nLink login: ".url('/login')."\n\nSetelah login, silakan atur password baru melalui menu Profil.";
+                            @endphp
+                            @if($whatsapp)
+                            <x-button size="sm" color="ghost" class="border border-emerald-500 text-emerald-600 hover:bg-emerald-50" style="width:38px;height:32px;padding:0;line-height:1;" href="https://wa.me/{{ $whatsapp }}?text={{ rawurlencode($accountMessage) }}" target="_blank" rel="noopener" title="Kirim informasi akun lewat WhatsApp"><i class="fab fa-whatsapp" style="font-size:1.15rem;"></i></x-button>
+                            @endif
                             <x-button size="sm" color="outline" href="{{ route('admin.users.edit', $user->id) }}"><i class="fas fa-pen"></i></x-button>
                             <form method="POST" action="{{ route('admin.users.destroy', $user->id) }}" onsubmit="return confirm('Hapus klien {{ $user->name }}?')">
                                 @csrf @method('DELETE')
@@ -85,4 +93,5 @@
         </form>
     </div>
 </div>
+
 @endsection
