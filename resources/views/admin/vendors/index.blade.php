@@ -45,9 +45,13 @@
                 <tr class="border-b border-gray-50 hover:bg-brand-50/30 transition-colors">
                     <td class="px-5 py-3">
                         <div class="flex items-center gap-3">
-                            <div class="w-9 h-9 rounded-full bg-gradient-to-br from-brand to-brand-dark text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
-                                {{ strtoupper(substr($vendor->name, 0, 1)) }}
-                            </div>
+                            @if($vendor->logo)
+                                <img src="{{ asset('storage/'.$vendor->logo) }}" alt="Logo {{ $vendor->name }}" class="h-9 w-9 shrink-0 rounded-full border border-brand-100 bg-white object-cover">
+                            @else
+                                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-brand to-brand-dark text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
+                                    {{ strtoupper(substr($vendor->name, 0, 1)) }}
+                                </div>
+                            @endif
                             <span class="font-semibold text-gray-800">{{ $vendor->name }}</span>
                         </div>
                     </td>
