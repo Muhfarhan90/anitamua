@@ -20,7 +20,10 @@ class AppServiceProvider extends ServiceProvider
                 return SiteSetting::pluck('value', 'key')->toArray();
             });
 
-            $view->with('settings', $settings);
+            $view->with('settings', $settings)->with('landingImages', [
+                'hero' => SiteSetting::imageUrl($settings['landing_hero_image'] ?? null, SiteSetting::DEFAULT_LANDING_HERO_IMAGE),
+                'about' => SiteSetting::imageUrl($settings['about_image'] ?? null, SiteSetting::DEFAULT_ABOUT_IMAGE),
+            ]);
         });
     }
 }

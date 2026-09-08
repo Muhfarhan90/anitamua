@@ -42,7 +42,7 @@
             </div>
             <div class="hidden lg:block relative">
                 <div style="border-radius: 32px; overflow:hidden; box-shadow: 0 30px 60px rgba(212,115,154,.2); border: 4px solid rgba(255,255,255,.9);">
-                    <img src="https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=900&auto=format&fit=crop"
+                    <img src="{{ $landingImages['hero'] }}"
                          alt="Wedding" style="width:100%; height:520px; object-fit:cover; display:block;">
                 </div>
                 <div class="absolute" style="top:40px; right:-20px; width:80px; height:80px; background:var(--primary); border-radius:50%; opacity:.15;"></div>
@@ -57,7 +57,7 @@
     <div class="container">
         <div class="grid gap-5 lg:grid-cols-2 items-center">
             <div class="">
-                <img src="https://images.unsplash.com/photo-1583939003579-730e3918a45a?q=80&w=900&auto=format&fit=crop" class="w-full" alt="Anita MUA" style="height:420px; object-fit:cover; border-radius:24px; box-shadow:0 20px 40px rgba(0,0,0,.08);">
+                <img src="{{ $landingImages['about'] }}" class="w-full" alt="Anita MUA" style="height:420px; object-fit:cover; border-radius:24px; box-shadow:0 20px 40px rgba(0,0,0,.08);">
             </div>
             <div class="">
                 <p class="section-eyebrow mb-2">Tentang Kami</p>
@@ -165,12 +165,7 @@
         </div>
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
             @foreach($galleries as $gallery)
-                <div class="relative overflow-hidden rounded-2xl shadow-sm" style="height:280px; cursor:pointer;" onclick="openLightbox(this)">
-                        <img src="{{ $gallery->image_url }}" class="w-full h-full" style="object-fit:cover; transition:transform .4s ease;" alt="{{ $gallery->title }}">
-                        <div class="absolute bottom-0 left-0 w-full p-3 text-white" style="background:linear-gradient(transparent, rgba(0,0,0,.65));">
-                            <small class="font-semibold">{{ $gallery->title }}</small>
-                        </div>
-                    </div>
+                <x-gallery-slider :gallery="$gallery" />
             @endforeach
         </div>
     </div>
@@ -274,33 +269,7 @@
 @endsection
 
 @push('scripts')
-{{-- Lightbox modal --}}
-<div id="lightboxModal" onclick="closeLightbox()" style="display:none; position:fixed; inset:0; z-index:1100; background:rgba(0,0,0,.9); align-items:center; justify-content:center; padding:2rem;">
-    <button onclick="event.stopPropagation();closeLightbox()" style="position:absolute; top:20px; right:30px; background:none; border:none; color:#fff; font-size:2.5rem; cursor:pointer; line-height:1;">&times;</button>
-    <div onclick="event.stopPropagation()" style="max-width:900px; width:100%; text-align:center;">
-        <img id="lightboxImg" src="" alt="" style="max-width:100%; max-height:78vh; border-radius:12px; display:block; margin:0 auto; object-fit:contain;">
-        <p id="lightboxCaption" class="mt-3" style="color:#fff; font-size:1rem;"></p>
-    </div>
-</div>
-<script>
-    function openLightbox(el) {
-        const img = el.querySelector('img');
-        const caption = el.querySelector('small');
-        document.getElementById('lightboxImg').src = img.src;
-        document.getElementById('lightboxImg').alt = img.alt;
-        document.getElementById('lightboxCaption').textContent = caption ? caption.textContent : '';
-        const modal = document.getElementById('lightboxModal');
-        modal.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-    function closeLightbox() {
-        document.getElementById('lightboxModal').style.display = 'none';
-        document.body.style.overflow = '';
-    }
-    document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeLightbox();
-    });
-</script>
+<x-gallery-lightbox />
 
 <script>
     function toggleFaq(btn) {

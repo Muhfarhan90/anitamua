@@ -66,20 +66,31 @@ class ContentController extends Controller
         $data = $request->validate([
             'title' => ['nullable', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:100'],
-            'photo' => ['required', 'image', 'max:8192'],
+            'photos' => ['required', 'array', 'min:3'],
+            'photos.*' => ['required', 'image', 'max:8192'],
+        ], [
+            'photos.min' => 'Unggah minimal tiga foto untuk satu item galeri.',
         ]);
 
-        $data['photo'] = $request->file('photo')->store('uploads/gallery', 'public');
+        $data['photos'] = collect($request->file('photos'))
+            ->map(fn ($photo) => $photo->store('uploads/gallery', 'public'))
+            ->all();
+        $data['photo'] = $data['photos'][0];
 
         Gallery::create($data);
 
-        ActivityLogger::log('gallery_created', 'Foto galeri ditambahkan', 'Foto galeri "'.($data['title'] ?? 'Tanpa judul').'" ditambahkan oleh '.auth()->user()->name);
+        ActivityLogger::log('gallery_created', 'Galeri ditambahkan', 'Galeri "'.($data['title'] ?? 'Tanpa judul').'" dengan '.count($data['photos']).' foto ditambahkan oleh '.auth()->user()->name);
 
-        return back()->with('success', 'Foto galeri berhasil ditambahkan.');
+        return back()->with('success', 'Galeri berhasil ditambahkan.');
     }
 
     public function destroyGallery(Gallery $gallery)
     {
+        collect([$gallery->photo, ...($gallery->photos ?? [])])
+            ->filter()
+            ->unique()
+            ->each(fn (string $photo) => Storage::disk('public')->delete($photo));
+
         $gallery->delete();
 
         ActivityLogger::log('gallery_deleted', 'Foto galeri dihapus', 'Foto galeri dihapus oleh '.auth()->user()->name);
@@ -157,7 +168,7 @@ class ContentController extends Controller
 
     public function settings()
     {
-        $keys = ['company_name', 'tagline', 'about', 'address', 'phone', 'email', 'instagram', 'whatsapp', 'bank_name', 'bank_account_number', 'bank_account_name', 'invoice_greeting', 'logo'];
+        $keys = ['company_name', 'tagline', 'about', 'address', 'phone', 'email', 'instagram', 'whatsapp', 'bank_name', 'bank_account_number', 'bank_account_name', 'invoice_greeting', 'logo', 'landing_hero_image', 'about_image'];
 
         $settings = SiteSetting::whereIn('key', $keys)->pluck('value', 'key');
 
@@ -180,16 +191,21 @@ class ContentController extends Controller
             'bank_account_name' => ['nullable', 'string', 'max:100'],
             'invoice_greeting' => ['nullable', 'string', 'max:500'],
             'logo' => ['nullable', 'image', 'max:2048'],
+            'landing_hero_image' => ['nullable', 'image', 'max:8192'],
+            'about_image' => ['nullable', 'image', 'max:8192'],
         ]);
 
-        // Upload logo baru (kompres otomatis) — hapus logo lama agar hanya tersimpan 1 logo
-        if ($request->hasFile('logo')) {
-            $oldLogo = SiteSetting::where('key', 'logo')->value('value');
-            if ($oldLogo && Storage::disk('public')->exists($oldLogo)) {
-                Storage::disk('public')->delete($oldLogo);
-            }
+        foreach (['logo' => 'uploads/logo', 'landing_hero_image' => 'uploads/site', 'about_image' => 'uploads/site'] as $key => $directory) {
+            if ($request->hasFile($key)) {
+                $oldImage = SiteSetting::where('key', $key)->value('value');
+                if ($oldImage && Storage::disk('public')->exists($oldImage)) {
+                    Storage::disk('public')->delete($oldImage);
+                }
 
-            $data['logo'] = ImageCompressor::compressAndStore($request->file('logo'), 'uploads/logo');
+                $data[$key] = ImageCompressor::compressAndStore($request->file($key), $directory);
+            } else {
+                unset($data[$key]);
+            }
         }
 
         foreach ($data as $key => $value) {
@@ -203,4 +219,5 @@ class ContentController extends Controller
 
         return back()->with('success', 'Pengaturan situs berhasil disimpan.');
     }
+
 }

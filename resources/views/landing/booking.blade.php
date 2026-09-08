@@ -5,7 +5,7 @@
 @push('styles')
 <style>
     .booking-hero {
-        background: linear-gradient(rgba(212,115,154,.8), rgba(184,92,133,.8)), url('https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1920&auto=format&fit=crop') center/cover no-repeat;
+        background: linear-gradient(rgba(212,115,154,.8), rgba(184,92,133,.8)), url('{{ $landingImages['hero'] }}') center/cover no-repeat;
         padding: 3.5rem 0 2.5rem;
         color: #fff;
         text-align: center;

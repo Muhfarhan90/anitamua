@@ -2,6 +2,7 @@
 
 use App\Models\ActivityLog;
 use App\Models\Booking;
+use App\Models\Gallery;
 use App\Models\Invoice;
 use App\Models\Package;
 use App\Models\Payment;
@@ -966,6 +967,32 @@ it('admin can add a pending payment stage from booking detail', function () {
     expect($payment->status)->toBe(Payment::STATUS_PENDING);
     expect($payment->proof)->toStartWith('uploads/proofs/');
     Storage::disk('public')->assertExists($payment->proof);
+});
+
+it('requires at least three photos for each gallery item', function () {
+    Storage::fake('public');
+    $owner = User::where('email', 'owner@anitamua.com')->first();
+
+    $this->actingAs($owner)
+        ->post('/admin/content/gallery', [
+            'title' => 'Wedding Baru',
+            'photos' => [UploadedFile::fake()->image('one.jpg'), UploadedFile::fake()->image('two.jpg')],
+        ])
+        ->assertSessionHasErrors('photos');
+
+    $this->actingAs($owner)
+        ->post('/admin/content/gallery', [
+            'title' => 'Wedding Baru',
+            'photos' => [
+                UploadedFile::fake()->image('one.jpg'),
+                UploadedFile::fake()->image('two.jpg'),
+                UploadedFile::fake()->image('three.jpg'),
+            ],
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect(Gallery::latest('id')->first()->photos)->toHaveCount(3);
 });
 
 it('generates reminders via command', function () {
