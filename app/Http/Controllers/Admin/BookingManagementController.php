@@ -33,6 +33,7 @@ class BookingManagementController extends Controller
                     ->orWhere('code', 'like', "%{$s}%")
                     ->orWhere('phone', 'like', "%{$s}%");
             }))
+            ->orderByDesc('event_date')
             ->orderByDesc('created_at');
 
         $bookings = $query->paginate(15)->withQueryString();
