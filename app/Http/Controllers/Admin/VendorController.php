@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Vendor;
 use App\Models\VendorCategory;
 use App\Services\ActivityLogger;
+use App\Services\ImageCompressor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class VendorController extends Controller
 {
@@ -33,6 +35,9 @@ class VendorController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateData($request);
+        if ($request->hasFile('logo')) {
+            $data['logo'] = ImageCompressor::compressAndStore($request->file('logo'), 'uploads/vendors');
+        }
 
         $vendor = Vendor::create($data);
 
@@ -51,6 +56,13 @@ class VendorController extends Controller
     public function update(Request $request, Vendor $vendor)
     {
         $data = $this->validateData($request);
+        if ($request->hasFile('logo')) {
+            $data['logo'] = ImageCompressor::compressAndStore($request->file('logo'), 'uploads/vendors');
+
+            if ($vendor->logo && Storage::disk('public')->exists($vendor->logo)) {
+                Storage::disk('public')->delete($vendor->logo);
+            }
+        }
 
         $vendor->update($data);
 
@@ -66,6 +78,9 @@ class VendorController extends Controller
         }
 
         $name = $vendor->name;
+        if ($vendor->logo && Storage::disk('public')->exists($vendor->logo)) {
+            Storage::disk('public')->delete($vendor->logo);
+        }
         $vendor->delete();
 
         ActivityLogger::log('vendor_deleted', 'Vendor dihapus', 'Vendor '.$name.' dihapus oleh '.auth()->user()->name);
@@ -81,6 +96,7 @@ class VendorController extends Controller
             'phone' => ['nullable', 'string', 'max:30'],
             'instagram' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string', 'max:255'],
+            'logo' => ['nullable', 'image', 'max:5120'],
             'price' => ['nullable', 'numeric', 'min:0'],
             'status' => ['required', 'in:active,inactive'],
             'notes' => ['nullable', 'string'],

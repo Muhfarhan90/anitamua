@@ -204,9 +204,13 @@
                     @foreach($booking->bookingVendors as $bookingVendor)
                     @php($vendor = $bookingVendor->vendor)
                     <div class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand">
-                            <i class="fas fa-store text-sm"></i>
-                        </div>
+                        @if($vendor?->logo)
+                            <img src="{{ asset('storage/'.$vendor->logo) }}" alt="Logo {{ $vendor->name }}" class="h-9 w-9 shrink-0 rounded-full border border-brand-100 bg-white object-cover">
+                        @else
+                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand">
+                                <i class="fas fa-store text-sm"></i>
+                            </div>
+                        @endif
                         <div class="min-w-0 flex-1">
                             <p class="truncate text-sm font-semibold text-gray-800">{{ $vendor?->name ?? 'Vendor' }}</p>
                             <p class="mt-0.5 text-xs font-medium text-brand">{{ $bookingVendor->role ?: $vendor?->category?->name ?: 'Vendor acara' }}</p>
