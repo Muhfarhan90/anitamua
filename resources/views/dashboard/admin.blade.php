@@ -118,7 +118,7 @@
                         </p>
                     @endif
                 </div>
-                <x-input name="amount" label="Nominal sesuai bukti" type="number" min="1000" step="1000" :value="$dpAmount > 0 ? $dpPayment->amount : null" placeholder="Contoh: 2500000" required />
+                <x-input name="amount" label="Nominal sesuai bukti" currency min="0" step="1000" :value="$dpAmount > 0 ? $dpPayment->amount : null" placeholder="Contoh: 2.500.000" required />
                 <input type="hidden" name="method" value="transfer">
 
                 <div class="flex gap-3 pt-2">

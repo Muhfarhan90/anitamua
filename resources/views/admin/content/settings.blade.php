@@ -11,7 +11,7 @@
     </x-slot:actions>
 </x-page-header>
 
-<x-card class="max-w-2xl">
+<x-card class="max-w-4xl">
     <form action="{{ route('admin.content.settings.store') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
         @csrf
 
@@ -26,6 +26,24 @@
             @error('logo')
                 <p class="text-xs text-red-600 mt-1"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>
             @enderror
+        </div>
+
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 pb-2">Gambar Landing</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            @foreach([
+                ['field' => 'landing_hero_image', 'label' => 'Gambar utama & header halaman', 'description' => 'Tampil pada hero beranda dan header halaman landing.', 'url' => $landingImages['hero']],
+                ['field' => 'about_image', 'label' => 'Gambar tentang kami', 'description' => 'Tampil pada bagian Tentang di beranda dan halaman Tentang.', 'url' => $landingImages['about']],
+            ] as $image)
+                <div class="rounded-xl border border-gray-100 p-3">
+                    <label class="block text-sm font-medium text-gray-600 mb-2">{{ $image['label'] }}</label>
+                    <img id="{{ $image['field'] }}Preview" src="{{ $image['url'] }}" alt="{{ $image['label'] }}" class="w-full h-36 rounded-lg object-cover border border-gray-100 mb-3">
+                    <input type="file" id="{{ $image['field'] }}Input" name="{{ $image['field'] }}" accept="image/*" onchange="previewImage(this, '{{ $image['field'] }}Preview')" class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
+                    <p class="text-xs text-gray-400 mt-1">{{ $image['description'] }} Maks. 8 MB.</p>
+                    @error($image['field'])
+                        <p class="text-xs text-red-600 mt-1"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>
+                    @enderror
+                </div>
+            @endforeach
         </div>
 
         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 pb-2">Umum</p>
@@ -64,14 +82,17 @@
 @push('scripts')
 <script>
     function previewLogo(input) {
+        previewImage(input, 'logoPreview', 'logoBox');
+    }
+
+    function previewImage(input, imageId, boxId = null) {
         const file = input.files[0];
         if (!file) return;
         const reader = new FileReader();
         reader.onload = function (e) {
-            const img = document.getElementById('logoPreview');
-            const box = document.getElementById('logoBox');
+            const img = document.getElementById(imageId);
             img.src = e.target.result;
-            box.classList.remove('hidden');
+            if (boxId) document.getElementById(boxId).classList.remove('hidden');
         };
         reader.readAsDataURL(file);
     }

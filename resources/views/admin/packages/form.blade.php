@@ -20,7 +20,7 @@
                     <option value="full" @selected(old('type', $package->type ?? '') === 'full')>Full WO Package</option>
                 </select>
             </div>
-            <x-input name="price" label="Harga" type="number" :value="$package->price ?? 0" min="0" step="1000" required />
+            <x-input name="price" label="Harga" currency :value="$package->price ?? 0" min="0" step="1000" required />
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -90,6 +90,36 @@
                 <p class="text-sm text-gray-400">Belum ada kategori benefit. <a href="{{ route('admin.benefit-categories.index') }}" class="text-brand no-underline font-medium">Tambah kategori dulu</a>.</p>
             @endforelse
             <p class="text-xs text-gray-400 mt-2">Pilih kategori dulu, lalu centang benefit dari kategori tersebut. Benefit diambil dari Master Benefit agar bisa dipakai ulang di banyak paket.</p>
+        </div>
+
+        <div class="border-t border-brand-100 pt-5">
+            <label class="block text-sm font-medium text-gray-600 mb-2">Vendor dalam Paket</label>
+            @php
+                $selectedVendors = collect(old('vendor_ids', $package?->vendors->pluck('id')->toArray() ?? []))
+                    ->filter()
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+                $vendorsByCategory = $vendors->groupBy(fn ($vendor) => $vendor->category?->name ?? 'Tanpa kategori');
+            @endphp
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                @forelse($vendorsByCategory as $categoryName => $categoryVendors)
+                    @php($selectedVendorId = $categoryVendors->pluck('id')->first(fn ($id) => in_array((int) $id, $selectedVendors, true)))
+                    <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-3">
+                        <label for="vendor-category-{{ Str::slug($categoryName) }}" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand">{{ $categoryName }}</label>
+                        <select name="vendor_ids[]" id="vendor-category-{{ Str::slug($categoryName) }}" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-200">
+                            <option value="">Tidak disertakan</option>
+                            @foreach($categoryVendors as $vendor)
+                                <option value="{{ $vendor->id }}" @selected((int) $vendor->id === (int) $selectedVendorId)>
+                                    {{ $vendor->name }} — Rp {{ number_format($vendor->price, 0, ',', '.') }}{{ $vendor->status !== 'active' ? ' (Inactive)' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                @empty
+                <p class="text-sm text-gray-400 md:col-span-2">Belum ada vendor. <a href="{{ route('admin.vendors.create') }}" class="font-medium text-brand no-underline">Tambah vendor terlebih dahulu</a>.</p>
+                @endforelse
+            </div>
+            <p class="mt-2 text-xs text-gray-400">Pilih satu vendor per kategori yang disertakan. Vendor tersebut akan tampil pada detail booking klien.</p>
         </div>
 
         <div class="flex gap-2 pt-4 border-t border-brand-100">

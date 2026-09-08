@@ -3,7 +3,7 @@
 @section('title', 'Testimoni')
 
 @section('content')
-<section class="page-header" style="background: linear-gradient(rgba(212,115,154,.8), rgba(184,92,133,.8)), url('https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1920&auto=format&fit=crop') center/cover no-repeat; padding: 64px 0; text-align:center; color:#fff;">
+<section class="page-header" style="background: linear-gradient(rgba(212,115,154,.8), rgba(184,92,133,.8)), url('{{ $landingImages['hero'] }}') center/cover no-repeat; padding: 64px 0; text-align:center; color:#fff;">
     <div class="section-container" style="max-width:820px; margin:0 auto; padding:0 3rem;">
         <p class="section-eyebrow mb-2" style="color:#fde8ef;">Testimoni</p>
         <h1 class="font-display font-bold mb-3" style="font-size:2.8rem;">Apa Kata Mereka?</h1>
@@ -28,7 +28,7 @@
                             </div>
                             <div>
                                 <div class="font-semibold text-sm">{{ $t->client_name }}</div>
-                                <small style="color:var(--muted); font-size:.68rem; letter-spacing:1.5px; text-transform:uppercase;">Client ANITA</small>
+                    <small style="color:var(--muted); font-size:.68rem; letter-spacing:1.5px; text-transform:uppercase;">Client ANITA</small>
                             </div>
                         </div>
                     </div>

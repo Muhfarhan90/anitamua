@@ -39,7 +39,7 @@ class BookingController extends Controller
             'event_date' => ['required', 'date', 'after_or_equal:today'],
             'location' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
-            'amount' => ['required', 'numeric', 'min:1000'],
+            'amount' => ['required', 'numeric', 'min:0'],
             'proof' => ['required', 'image', 'max:3072'], // bukti transfer DP1 wajib
         ]);
 
@@ -59,6 +59,7 @@ class BookingController extends Controller
         $data['status'] = Booking::STATUS_PENDING;
 
         $booking = Booking::create($data);
+        $booking->syncVendorsFromPackage();
 
         // Nominal DP dari client menjadi nilai awal; admin tetap memverifikasi dan dapat mengoreksinya.
         $paymentData = [

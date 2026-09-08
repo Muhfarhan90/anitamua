@@ -5,7 +5,7 @@
 @push('styles')
 <style>
     .booking-hero {
-        background: linear-gradient(rgba(212,115,154,.8), rgba(184,92,133,.8)), url('https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=1920&auto=format&fit=crop') center/cover no-repeat;
+        background: linear-gradient(rgba(212,115,154,.8), rgba(184,92,133,.8)), url('{{ $landingImages['hero'] }}') center/cover no-repeat;
         padding: 3.5rem 0 2.5rem;
         color: #fff;
         text-align: center;
@@ -328,7 +328,7 @@
                                 <label class="form-label">Nominal DP yang ditransfer <span class="text-red-600">*</span></label>
                                 <div class="input-group-icon">
                                     <i class="fa-solid fa-money-bill-wave input-icon"></i>
-                                    <input type="number" name="amount" class="form-control" value="{{ old('amount') }}" min="1000" step="1000" placeholder="Contoh: 2500000" required>
+                                    <input type="text" name="amount" inputmode="numeric" data-money-input pattern="[0-9.]*" class="form-control" value="{{ old('amount') }}" min="0" step="1000" placeholder="Contoh: 2.500.000" required>
                                 </div>
                                 <small style="color:var(--muted);">Masukkan nominal sesuai bukti transfer. Admin akan memeriksa dan dapat menyesuaikannya saat verifikasi.</small>
                                 @error('amount')

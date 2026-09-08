@@ -3,7 +3,7 @@
 @section('title', 'Master Vendor')
 
 @section('content')
-<x-page-header title="Master Vendor" subtitle="Kelola vendor kerjasama — sumber vendor di pricelist & dashboard client">
+<x-page-header title="Master Vendor" subtitle="Kelola kategori, kontak, dan harga kerja sama vendor">
     <x-slot:actions>
         <x-button href="{{ route('admin.vendors.create') }}" color="primary"><i class="fas fa-plus"></i> Tambah Vendor</x-button>
     </x-slot:actions>
@@ -35,7 +35,7 @@
                     <th class="px-5 py-2.5 font-medium">Kategori</th>
                     <th class="px-5 py-2.5 font-medium">No HP</th>
                     <th class="px-5 py-2.5 font-medium">Instagram</th>
-                    <th class="px-5 py-2.5 font-medium">Harga Kerjasama</th>
+                    <th class="px-5 py-2.5 font-medium">Harga</th>
                     <th class="px-5 py-2.5 font-medium">Status</th>
                     <th class="px-5 py-2.5 font-medium text-center">Aksi</th>
                 </tr>

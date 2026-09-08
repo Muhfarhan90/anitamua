@@ -61,6 +61,10 @@ class VendorController extends Controller
 
     public function destroy(Vendor $vendor)
     {
+        if ($vendor->bookingVendors()->exists()) {
+            return back()->with('warning', 'Vendor tidak dapat dihapus karena sudah dipakai pada booking. Nonaktifkan vendor jika sudah tidak digunakan.');
+        }
+
         $name = $vendor->name;
         $vendor->delete();
 
@@ -71,15 +75,19 @@ class VendorController extends Controller
 
     private function validateData(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'vendor_category_id' => ['required', 'exists:vendor_categories,id'],
             'phone' => ['nullable', 'string', 'max:30'],
             'instagram' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string', 'max:255'],
-            'price' => ['required', 'numeric', 'min:0'],
+            'price' => ['nullable', 'numeric', 'min:0'],
             'status' => ['required', 'in:active,inactive'],
             'notes' => ['nullable', 'string'],
         ]);
+
+        $data['price'] = $data['price'] ?? 0;
+
+        return $data;
     }
 }

@@ -12,9 +12,13 @@ class Gallery extends Model
 
     protected $table = 'gallery';
 
-    protected $fillable = ['booking_id', 'title', 'photo', 'category'];
+    protected $fillable = ['booking_id', 'title', 'photo', 'photos', 'category'];
 
-    protected $appends = ['image_url'];
+    protected $casts = [
+        'photos' => 'array',
+    ];
+
+    protected $appends = ['image_url', 'photo_urls'];
 
     public function booking(): BelongsTo
     {
@@ -23,8 +27,28 @@ class Gallery extends Model
 
     public function getImageUrlAttribute(): string
     {
-        if ($this->photo && file_exists(public_path('storage/'.$this->photo))) {
-            return asset('storage/'.$this->photo);
+        return $this->imageUrlFor($this->photo);
+    }
+
+    public function getPhotoUrlsAttribute(): array
+    {
+        $photos = $this->photos ?: [$this->photo];
+
+        return collect($photos)
+            ->filter()
+            ->map(fn (string $photo) => $this->imageUrlFor($photo))
+            ->values()
+            ->all();
+    }
+
+    private function imageUrlFor(?string $photo): string
+    {
+        if ($photo && str_starts_with($photo, 'http')) {
+            return $photo;
+        }
+
+        if ($photo && file_exists(public_path('storage/'.$photo))) {
+            return asset('storage/'.$photo);
         }
 
         return 'https://images.unsplash.com/photo-1519741497674-611481863552?q=80&w=800&auto=format&fit=crop';

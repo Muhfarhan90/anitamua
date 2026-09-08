@@ -167,6 +167,7 @@ class BookingManagementController extends Controller
 
         $booking = Booking::create($data);
         $booking->addons()->createMany($addons);
+        $booking->syncVendorsFromPackage();
         DB::transaction(fn () => $this->saveBookingFieldwork($request, $booking));
 
         ActivityLogger::log('booking_created', 'Booking dibuat oleh Admin', 'Booking '.$booking->code.' untuk '.$booking->name, $booking->id);
@@ -228,15 +229,20 @@ class BookingManagementController extends Controller
         $addons = $data['addons'] ?? [];
         unset($data['addons']);
 
-        if ((int) $data['package_id'] !== (int) $booking->package_id) {
+        $packageChanged = (int) $data['package_id'] !== (int) $booking->package_id;
+        if ($packageChanged) {
             $data['package_price'] = Package::findOrFail($data['package_id'])->price;
         }
 
         $old = $booking->only(array_keys($data));
-        DB::transaction(function () use ($booking, $data, $addons, $request) {
+        DB::transaction(function () use ($booking, $data, $addons, $request, $packageChanged) {
             $booking->update($data);
             $booking->addons()->delete();
             $booking->addons()->createMany($addons);
+            if ($packageChanged) {
+                $booking->unsetRelation('package');
+                $booking->syncVendorsFromPackage();
+            }
             $this->saveBookingFieldwork($request, $booking);
         });
 
@@ -268,12 +274,19 @@ class BookingManagementController extends Controller
 
     public function verifyDp(Booking $booking, Request $request, InvoiceService $invoiceService)
     {
+        if ($booking->status !== Booking::STATUS_PENDING) {
+            return back()->with('warning', 'DP hanya dapat diverifikasi saat booking berstatus Pending. Gunakan edit nominal untuk pembayaran yang sudah Verified.');
+        }
+
         $data = $request->validate([
             'amount' => ['required', 'numeric', 'min:0'],
             'method' => ['required', 'string'],
         ]);
 
         $payment = $booking->payments()->oldest('id')->first();
+        if ($payment && $payment->status !== Payment::STATUS_PENDING) {
+            return back()->with('warning', 'Pembayaran awal tidak lagi berstatus Pending.');
+        }
         $payment ??= new Payment(['booking_id' => $booking->id, 'type' => 'DP1']);
 
         $payment->fill([
@@ -319,7 +332,7 @@ class BookingManagementController extends Controller
     {
         $data = $request->validate([
             'type' => ['required', 'string', 'max:100'],
-            'amount' => ['required', 'numeric', 'min:1000'],
+            'amount' => ['required', 'numeric', 'min:0'],
             'proof' => ['required', 'image', 'max:5120'],
             'method' => ['required', 'string', 'in:transfer,qris,cash'],
         ]);
@@ -677,16 +690,7 @@ class BookingManagementController extends Controller
     private function syncVendorsFromPackage(Booking $booking): void
     {
         $booking->unsetRelation('package');
-        $booking->bookingVendors()->delete();
-
-        foreach ($booking->package->vendors as $vendor) {
-            $booking->bookingVendors()->create([
-                'vendor_id' => $vendor->id,
-                'role' => $vendor->category->name,
-                'price' => $vendor->pivot->price,
-                'status' => 'confirmed',
-            ]);
-        }
+        $booking->syncVendorsFromPackage();
     }
 
     public function complete(Booking $booking, InvoiceService $invoiceService)
