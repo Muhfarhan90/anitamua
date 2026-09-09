@@ -16,15 +16,15 @@
 
         {{-- TOGGLE --}}
         <div class="flex justify-center mb-10">
-            <div class="inline-flex rounded-full overflow-hidden shadow-sm border border-gray-200 bg-white">
+            <div class="inline-flex overflow-hidden rounded-full border-2 border-gray-400 bg-white shadow-sm">
                 <button @click="activeTab = 'makeup'"
-                        class="px-9 py-3 text-sm font-semibold tracking-wide transition-all duration-200 cursor-pointer whitespace-nowrap"
+                        class="cursor-pointer whitespace-nowrap border-0 px-9 py-3 text-sm font-semibold tracking-wide transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset"
                         :class="activeTab === 'makeup' ? 'bg-brand text-white shadow' : 'text-gray-800 hover:bg-gray-50'">
                     Makeup & Attire
                 </button>
-                <span class="w-px self-stretch bg-gray-200"></span>
+                <span class="w-px self-stretch bg-gray-400"></span>
                 <button @click="activeTab = 'wedding'"
-                        class="px-9 py-3 text-sm font-semibold tracking-wide transition-all duration-200 cursor-pointer whitespace-nowrap"
+                        class="cursor-pointer whitespace-nowrap border-0 px-9 py-3 text-sm font-semibold tracking-wide transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset"
                         :class="activeTab === 'wedding' ? 'bg-brand text-white shadow' : 'text-gray-800 hover:bg-gray-50'">
                     Wedding
                 </button>
@@ -61,7 +61,12 @@
                                     <i class="fa-solid fa-wand-magic-sparkles" style="font-size:1.5rem; color:{{ $package->color }};"></i>
                                 </div>
                                 <h5 class="font-bold mb-1">{{ $package->name }}</h5>
-                                <div class="font-display text-2xl font-bold my-3 text-rose">Rp {{ number_format($package->price, 0, ',', '.') }}</div>
+                                <div class="my-3 text-rose">
+                                    @if($package->original_price && $package->original_price > $package->price)
+                                        <div class="mb-1 text-base font-semibold text-gray-600 line-through decoration-1 decoration-gray-600">Rp {{ number_format($package->original_price, 0, ',', '.') }}</div>
+                                    @endif
+                                    <div class="font-display text-2xl font-bold">Rp {{ number_format($package->price, 0, ',', '.') }}</div>
+                                </div>
                                 <div class="text-left text-sm mb-4 border-t border-gray-100 pt-3">
                                     @foreach($package->benefits->groupBy(fn ($b) => $b->category->name ?? 'Umum') as $category => $benefits)
                                         <p class="font-bold mb-1.5 mt-3 first:mt-0" style="color:var(--primary-dark); font-size:.68rem; text-transform:uppercase; letter-spacing:1px;">{{ $category }}</p>
@@ -103,7 +108,12 @@
                                     <i class="fa-solid fa-gem" style="font-size:1.5rem; color:{{ $package->color }};"></i>
                                 </div>
                                 <h5 class="font-bold mb-1">{{ $package->name }}</h5>
-                                <div class="font-display text-2xl font-bold my-3 text-rose">Rp {{ number_format($package->price, 0, ',', '.') }}</div>
+                                <div class="my-3 text-rose">
+                                    @if($package->original_price && $package->original_price > $package->price)
+                                        <div class="mb-1 text-base font-semibold text-gray-600 line-through decoration-1 decoration-gray-600">Rp {{ number_format($package->original_price, 0, ',', '.') }}</div>
+                                    @endif
+                                    <div class="font-display text-2xl font-bold">Rp {{ number_format($package->price, 0, ',', '.') }}</div>
+                                </div>
                                 <div class="text-left text-sm mb-4 border-t border-gray-100 pt-3">
                                     @foreach($package->benefits->groupBy(fn ($b) => $b->category->name ?? 'Umum') as $category => $benefits)
                                         <p class="font-bold mb-1.5 mt-3 first:mt-0" style="color:var(--primary-dark); font-size:.68rem; text-transform:uppercase; letter-spacing:1px;">{{ $category }}</p>

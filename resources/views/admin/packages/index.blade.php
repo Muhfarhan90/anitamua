@@ -23,7 +23,14 @@
             </span>
         </div>
         <div class="p-5 flex-1">
-            <div class="font-display text-2xl font-bold text-gold mb-2">Rp {{ number_format($package->price, 0, ',', '.') }}</div>
+            @if($package->original_price && $package->original_price > $package->price)
+                <div class="mb-2 leading-tight">
+                    <div class="text-base font-semibold text-gray-600 line-through decoration-1 decoration-gray-600">Rp {{ number_format($package->original_price, 0, ',', '.') }}</div>
+                    <div class="font-display text-2xl font-bold text-gold">Rp {{ number_format($package->price, 0, ',', '.') }}</div>
+                </div>
+            @else
+                <div class="font-display text-2xl font-bold text-gold mb-2">Rp {{ number_format($package->price, 0, ',', '.') }}</div>
+            @endif
             <small class="text-gray-500">{{ $package->description }}</small>
             <hr class="my-3 border-gray-100">
             <div class="text-sm font-semibold text-gray-700 mb-1">{{ $package->benefits->count() }} Benefit</div>

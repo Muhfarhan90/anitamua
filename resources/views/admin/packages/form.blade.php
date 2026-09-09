@@ -10,7 +10,7 @@
         @csrf
         @if($package) @method('PUT') @endif
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
             <x-input name="name" label="Nama Paket" required :value="$package->name ?? ''" />
             <div>
                 <label for="type" class="block text-sm font-medium text-gray-600 mb-1">Jenis Paket <span class="text-red-500">*</span></label>
@@ -21,7 +21,9 @@
                 </select>
             </div>
             <x-input name="price" label="Harga" currency :value="$package->price ?? 0" min="0" step="1000" required />
+            <x-input name="original_price" label="Harga Coret" currency :value="$package->original_price ?? ''" min="0" step="1000" placeholder="Opsional" />
         </div>
+        <p class="-mt-3 text-xs text-gray-400">Harga coret digunakan sebagai harga sebelum diskon dan hanya ditampilkan jika lebih besar dari harga paket.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div class="md:col-span-2">

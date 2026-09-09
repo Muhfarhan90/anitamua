@@ -24,12 +24,13 @@ class Package extends Model
         };
     }
 
-    protected $fillable = ['name', 'type', 'sub_type', 'price', 'description', 'color', 'status'];
+    protected $fillable = ['name', 'type', 'sub_type', 'price', 'original_price', 'description', 'color', 'status'];
 
     protected function casts(): array
     {
         return [
             'price' => 'decimal:2',
+            'original_price' => 'decimal:2',
         ];
     }
 
