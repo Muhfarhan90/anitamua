@@ -63,11 +63,13 @@
     </style>
 </head>
 <body>
-@php($booking = $invoice->booking)
-@php($logoSrc = $logoSrc ?? null)
-@php($payments = $booking->payments->sortBy('created_at'))
-@php($verifiedPayments = $payments->where('status', 'verified'))
-@php($invoiceGreeting = $settings['invoice_greeting'] ?? 'Terima kasih telah mempercayakan momen spesial Anda kepada ANITA. Invoice ini mengikuti status pembayaran yang sudah diverifikasi.')
+@php
+    $booking = $invoice->booking;
+    $logoSrc = $logoSrc ?? null;
+    $payments = $booking->payments->sortBy('created_at');
+    $verifiedPayments = $payments->where('status', 'verified');
+    $invoiceGreeting = $settings['invoice_greeting'] ?? 'Terima kasih telah mempercayakan momen spesial Anda kepada ANITA. Invoice ini mengikuti status pembayaran yang sudah diverifikasi.';
+@endphp
 <div class="paper">
     <div class="masthead table">
         <div class="cell">

@@ -25,15 +25,18 @@ class BookingManagementController extends Controller
 {
     public function index(Request $request)
     {
+        $today = Carbon::today()->toDateString();
         $query = Booking::with(['client', 'package', 'payments'])
+            ->whereDate('event_date', '>=', $today)
             ->when($request->status, fn ($q, $s) => $q->where('status', $s))
-            ->when($request->event_date, fn ($q, $date) => $q->whereDate('event_date', $date))
+            ->when($request->start_date, fn ($q, $date) => $q->whereDate('event_date', '>=', $date))
+            ->when($request->end_date, fn ($q, $date) => $q->whereDate('event_date', '<=', $date))
             ->when($request->q, fn ($q, $s) => $q->where(function ($qq) use ($s) {
                 $qq->where('name', 'like', "%{$s}%")
                     ->orWhere('code', 'like', "%{$s}%")
                     ->orWhere('phone', 'like', "%{$s}%");
             }))
-            ->orderByDesc('event_date')
+            ->orderBy('event_date')
             ->orderByDesc('created_at');
 
         $bookings = $query->paginate(15)->withQueryString();
@@ -90,7 +93,14 @@ class BookingManagementController extends Controller
 
     public function edit(Booking $booking)
     {
-        $booking->load(['client', 'package', 'addons', 'survey.weddingStage', 'fittings']);
+        $booking->load(['client', 'package', 'addons', 'bookingVendors.vendor.category', 'survey.weddingStage', 'fittings']);
+        $vendors = Vendor::with('category')
+            ->where(function ($query) use ($booking) {
+                $query->where('status', 'active')
+                    ->orWhereIn('id', $booking->bookingVendors->pluck('vendor_id'));
+            })
+            ->orderBy('name')
+            ->get();
         $packages = Package::where('status', 'active')->get();
         $clients = User::where('role', User::ROLE_CLIENT)->get();
         $teamMembers = User::where('role', User::ROLE_TEAM)->where('is_active', true)->orderBy('name')->get();
@@ -113,7 +123,7 @@ class BookingManagementController extends Controller
             'gedung' => 'Gedung',
         ];
 
-        return view('admin.bookings.edit', compact('booking', 'packages', 'clients', 'subTypeLabels', 'weddingStages', 'teamMembers'));
+        return view('admin.bookings.edit', compact('booking', 'vendors', 'packages', 'clients', 'subTypeLabels', 'weddingStages', 'teamMembers'));
     }
 
     public function store(Request $request, InvoiceService $invoiceService)
@@ -469,6 +479,12 @@ class BookingManagementController extends Controller
         $oldVendor = $bookingVendor->vendor;
         $newVendor = Vendor::findOrFail($data['vendor_id']);
 
+        abort_unless($newVendor->vendor_category_id === $oldVendor->vendor_category_id, 422, 'Vendor pengganti harus dari kategori yang sama.');
+
+        if ($newVendor->is($oldVendor)) {
+            return back()->with('success', 'Vendor tidak berubah.');
+        }
+
         $bookingVendor->update([
             'vendor_id' => $newVendor->id,
             'price' => $newVendor->price,
@@ -485,6 +501,37 @@ class BookingManagementController extends Controller
         );
 
         return back()->with('success', 'Vendor berhasil diganti.');
+    }
+
+    public function addVendor(Booking $booking, Request $request)
+    {
+        $data = $request->validate([
+            'vendor_id' => ['required', 'exists:vendors,id'],
+        ]);
+
+        $vendor = Vendor::with('category')
+            ->where('status', 'active')
+            ->findOrFail($data['vendor_id']);
+
+        if ($booking->bookingVendors()->where('vendor_id', $vendor->id)->exists()) {
+            return back()->with('warning', 'Vendor tersebut sudah terdaftar di booking ini.');
+        }
+
+        $booking->bookingVendors()->create([
+            'vendor_id' => $vendor->id,
+            'role' => $vendor->category?->name,
+            'price' => $vendor->price,
+            'status' => 'confirmed',
+        ]);
+
+        ActivityLogger::log(
+            'vendor_added',
+            'Vendor tambahan ditambahkan',
+            'Vendor '.$vendor->name.' ('.$vendor->category?->name.') ditambahkan ke booking '.$booking->code,
+            $booking->id,
+        );
+
+        return back()->with('success', 'Vendor tambahan berhasil ditambahkan.');
     }
 
     public function syncVendors(Booking $booking)

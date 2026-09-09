@@ -36,7 +36,7 @@
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
             @forelse($gallery as $item)
             <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                @php($photos = $item->photo_urls)
+                    @php $photos = $item->photo_urls; @endphp
                 <div role="button" tabindex="0" data-gallery-lightbox data-gallery-photos="{{ base64_encode(json_encode($photos)) }}" data-gallery-title="{{ $item->title ?? 'Foto galeri' }}" class="relative h-44 overflow-hidden bg-gray-50 cursor-pointer">
                     <img src="{{ $photos[0] }}" alt="{{ $item->title ?? 'Foto galeri' }}" class="w-full h-44 object-cover">
                     @if(count($photos) > 1)

@@ -1,6 +1,6 @@
 @props(['gallery', 'height' => '280px', 'showCategory' => false])
 
-@php($photos = $gallery->photo_urls)
+@php $photos = $gallery->photo_urls; @endphp
 
 <div data-gallery-lightbox data-gallery-photos="{{ base64_encode(json_encode($photos)) }}" data-gallery-title="{{ $gallery->title ?? 'Foto galeri' }}" class="relative overflow-hidden rounded-2xl shadow-sm" style="height:{{ $height }}; cursor:pointer;">
     <img src="{{ $photos[0] }}" class="w-full h-full" style="object-fit:cover;" alt="{{ $gallery->title ?? 'Foto galeri' }}">

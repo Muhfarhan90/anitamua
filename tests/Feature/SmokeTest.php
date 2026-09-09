@@ -355,6 +355,43 @@ it('updates the vendor snapshot when an admin changes a booking package', functi
     expect((float) $booking->package_price)->toBe((float) $targetPackage->price);
 });
 
+it('admin can replace a booking vendor within the same category', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $category = VendorCategory::firstOrFail();
+    $oldVendor = Vendor::create([
+        'vendor_category_id' => $category->id,
+        'name' => 'Vendor Lama',
+        'price' => 1000000,
+        'status' => 'active',
+    ]);
+    $replacement = Vendor::create([
+        'vendor_category_id' => $category->id,
+        'name' => 'Vendor Pengganti',
+        'price' => 1250000,
+        'status' => 'active',
+    ]);
+    $bookingVendor = $booking->bookingVendors()->create([
+        'vendor_id' => $oldVendor->id,
+        'role' => $category->name,
+        'price' => $oldVendor->price,
+        'status' => 'confirmed',
+    ]);
+
+    $this->actingAs($admin)
+        ->patch("/admin/bookings/{$booking->id}/vendors", [
+            'booking_vendor_id' => $bookingVendor->id,
+            'vendor_id' => $replacement->id,
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    $bookingVendor->refresh();
+    expect($bookingVendor->vendor_id)->toBe($replacement->id)
+        ->and((float) $bookingVendor->price)->toBe(1250000.0)
+        ->and($bookingVendor->status)->toBe('changed');
+});
+
 it('admin booking form saves survey and fitting details', function () {
     Storage::fake('public');
     $admin = User::where('email', 'admin@anitamua.com')->first();
@@ -1008,8 +1045,15 @@ it('renders booking detail page for admin', function () {
         ->get("/admin/bookings/{$booking->id}")
         ->assertOk()
         ->assertSee('Tambah Pembayaran')
+        ->assertSee('Daftar Vendor')
+        ->assertDontSee('Ganti Vendor')
         ->assertDontSee('Data survey bersifat read-only')
         ->assertDontSee('Jadwal hanya dapat diubah melalui Edit Booking.');
+
+    $this->actingAs($admin)
+        ->get("/admin/bookings/{$booking->id}/edit")
+        ->assertOk()
+        ->assertSee('Daftar Vendor');
 });
 
 it('admin can add a pending payment stage from booking detail', function () {

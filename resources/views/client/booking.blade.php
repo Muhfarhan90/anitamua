@@ -202,7 +202,7 @@
                 <p class="mb-3 text-xs text-gray-500">Tim vendor yang dialokasikan untuk acara Anda.</p>
                 <div class="divide-y divide-brand-100">
                     @foreach($booking->bookingVendors as $bookingVendor)
-                    @php($vendor = $bookingVendor->vendor)
+                    @php $vendor = $bookingVendor->vendor; @endphp
                     <div class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
                         @if($vendor?->logo)
                             <img src="{{ asset('storage/'.$vendor->logo) }}" alt="Logo {{ $vendor->name }}" class="h-9 w-9 shrink-0 rounded-full border border-brand-100 bg-white object-cover">

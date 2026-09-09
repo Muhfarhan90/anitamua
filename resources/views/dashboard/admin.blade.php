@@ -92,8 +92,10 @@
 </div>
 
 @foreach($pendingBookings as $booking)
-@php($dpPayment = $booking->payments->sortBy('id')->first())
-@php($dpAmount = (float) ($dpPayment?->amount ?? 0))
+                @php
+                    $dpPayment = $booking->payments->sortBy('id')->first();
+                    $dpAmount = (float) ($dpPayment?->amount ?? 0);
+                @endphp
 <div id="verifyBookingModal-{{ $booking->id }}" tabindex="-1" aria-hidden="true"
      class="hidden overflow-y-auto overflow-x-hidden fixed top-0 right-0 left-0 z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
     <div class="relative p-4 w-full max-w-lg max-h-full">
@@ -138,11 +140,11 @@
 <x-card title="Jadwal Minggu Ini" title-icon="fa-calendar-days">
     @forelse($schedules as $date => $daySchedules)
     <div class="mb-4 last:mb-0">
-        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2.5">{{ $date }}</p>
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2.5">Tanggal Jadwal: {{ date('d M Y', strtotime($date)) }}</p>
         <div class="space-y-2">
             @foreach($daySchedules as $schedule)
             <div class="flex items-center gap-3 py-2.5 px-4 rounded-xl bg-brand-50/40 border border-brand-100/50">
-                <span class="text-xs text-gray-400 w-12 flex-shrink-0">{{ $schedule->time }}</span>
+                <span class="text-xs text-gray-400 w-12 flex-shrink-0">{{ $schedule->time?->format('H:i') ?? '-' }}</span>
                 <x-badge>{{ $schedule->booking->code }}</x-badge>
                 <span class="text-sm font-medium text-gray-800">{{ $schedule->booking->name }}</span>
                 <span class="text-xs text-gray-400 ml-auto truncate max-w-[140px]">

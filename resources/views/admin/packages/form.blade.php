@@ -103,7 +103,7 @@
             @endphp
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 @forelse($vendorsByCategory as $categoryName => $categoryVendors)
-                    @php($selectedVendorId = $categoryVendors->pluck('id')->first(fn ($id) => in_array((int) $id, $selectedVendors, true)))
+                            @php $selectedVendorId = $categoryVendors->pluck('id')->first(fn ($id) => in_array((int) $id, $selectedVendors, true)); @endphp
                     <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-3">
                         <label for="vendor-category-{{ Str::slug($categoryName) }}" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand">{{ $categoryName }}</label>
                         <select name="vendor_ids[]" id="vendor-category-{{ Str::slug($categoryName) }}" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-200">
