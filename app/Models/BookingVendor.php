@@ -10,12 +10,13 @@ class BookingVendor extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['booking_id', 'vendor_id', 'role', 'price', 'status'];
+    protected $fillable = ['booking_id', 'vendor_id', 'role', 'price', 'custom_additions', 'status'];
 
     protected function casts(): array
     {
         return [
             'price' => 'decimal:2',
+            'custom_additions' => 'array',
         ];
     }
 
@@ -27,5 +28,15 @@ class BookingVendor extends Model
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(Vendor::class);
+    }
+
+    public function getCustomAdditionsTotalAttribute(): float
+    {
+        return (float) collect($this->custom_additions ?? [])->sum('price');
+    }
+
+    public function getTotalPriceAttribute(): float
+    {
+        return (float) $this->price + $this->custom_additions_total;
     }
 }

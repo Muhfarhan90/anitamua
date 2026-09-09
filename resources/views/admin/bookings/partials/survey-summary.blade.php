@@ -57,7 +57,7 @@
                     <div><span class="text-xs text-gray-400">Ukuran Pelaminan</span><p class="mt-1 font-medium text-gray-700">{{ $survey->stage_size === 'Lainnya' && filled($survey->stage_size_other) ? 'Lainnya — '.$survey->stage_size_other : ($survey->stage_size ?: '-') }}</p></div>
                     <div><span class="text-xs text-gray-400">Kursi</span><p class="mt-1 font-medium text-gray-700">{{ $choice('chair_option', 'chair_option_other') }}</p></div>
                     <div><span class="text-xs text-gray-400">Panggung</span><p class="mt-1 font-medium text-gray-700">{{ $choice('stage_option', 'stage_option_other') }}</p></div>
-                    <div><span class="text-xs text-gray-400">Bentuk Tenda</span><p class="mt-1 font-medium text-gray-700">{{ $choice('tent_shape', 'tent_shape_other') }}</p></div>
+                    <div><span class="text-xs text-gray-400">Model Tenda</span><p class="mt-1 font-medium text-gray-700">{{ $survey->tent?->name ?? $choice('tent_shape', 'tent_shape_other') }}</p></div>
                 </div>
             </div>
         </section>
@@ -67,7 +67,7 @@
             <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4 text-sm">
                 <div><span class="text-xs text-gray-400">Ukuran Tenda</span><p class="mt-1 font-medium text-gray-700">{{ $tentSummary($survey->tent_sizes, $survey->tent_size_quantities, $survey->tent_sizes_other) }}</p></div>
                 <div><span class="text-xs text-gray-400">Tambahan Tenda</span><p class="mt-1 font-medium text-gray-700">{{ $tentSummary($survey->tent_additions, $survey->tent_addition_quantities, $survey->tent_additions_other) }}</p></div>
-                <div><span class="text-xs text-gray-400">Pintu Masuk</span><p class="mt-1 font-medium text-gray-700">{{ $choice('entrance', 'entrance_other') }}</p></div>
+                <div><span class="text-xs text-gray-400">Pintu Masuk</span><p class="mt-1 font-medium text-gray-700">{{ $survey->entranceGate?->name ?? $choice('entrance', 'entrance_other') }}</p></div>
                 <div><span class="text-xs text-gray-400">Prasmanan</span><p class="mt-1 font-medium text-gray-700">{{ $choice('buffet', 'buffet_other') }}</p></div>
                 <div><span class="text-xs text-gray-400">Piring / Sendok / Garpu</span><p class="mt-1 font-medium text-gray-700">{{ $choice('tableware', 'tableware_other') }}</p></div>
             </div>

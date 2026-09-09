@@ -80,6 +80,11 @@
 
             <x-input name="location" label="Lokasi Acara" placeholder="Alamat lokasi acara" />
 
+            <x-select name="referral_source" label="Tahu Anita dari mana?" required>
+                <option value="">— Pilih sumber informasi —</option>
+                @foreach($referralSources as $source)<option value="{{ $source }}" @selected(old('referral_source') === $source)>{{ $source }}</option>@endforeach
+            </x-select>
+
             <x-textarea name="notes" label="Catatan" placeholder="Catatan tambahan untuk booking ini..." />
 
             <div class="border-t border-gray-100 pt-5 mt-5 space-y-4">
@@ -107,6 +112,8 @@
                 'embedded' => true,
                 'booking' => null,
                 'weddingStages' => $weddingStages,
+                'tents' => $tents,
+                'entranceGates' => $entranceGates,
                 'teamMembers' => $teamMembers,
             ])
 

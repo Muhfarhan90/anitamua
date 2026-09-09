@@ -13,7 +13,7 @@ class Survey extends Model
     protected $fillable = [
         'booking_id', 'location', 'maps_url', 'pic',
         'notes', 'photos', 'videos', 'created_by',
-        'wedding_stage_id', 'flower_color', 'stage_size', 'stage_size_other',
+        'wedding_stage_id', 'tent_id', 'entrance_gate_id', 'flower_color', 'stage_size', 'stage_size_other',
         'chair_option', 'chair_option_other', 'stage_option', 'stage_option_other',
         'fabric_color', 'tent_sizes', 'tent_sizes_other', 'tent_additions',
         'tent_size_quantities', 'tent_addition_quantities', 'tent_additions_other', 'tent_shape', 'tent_shape_other', 'entrance',
@@ -51,5 +51,15 @@ class Survey extends Model
     public function weddingStage(): BelongsTo
     {
         return $this->belongsTo(WeddingStage::class, 'wedding_stage_id');
+    }
+
+    public function tent(): BelongsTo
+    {
+        return $this->belongsTo(Tent::class);
+    }
+
+    public function entranceGate(): BelongsTo
+    {
+        return $this->belongsTo(EntranceGate::class);
     }
 }

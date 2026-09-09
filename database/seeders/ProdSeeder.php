@@ -111,5 +111,6 @@ class ProdSeeder extends Seeder
         SiteSetting::set('bank_account_number', '1234567890', 'contact');
         SiteSetting::set('bank_account_name', 'ANITA MUA', 'contact');
         SiteSetting::set('invoice_greeting', 'Terima kasih telah mempercayakan momen spesial Anda kepada ANITA. Invoice ini mengikuti status pembayaran yang sudah diverifikasi.', 'invoice');
+        SiteSetting::set('booking_referral_sources', json_encode(SiteSetting::DEFAULT_BOOKING_REFERRAL_SOURCES, JSON_UNESCAPED_UNICODE), 'booking');
     }
 }

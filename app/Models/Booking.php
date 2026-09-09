@@ -31,7 +31,7 @@ class Booking extends Model
     }
 
     protected $fillable = [
-        'code', 'client_id', 'package_id', 'package_price', 'name', 'phone', 'email', 'instagram',
+        'code', 'client_id', 'package_id', 'package_price', 'name', 'phone', 'email', 'instagram', 'referral_source',
         'event_date', 'event_time', 'event_type', 'number_of_guests',
         'survey_date', 'fitting_date', 'location', 'notes',
         'status', 'cancelled_reason', 'cancelled_at', 'created_by',

@@ -36,6 +36,17 @@
         Pemasukan dihitung saat pembayaran diverifikasi. Pengeluaran diambil dari harga vendor yang tersimpan pada booking.
     </p>
 </x-card>
+
+<div class="mt-5 grid grid-cols-1 xl:grid-cols-2 gap-5">
+    <x-card title="Sumber Booking" title-icon="fa-bullhorn">
+        <div class="h-72"><canvas id="bookingSourceChart" aria-label="Grafik sumber booking" role="img"></canvas></div>
+        <p class="mt-4 border-t border-gray-100 pt-3 text-xs text-gray-400">Berdasarkan tanggal booking dibuat, termasuk booking yang dibatalkan.</p>
+    </x-card>
+    <x-card title="Total Booking per Bulan" title-icon="fa-calendar-days">
+        <div class="h-72"><canvas id="monthlyBookingChart" aria-label="Grafik booking bulanan" role="img"></canvas></div>
+        <p class="mt-4 border-t border-gray-100 pt-3 text-xs text-gray-400">Menghitung seluruh status booking pada tahun {{ $year }}.</p>
+    </x-card>
+</div>
 @endsection
 
 @push('scripts')
@@ -43,9 +54,9 @@
     window.addEventListener('load', () => {
         const cashflowChart = document.getElementById('cashflowChart');
 
-        if (!cashflowChart || !window.Chart) return;
+        if (!window.Chart) return;
 
-        new window.Chart(cashflowChart, {
+        if (cashflowChart) new window.Chart(cashflowChart, {
             type: 'bar',
             data: {
                 labels: @json($monthly->pluck('label')->values()),
@@ -87,6 +98,34 @@
                         },
                     },
                 },
+            },
+        });
+
+        const sourceChart = document.getElementById('bookingSourceChart');
+        if (sourceChart) new window.Chart(sourceChart, {
+            type: 'bar',
+            data: {
+                labels: @json($bookingSources->pluck('label')),
+                datasets: [{ label: 'Booking', data: @json($bookingSources->pluck('count')), backgroundColor: '#d4739a', borderRadius: 6, maxBarThickness: 42 }],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { grid: { display: false }, border: { display: false } }, y: { beginAtZero: true, ticks: { precision: 0 }, border: { display: false } } },
+            },
+        });
+
+        const monthlyBookingChart = document.getElementById('monthlyBookingChart');
+        if (monthlyBookingChart) new window.Chart(monthlyBookingChart, {
+            type: 'bar',
+            data: {
+                labels: @json($monthlyBookings->pluck('label')),
+                datasets: [{ label: 'Booking', data: @json($monthlyBookings->pluck('count')), backgroundColor: '#9f7aea', borderRadius: 6, maxBarThickness: 24 }],
+            },
+            options: {
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true, ticks: { precision: 0 }, border: { display: false } }, y: { grid: { display: false }, border: { display: false } } },
             },
         });
     });

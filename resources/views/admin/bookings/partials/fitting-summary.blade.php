@@ -23,15 +23,16 @@
                             @php
                                 $notes = $fitting->{$itemKey.'_notes'};
                                 $photo = $fitting->{$itemKey.'_photo_path'};
+                                $size = $fitting->item_sizes[$itemKey] ?? null;
                                 $allowsPhoto = str_contains($itemKey, 'busana_') || str_starts_with($itemKey, 'among_');
                             @endphp
                             <article class="min-w-0 bg-gray-50/70 p-3">
                                 <p class="text-sm font-semibold leading-5 text-gray-700">{{ $label }}</p>
                                 @if($allowsPhoto && $photo)
                                     <a href="{{ asset('storage/'.$photo) }}" onclick="openProof(event, this.href)" class="mt-2 block"><img src="{{ asset('storage/'.$photo) }}" alt="{{ $label }}" class="h-28 w-full rounded-lg object-contain bg-white"></a>
-                                @else
-                                    <p class="mt-2 whitespace-pre-line text-sm text-gray-600">{{ $notes ?: '-' }}</p>
                                 @endif
+                                <p class="mt-2 whitespace-pre-line text-sm text-gray-600"><span class="text-xs text-gray-400">Keterangan:</span> {{ $notes ?: '-' }}</p>
+                                @if($allowsPhoto)<p class="mt-1 text-sm text-gray-600"><span class="text-xs text-gray-400">Ukuran:</span> {{ $size ?: '-' }}</p>@endif
                             </article>
                         @endforeach
                     </div>

@@ -73,6 +73,32 @@
         <x-textarea name="invoice_greeting" label="Teks ucapan invoice" rows="3">{{ $settings['invoice_greeting'] ?? '' }}</x-textarea>
         <p class="text-xs text-gray-400 -mt-2">Teks ini tampil pada bagian bawah invoice dan versi PDF. Maksimal 500 karakter.</p>
 
+        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100 pb-2">Sumber Booking</p>
+        @php
+            $referralSourceRows = old('booking_referral_sources', $bookingReferralSources);
+            $referralSourceRows = is_array($referralSourceRows) ? $referralSourceRows : preg_split('/\R/', (string) $referralSourceRows);
+        @endphp
+        <div data-referral-source-editor class="space-y-3">
+            <div data-referral-source-list class="space-y-2">
+                @foreach($referralSourceRows as $index => $source)
+                    <div data-referral-source-row class="flex items-center gap-2">
+                        <input type="text" name="booking_referral_sources[]" value="{{ $source }}" required maxlength="100" placeholder="Contoh: Instagram" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                        <button type="button" data-remove-referral-source class="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-500 transition-colors hover:bg-red-50" aria-label="Hapus sumber booking"><i class="fas fa-trash"></i></button>
+                    </div>
+                @endforeach
+            </div>
+            <button type="button" data-add-referral-source class="inline-flex items-center gap-1.5 rounded-lg border border-brand px-3 py-2 text-xs font-semibold text-brand transition-colors hover:bg-brand-50"><i class="fas fa-plus"></i> Tambah Sumber</button>
+            @error('booking_referral_sources')<p class="text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
+            @foreach($errors->get('booking_referral_sources.*') as $message)<p class="text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@endforeach
+            <p class="text-xs text-gray-400">Satu pilihan per baris. Baris kosong dan pilihan duplikat akan dibersihkan otomatis.</p>
+            <template data-referral-source-template>
+                <div data-referral-source-row class="flex items-center gap-2">
+                    <input type="text" name="booking_referral_sources[]" required maxlength="100" placeholder="Contoh: Instagram" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                    <button type="button" data-remove-referral-source class="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-500 transition-colors hover:bg-red-50" aria-label="Hapus sumber booking"><i class="fas fa-trash"></i></button>
+                </div>
+            </template>
+        </div>
+
         <div class="pt-2">
             <x-button color="primary" type="submit"><i class="fas fa-save"></i> Simpan Pengaturan</x-button>
         </div>
@@ -96,6 +122,27 @@
         };
         reader.readAsDataURL(file);
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const editor = document.querySelector('[data-referral-source-editor]');
+        if (!editor) return;
+
+        const list = editor.querySelector('[data-referral-source-list]');
+        const template = editor.querySelector('[data-referral-source-template]');
+        const addButton = editor.querySelector('[data-add-referral-source]');
+
+        addButton.addEventListener('click', function () {
+            const row = template.content.firstElementChild.cloneNode(true);
+            list.appendChild(row);
+            row.querySelector('input').focus();
+        });
+
+        list.addEventListener('click', function (event) {
+            const button = event.target.closest('[data-remove-referral-source]');
+            if (!button) return;
+            button.closest('[data-referral-source-row]').remove();
+        });
+    });
 </script>
 @endpush
 @endsection

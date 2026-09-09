@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Package;
 use App\Models\Payment;
+use App\Models\SiteSetting;
 use App\Services\ActivityLogger;
 use App\Services\ImageCompressor;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class BookingController extends Controller
 {
@@ -17,6 +19,7 @@ class BookingController extends Controller
     {
         $packages = Package::with(['benefits', 'vendors.category'])->where('status', 'active')->get();
         $client = auth()->user()?->isClient() ? auth()->user() : null;
+        $referralSources = SiteSetting::bookingReferralSources();
 
         $subTypeLabels = [
             'makeup' => 'Makeup Only',
@@ -26,7 +29,7 @@ class BookingController extends Controller
             'gedung' => 'Gedung',
         ];
 
-        return view('landing.booking', compact('packages', 'subTypeLabels', 'client'));
+        return view('landing.booking', compact('packages', 'subTypeLabels', 'client', 'referralSources'));
     }
 
     public function store(Request $request)
@@ -37,6 +40,7 @@ class BookingController extends Controller
             'phone' => ['required', 'string', 'max:30'],
             'email' => ['required', 'email'],
             'instagram' => ['nullable', 'string', 'max:100', 'regex:/^@?[A-Za-z0-9._]+$/'],
+            'referral_source' => ['required', Rule::in(SiteSetting::bookingReferralSources())],
             'event_date' => ['required', 'date', 'after_or_equal:today'],
             'location' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],

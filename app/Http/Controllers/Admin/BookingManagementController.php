@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\BookingVendor;
+use App\Models\EntranceGate;
 use App\Models\Fitting;
 use App\Models\Package;
 use App\Models\Payment;
 use App\Models\Schedule;
+use App\Models\SiteSetting;
 use App\Models\Survey;
+use App\Models\Tent;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Models\WeddingStage;
@@ -50,7 +54,7 @@ class BookingManagementController extends Controller
         $booking->load([
             'client', 'package', 'payments', 'invoice', 'bookingVendors.vendor.category',
             'addons',
-            'schedules.picUser', 'survey.weddingStage', 'fittings', 'packingLists.items.inventoryItem',
+            'schedules.picUser', 'survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings', 'packingLists.items.inventoryItem',
             'activityLogs.user', 'packageChangeRequests.oldPackage', 'packageChangeRequests.newPackage',
         ]);
         if (in_array($booking->status, [Booking::STATUS_BOOKED, Booking::STATUS_COMPLETED], true)) {
@@ -79,6 +83,9 @@ class BookingManagementController extends Controller
         $packages = Package::where('status', 'active')->get();
         $clients = User::where('role', User::ROLE_CLIENT)->get();
         $weddingStages = WeddingStage::where('is_active', true)->orderBy('name')->get();
+        $tents = Tent::where('is_active', true)->orderBy('name')->get();
+        $entranceGates = EntranceGate::where('is_active', true)->orderBy('name')->get();
+        $referralSources = SiteSetting::bookingReferralSources();
         $teamMembers = User::where('role', User::ROLE_TEAM)->where('is_active', true)->orderBy('name')->get();
 
         $subTypeLabels = [
@@ -89,12 +96,12 @@ class BookingManagementController extends Controller
             'gedung' => 'Gedung',
         ];
 
-        return view('admin.bookings.create', compact('packages', 'clients', 'subTypeLabels', 'weddingStages', 'teamMembers'));
+        return view('admin.bookings.create', compact('packages', 'clients', 'subTypeLabels', 'weddingStages', 'tents', 'entranceGates', 'teamMembers', 'referralSources'));
     }
 
     public function edit(Booking $booking)
     {
-        $booking->load(['client', 'package', 'addons', 'bookingVendors.vendor.category', 'survey.weddingStage', 'fittings']);
+        $booking->load(['package', 'addons', 'bookingVendors.vendor.category', 'survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings']);
         $vendors = Vendor::with('category')
             ->where(function ($query) use ($booking) {
                 $query->where('status', 'active')
@@ -103,7 +110,6 @@ class BookingManagementController extends Controller
             ->orderBy('name')
             ->get();
         $packages = Package::where('status', 'active')->get();
-        $clients = User::where('role', User::ROLE_CLIENT)->get();
         $teamMembers = User::where('role', User::ROLE_TEAM)->where('is_active', true)->orderBy('name')->get();
         $currentDecorationId = $booking->survey?->wedding_stage_id;
         $weddingStages = WeddingStage::query()
@@ -115,6 +121,8 @@ class BookingManagementController extends Controller
             })
             ->orderBy('name')
             ->get();
+        [$tents, $entranceGates] = $this->surveyMasters($booking->survey);
+        $referralSources = $this->referralSourcesFor($booking);
 
         $subTypeLabels = [
             'makeup' => 'Makeup Only',
@@ -124,7 +132,7 @@ class BookingManagementController extends Controller
             'gedung' => 'Gedung',
         ];
 
-        return view('admin.bookings.edit', compact('booking', 'vendors', 'packages', 'clients', 'subTypeLabels', 'weddingStages', 'teamMembers'));
+        return view('admin.bookings.edit', compact('booking', 'vendors', 'packages', 'subTypeLabels', 'weddingStages', 'tents', 'entranceGates', 'teamMembers', 'referralSources'));
     }
 
     public function store(Request $request, InvoiceService $invoiceService)
@@ -140,6 +148,7 @@ class BookingManagementController extends Controller
             'new_client_email' => ['required_if:client_mode,new', 'nullable', 'email', 'unique:users,email'],
             'new_client_phone' => ['required_if:client_mode,new', 'nullable', 'string', 'max:30'],
             'new_client_instagram' => ['nullable', 'string', 'max:100', 'regex:/^@?[A-Za-z0-9._]+$/'],
+            'referral_source' => ['required', Rule::in(SiteSetting::bookingReferralSources())],
             'package_id' => ['required', 'exists:packages,id'],
             'event_date' => ['required', 'date'],
             'event_time' => ['nullable', 'date_format:H:i'],
@@ -228,14 +237,11 @@ class BookingManagementController extends Controller
     public function update(Booking $booking, Request $request, InvoiceService $invoiceService)
     {
         $data = $request->validate([
-            'client_id' => [
-                'nullable',
-                Rule::exists('users', 'id')->where('role', User::ROLE_CLIENT),
-            ],
             'package_id' => ['required', 'exists:packages,id'],
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:30'],
             'email' => ['required', 'email'],
+            'referral_source' => ['required', Rule::in($this->referralSourcesFor($booking))],
             'event_date' => ['required', 'date'],
             'event_time' => ['nullable', 'date_format:H:i'],
             'survey_date' => ['nullable', 'date'],
@@ -245,18 +251,25 @@ class BookingManagementController extends Controller
             'addons' => ['nullable', 'array'],
             'addons.*.name' => ['required', 'string', 'max:255'],
             'addons.*.price' => ['required', 'numeric', 'min:0'],
+            'vendor_additions_present' => ['nullable', 'array'],
+            'vendor_additions_present.*' => ['boolean'],
+            'vendor_additions' => ['nullable', 'array'],
+            'vendor_additions.*' => ['nullable', 'array'],
+            'vendor_additions.*.*.name' => ['required', 'string', 'max:255'],
+            'vendor_additions.*.*.price' => ['required', 'numeric', 'min:0'],
+            'vendor_changes' => ['nullable', 'array'],
+            'vendor_changes.*.vendor_id' => ['required', 'exists:vendors,id'],
+            'additional_vendor_ids' => ['nullable', 'array'],
+            'additional_vendor_ids.*' => ['required', 'integer', 'exists:vendors,id'],
         ] + $this->bookingSurveyRules() + $this->bookingFittingRules());
 
         $addons = $data['addons'] ?? [];
+        $vendorAdditions = $data['vendor_additions'] ?? [];
+        $vendorAdditionsPresent = $data['vendor_additions_present'] ?? [];
+        $vendorChanges = $data['vendor_changes'] ?? [];
+        $additionalVendorIds = $data['additional_vendor_ids'] ?? [];
         unset($data['addons']);
-
-        if (! empty($data['client_id'])) {
-            $client = User::where('role', User::ROLE_CLIENT)->findOrFail($data['client_id']);
-            $data['name'] = $client->name;
-            $data['phone'] = $client->phone;
-            $data['email'] = $client->email;
-            $data['instagram'] = $client->instagram;
-        }
+        unset($data['vendor_additions'], $data['vendor_additions_present'], $data['vendor_changes'], $data['additional_vendor_ids']);
 
         $packageChanged = (int) $data['package_id'] !== (int) $booking->package_id;
         if ($packageChanged) {
@@ -264,7 +277,7 @@ class BookingManagementController extends Controller
         }
 
         $old = $booking->only(array_keys($data));
-        DB::transaction(function () use ($booking, $data, $addons, $request, $packageChanged, $invoiceService) {
+        DB::transaction(function () use ($booking, $data, $addons, $vendorAdditions, $vendorAdditionsPresent, $vendorChanges, $additionalVendorIds, $request, $packageChanged, $invoiceService) {
             $booking->update($data);
             $scheduleChanged = $booking->wasChanged(['event_date', 'event_time', 'location', 'name']);
             $booking->addons()->delete();
@@ -272,6 +285,83 @@ class BookingManagementController extends Controller
             if ($packageChanged) {
                 $booking->unsetRelation('package');
                 $booking->syncVendorsFromPackage();
+            } else {
+                foreach ($vendorChanges as $bookingVendorId => $vendorChange) {
+                    $bookingVendor = $booking->bookingVendors()->with('vendor.category')->find($bookingVendorId);
+                    if (! $bookingVendor) {
+                        continue;
+                    }
+
+                    $oldVendor = $bookingVendor->vendor;
+                    $newVendor = Vendor::with('category')->findOrFail($vendorChange['vendor_id']);
+                    abort_unless($oldVendor && $newVendor->vendor_category_id === $oldVendor->vendor_category_id, 422, 'Vendor pengganti harus dari kategori yang sama.');
+
+                    if ($newVendor->is($oldVendor)) {
+                        continue;
+                    }
+
+                    $bookingVendor->update([
+                        'vendor_id' => $newVendor->id,
+                        'role' => $newVendor->category?->name,
+                        'price' => $newVendor->price,
+                        'status' => 'changed',
+                    ]);
+
+                    ActivityLogger::log(
+                        'vendor_changed',
+                        'Vendor diganti',
+                        'Vendor '.$oldVendor->name.' ('.$oldVendor->category?->name.') diganti menjadi '.$newVendor->name,
+                        $booking->id,
+                        ['vendor' => $oldVendor->name],
+                        ['vendor' => $newVendor->name],
+                    );
+                }
+
+                foreach (array_keys($vendorAdditionsPresent) as $bookingVendorId) {
+                    $bookingVendor = $booking->bookingVendors()->find($bookingVendorId);
+                    if (! $bookingVendor) {
+                        continue;
+                    }
+
+                    $additions = collect($vendorAdditions[$bookingVendorId] ?? [])->map(fn ($addition) => [
+                        'name' => trim($addition['name']),
+                        'price' => (float) $addition['price'],
+                    ])->values()->all();
+
+                    $bookingVendor->update(['custom_additions' => $additions]);
+                }
+            }
+
+            foreach ($additionalVendorIds as $vendorId) {
+                $vendor = Vendor::with('category')
+                    ->where('status', 'active')
+                    ->findOrFail($vendorId);
+
+                if (! $vendor->vendor_category_id || $booking->bookingVendors()->whereHas('vendor', fn ($query) => $query->where('vendor_category_id', $vendor->vendor_category_id))->exists()) {
+                    throw ValidationException::withMessages([
+                        'additional_vendor_ids' => 'Vendor tambahan hanya dapat ditambahkan dari kategori yang belum ada di booking.',
+                    ]);
+                }
+
+                if ($booking->bookingVendors()->where('vendor_id', $vendor->id)->exists()) {
+                    throw ValidationException::withMessages([
+                        'additional_vendor_ids' => 'Vendor tersebut sudah terdaftar di booking ini.',
+                    ]);
+                }
+
+                $booking->bookingVendors()->create([
+                    'vendor_id' => $vendor->id,
+                    'role' => $vendor->category?->name,
+                    'price' => $vendor->price,
+                    'status' => 'confirmed',
+                ]);
+
+                ActivityLogger::log(
+                    'vendor_added',
+                    'Vendor tambahan ditambahkan',
+                    'Vendor '.$vendor->name.' ('.$vendor->category?->name.') ditambahkan ke booking '.$booking->code,
+                    $booking->id,
+                );
             }
             $this->saveBookingFieldwork($request, $booking);
 
@@ -549,6 +639,10 @@ class BookingManagementController extends Controller
             ->where('status', 'active')
             ->findOrFail($data['vendor_id']);
 
+        if (! $vendor->vendor_category_id || $booking->bookingVendors()->whereHas('vendor', fn ($query) => $query->where('vendor_category_id', $vendor->vendor_category_id))->exists()) {
+            return back()->with('warning', 'Vendor tambahan hanya dapat ditambahkan dari kategori yang belum ada di booking.');
+        }
+
         if ($booking->bookingVendors()->where('vendor_id', $vendor->id)->exists()) {
             return back()->with('warning', 'Vendor tersebut sudah terdaftar di booking ini.');
         }
@@ -583,6 +677,8 @@ class BookingManagementController extends Controller
     {
         $rules = [
             'survey_wedding_stage_id' => ['nullable', 'exists:wedding_stages,id'],
+            'survey_tent_id' => ['nullable', 'exists:tents,id'],
+            'survey_entrance_gate_id' => ['nullable', 'exists:entrance_gates,id'],
             'survey_flower_color' => ['nullable', 'string', 'max:255'],
             'survey_stage_size' => ['nullable', 'string', 'max:255'],
             'survey_stage_size_other' => ['nullable', 'string', 'max:255'],
@@ -655,6 +751,7 @@ class BookingManagementController extends Controller
             'fitting_status' => ['nullable', 'in:scheduled,on_going,finished'],
             'items' => ['nullable', 'array'],
             'items.*.notes' => ['nullable', 'string', 'max:2000'],
+            'items.*.size' => ['nullable', 'string', 'max:255'],
             'items.*.photo' => ['nullable', 'image', 'max:5120'],
             'fitting_photos' => ['nullable', 'array'],
             'fitting_photos.*' => ['image', 'max:5120'],
@@ -664,12 +761,11 @@ class BookingManagementController extends Controller
     private function saveBookingFieldwork(Request $request, Booking $booking): void
     {
         $surveyFields = [
-            'location', 'maps_url', 'pic', 'notes', 'wedding_stage_id', 'flower_color',
+            'location', 'maps_url', 'pic', 'notes', 'wedding_stage_id', 'tent_id', 'entrance_gate_id', 'flower_color',
             'stage_size', 'stage_size_other', 'chair_option', 'chair_option_other',
             'stage_option', 'stage_option_other', 'fabric_color', 'tent_sizes',
             'tent_size_quantities', 'tent_sizes_other', 'tent_additions',
-            'tent_addition_quantities', 'tent_additions_other', 'tent_shape',
-            'tent_shape_other', 'entrance', 'entrance_other', 'buffet', 'buffet_other',
+            'tent_addition_quantities', 'tent_additions_other', 'buffet', 'buffet_other',
             'tableware', 'tableware_other', 'gallery_booth', 'envelope_box', 'fruit_shed',
             'akad_table', 'diesel_lights', 'photo_stand', 'carpet', 'vip_table',
             'snack_shed', 'blower', 'welcome_sign', 'center_point',
@@ -693,6 +789,18 @@ class BookingManagementController extends Controller
                 ]);
             }
 
+            $tentId = $request->input('survey_tent_id');
+            $tent = $tentId ? Tent::findOrFail($tentId) : null;
+            if ($tent && ! $tent->is_active && $existingSurvey?->tent_id !== $tent->id) {
+                throw ValidationException::withMessages(['survey_tent_id' => 'Tenda yang tidak aktif tidak dapat dipilih.']);
+            }
+
+            $entranceGateId = $request->input('survey_entrance_gate_id');
+            $entranceGate = $entranceGateId ? EntranceGate::findOrFail($entranceGateId) : null;
+            if ($entranceGate && ! $entranceGate->is_active && $existingSurvey?->entrance_gate_id !== $entranceGate->id) {
+                throw ValidationException::withMessages(['survey_entrance_gate_id' => 'Gapura yang tidak aktif tidak dapat dipilih.']);
+            }
+
             $surveyData = [];
             foreach ($surveyFields as $field) {
                 if (in_array($field, ['tent_sizes', 'tent_additions'], true)) {
@@ -713,7 +821,7 @@ class BookingManagementController extends Controller
         }
 
         $items = $request->input('items', []);
-        $hasItemData = collect($items)->contains(fn ($item) => filled($item['notes'] ?? null)) || $request->hasFile('items');
+        $hasItemData = collect($items)->contains(fn ($item) => filled($item['notes'] ?? null) || filled($item['size'] ?? null)) || $request->hasFile('items');
         $hasFittingData = filled($request->input('fitting_date'))
             || filled($request->input('fitting_pic'))
             || filled($request->input('fitting_notes'))
@@ -732,6 +840,12 @@ class BookingManagementController extends Controller
         }
 
         $existingFitting = $booking->fittings()->first();
+        $itemSizes = $existingFitting?->item_sizes ?? [];
+        foreach ($items as $itemKey => $item) {
+            if (array_key_exists('size', $item)) {
+                $itemSizes[$itemKey] = $item['size'];
+            }
+        }
         $fitting = Fitting::updateOrCreate(['booking_id' => $booking->id], [
             'date' => $date,
             'time' => $existingFitting?->getRawOriginal('time'),
@@ -739,6 +853,7 @@ class BookingManagementController extends Controller
             'notes' => $request->input('fitting_notes'),
             'status' => $request->input('fitting_status', Fitting::STATUS_SCHEDULED),
             'photos' => array_merge($existingFitting?->photos ?? [], $this->storeBookingFiles($request, 'fitting_photos')),
+            'item_sizes' => $itemSizes,
             'created_by' => auth()->id(),
         ]);
 
@@ -758,6 +873,28 @@ class BookingManagementController extends Controller
 
         $fitting->forceFill($checklistData)->save();
         $booking->update(['fitting_date' => $date]);
+    }
+
+    private function surveyMasters(?Survey $survey): array
+    {
+        $tents = Tent::query()
+            ->where(fn ($query) => $query->where('is_active', true)->when($survey?->tent_id, fn ($query) => $query->orWhere('id', $survey->tent_id)))
+            ->orderBy('name')->get();
+        $entranceGates = EntranceGate::query()
+            ->where(fn ($query) => $query->where('is_active', true)->when($survey?->entrance_gate_id, fn ($query) => $query->orWhere('id', $survey->entrance_gate_id)))
+            ->orderBy('name')->get();
+
+        return [$tents, $entranceGates];
+    }
+
+    private function referralSourcesFor(Booking $booking): array
+    {
+        $sources = SiteSetting::bookingReferralSources();
+        if (filled($booking->referral_source) && ! in_array($booking->referral_source, $sources, true)) {
+            $sources[] = $booking->referral_source;
+        }
+
+        return $sources;
     }
 
     private function storeBookingFiles(Request $request, string $key, bool $isImage = true): array
