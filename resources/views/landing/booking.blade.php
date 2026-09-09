@@ -237,7 +237,7 @@
                                 <label class="form-label">Nama Pengantin <span class="text-red-600">*</span></label>
                                 <div class="input-group-icon">
                                     <i class="fa-solid fa-user input-icon"></i>
-                                    <input type="text" name="name" class="form-control" value="{{ old('name', auth()->user()->name ?? '') }}" placeholder="Contoh: Reno & Dewi" required>
+                                    <input type="text" name="name" class="form-control" value="{{ old('name', $client?->name ?? '') }}" placeholder="Contoh: Reno & Dewi" required>
                                 </div>
                             </div>
 
@@ -246,7 +246,7 @@
                                 <label class="form-label">Nomor WhatsApp <span class="text-red-600">*</span></label>
                                 <div class="input-group-icon">
                                     <i class="fa-solid fa-phone input-icon"></i>
-                                    <input type="text" name="phone" class="form-control" value="{{ old('phone', auth()->user()->phone ?? '') }}" placeholder="08xxxxxxxxxx" required>
+                                    <input type="text" name="phone" class="form-control" value="{{ old('phone', $client?->phone ?? '') }}" placeholder="08xxxxxxxxxx" required>
                                 </div>
                             </div>
 
@@ -255,8 +255,11 @@
                                 <label class="form-label">Email <span class="text-red-600">*</span></label>
                                 <div class="input-group-icon">
                                     <i class="fa-solid fa-envelope input-icon"></i>
-                                    <input type="email" name="email" class="form-control" value="{{ old('email', auth()->user()->email ?? '') }}" placeholder="email@anda.com" required>
+                                    <input type="email" name="email" class="form-control" value="{{ old('email', $client?->email ?? '') }}" placeholder="email@anda.com" required @readonly($client)>
                                 </div>
+                                @if ($client)
+                                    <small class="text-muted">Nama, WhatsApp, dan Instagram pada booking ini juga akan memperbarui profil client Anda.</small>
+                                @endif
                                 @error('email')
                                     <div class="rounded-lg bg-red-50 text-red-700 text-sm px-3 py-2 mt-2 mb-0"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ $message }}</div>
                                 @enderror
@@ -266,7 +269,7 @@
                                 <label class="form-label">Username Instagram</label>
                                 <div class="input-group-icon">
                                     <i class="fa-brands fa-instagram input-icon"></i>
-                                    <input type="text" name="instagram" class="form-control" value="{{ old('instagram', auth()->user()->instagram ?? '') }}" placeholder="@username">
+                                    <input type="text" name="instagram" class="form-control" value="{{ old('instagram', $client?->instagram ?? '') }}" placeholder="@username">
                                 </div>
                                 @error('instagram')
                                     <div class="rounded-lg bg-red-50 text-red-700 text-sm px-3 py-2 mt-2 mb-0"><i class="fa-solid fa-circle-exclamation mr-1"></i>{{ $message }}</div>

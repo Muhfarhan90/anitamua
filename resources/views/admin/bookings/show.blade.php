@@ -25,11 +25,13 @@
         @if($hasFitting)
         <x-button href="{{ route('admin.bookings.packing', $booking) }}" color="primary"><i class="fas fa-box"></i> Packing Checklist</x-button>
         @endif
-        @if($booking->status !== 'completed' && $booking->status !== 'cancelled')
+        @if($booking->status === \App\Models\Booking::STATUS_BOOKED)
         <form action="{{ route('admin.bookings.complete', $booking) }}" method="POST" class="inline">
             @csrf
             <x-button color="success" type="submit" onclick="return confirm('Tandai booking ini sebagai selesai?')"><i class="fas fa-check"></i> Tandai Selesai</x-button>
         </form>
+        @endif
+        @if(in_array($booking->status, [\App\Models\Booking::STATUS_PENDING, \App\Models\Booking::STATUS_BOOKED], true))
         <x-button color="danger" onclick="document.getElementById('cancelModal').classList.remove('hidden')"><i class="fas fa-ban"></i> Batalkan Booking</x-button>
         @endif
     </x-slot:actions>

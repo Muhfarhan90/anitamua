@@ -11,7 +11,7 @@
         <form action="{{ route('profile.update') }}" method="POST" class="space-y-4">
             @csrf
             <x-input name="name" label="Nama" required :value="auth()->user()->name" icon="fa-user" />
-            <x-input name="phone" label="No. WhatsApp" :value="auth()->user()->phone" icon="fa-phone" />
+            <x-input name="phone" label="No. WhatsApp" :value="auth()->user()->phone" icon="fa-phone" :required="auth()->user()->isClient()" />
             <div>
                 <label class="block text-sm font-medium text-gray-600 mb-1">Email</label>
                 <div class="relative">

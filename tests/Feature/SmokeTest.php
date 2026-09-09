@@ -1,13 +1,15 @@
 <?php
 
+use App\Mail\ClientAccountCredentials;
 use App\Models\ActivityLog;
 use App\Models\Booking;
+use App\Models\Finance;
 use App\Models\Gallery;
 use App\Models\Invoice;
 use App\Models\Package;
 use App\Models\Payment;
-use App\Models\Finance;
 use App\Models\Reminder;
+use App\Models\Schedule;
 use App\Models\SiteSetting;
 use App\Models\User;
 use App\Models\Vendor;
@@ -550,15 +552,16 @@ it('admin verifying the initial payment creates client account automatically', f
     expect(ActivityLog::where('action', 'client_account_created')->exists())->toBeTrue();
 
     // Email kredensial akun terkirim ke client
-    Mail::assertSent(\App\Mail\ClientAccountCredentials::class, function ($mail) use ($user, $booking) {
+    Mail::assertSent(ClientAccountCredentials::class, function ($mail) use ($user, $booking) {
         return $mail->hasTo($user->email)
             && $mail->password === 'Reno123'
             && $mail->bookingCode === $booking->code;
     });
 });
 
-it('booking with existing client email attaches to existing account', function () {
+it('guest booking with existing client email waits for verification before attaching', function () {
     $client = User::where('email', 'client@anitamua.com')->first();
+    $admin = User::where('email', 'admin@anitamua.com')->first();
     $package = Package::first();
 
     $this->post('/booking', [
@@ -572,12 +575,356 @@ it('booking with existing client email attaches to existing account', function (
         'proof' => UploadedFile::fake()->image('bukti.jpg'),
     ]);
 
-    $booking = Booking::where('email', $client->email)
-        ->where('client_id', $client->id)
-        ->first();
+    $booking = Booking::where('email', $client->email)->latest('id')->first();
 
     expect($booking)->not->toBeNull();
+    expect($booking->client_id)->toBeNull();
+
+    $this->actingAs($admin)->post(route('admin.bookings.verify-dp', $booking), [
+        'amount' => 1800000,
+        'method' => 'transfer',
+    ])->assertRedirect();
+
+    expect($booking->refresh()->client_id)->toBe($client->id);
+    expect($booking->name)->toBe($client->name);
+    expect($booking->phone)->toBe($client->phone);
+    expect($booking->email)->toBe($client->email);
+    expect($booking->instagram)->toBe($client->instagram);
     expect(User::where('email', $client->email)->count())->toBe(1);
+    expect(ActivityLog::where('booking_id', $booking->id)->where('action', 'client_account_linked')->exists())->toBeTrue();
+});
+
+it('keeps public booking identity synchronized with the logged in client', function () {
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+
+    $this->actingAs($client)->post('/booking', [
+        'package_id' => $package->id,
+        'name' => 'Nama Profil Terbaru',
+        'phone' => '081277788899',
+        'email' => 'email-palsu@example.com',
+        'instagram' => '@profilbaru',
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'location' => 'Gedung Uji',
+        'amount' => 1000000,
+        'proof' => UploadedFile::fake()->image('bukti.jpg'),
+    ])->assertRedirect();
+
+    $client->refresh();
+    $booking = Booking::where('client_id', $client->id)->latest('id')->firstOrFail();
+
+    expect($client->name)->toBe('Nama Profil Terbaru');
+    expect($client->phone)->toBe('081277788899');
+    expect($client->instagram)->toBe('@profilbaru');
+    expect($booking->name)->toBe($client->name);
+    expect($booking->phone)->toBe($client->phone);
+    expect($booking->email)->toBe($client->email);
+    expect($booking->instagram)->toBe($client->instagram);
+
+    $this->actingAs($client)->post(route('profile.update'), [
+        'name' => 'Tidak Boleh Tanpa Telepon',
+        'phone' => '',
+    ])->assertSessionHasErrors('phone');
+});
+
+it('synchronizes linked bookings when a client profile changes', function () {
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+    $booking = Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => $client->name,
+        'phone' => $client->phone,
+        'email' => $client->email,
+        'instagram' => $client->instagram,
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'status' => Booking::STATUS_BOOKED,
+    ]);
+
+    $this->actingAs($client)->post(route('profile.update'), [
+        'name' => 'Profil Client Baru',
+        'phone' => '081211122233',
+    ])->assertRedirect();
+
+    $client->refresh();
+    $booking->refresh();
+    expect($booking->name)->toBe($client->name);
+    expect($booking->phone)->toBe($client->phone);
+    expect($booking->email)->toBe($client->email);
+    expect($booking->instagram)->toBe($client->instagram);
+});
+
+it('rejects linking an existing client email when the phone does not match', function () {
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+
+    $this->post('/booking', [
+        'package_id' => $package->id,
+        'name' => 'Identitas Tidak Cocok',
+        'phone' => '081200000099',
+        'email' => $client->email,
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'location' => 'Gedung Uji',
+        'amount' => 1000000,
+        'proof' => UploadedFile::fake()->image('bukti.jpg'),
+    ]);
+
+    $booking = Booking::where('name', 'Identitas Tidak Cocok')->firstOrFail();
+    $payment = $booking->payments()->firstOrFail();
+
+    $this->actingAs($admin)->post(route('admin.bookings.verify-dp', $booking), [
+        'amount' => 1000000,
+        'method' => 'transfer',
+    ])->assertSessionHasErrors('phone');
+
+    expect($booking->refresh()->status)->toBe(Booking::STATUS_PENDING);
+    expect($booking->client_id)->toBeNull();
+    expect($payment->refresh()->status)->toBe(Payment::STATUS_PENDING);
+});
+
+it('never assigns an authenticated owner as a public booking client', function () {
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+
+    $this->actingAs($owner)->get('/booking')
+        ->assertOk()
+        ->assertDontSee('value="'.$owner->email.'"', false);
+
+    $this->actingAs($owner)->post('/booking', [
+        'package_id' => $package->id,
+        'name' => 'Client Baru',
+        'phone' => '081299900011',
+        'email' => 'client-baru@example.com',
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'location' => 'Gedung Baru',
+        'amount' => 1000000,
+        'proof' => UploadedFile::fake()->image('bukti.jpg'),
+    ])->assertRedirect();
+
+    $booking = Booking::where('email', 'client-baru@example.com')->firstOrFail();
+    expect($booking->client_id)->toBeNull();
+    expect($booking->created_by)->toBe($owner->id);
+});
+
+it('links a client created from the admin booking form', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+
+    $this->actingAs($admin)->post('/admin/bookings', [
+        'client_mode' => 'new',
+        'new_client_name' => 'Ayu & Bima',
+        'new_client_email' => 'ayu-bima@example.com',
+        'new_client_phone' => '081288877766',
+        'package_id' => $package->id,
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'dp1_amount' => 1000000,
+    ])->assertRedirect();
+
+    $client = User::where('email', 'ayu-bima@example.com')->firstOrFail();
+    $booking = Booking::where('email', 'ayu-bima@example.com')->firstOrFail();
+
+    expect($client->role)->toBe(User::ROLE_CLIENT);
+    expect($client->position)->toBe('Bride');
+    expect($booking->client_id)->toBe($client->id);
+    expect($booking->status)->toBe(Booking::STATUS_BOOKED);
+});
+
+it('rolls back dp verification when the booking email belongs to staff', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+
+    $this->post('/booking', [
+        'package_id' => $package->id,
+        'name' => 'Data Salah',
+        'phone' => '081200000001',
+        'email' => $owner->email,
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'location' => 'Gedung Uji',
+        'amount' => 750000,
+        'proof' => UploadedFile::fake()->image('bukti.jpg'),
+    ]);
+
+    $booking = Booking::where('name', 'Data Salah')->firstOrFail();
+    $payment = $booking->payments()->firstOrFail();
+
+    $this->actingAs($admin)->post(route('admin.bookings.verify-dp', $booking), [
+        'amount' => 900000,
+        'method' => 'transfer',
+    ])->assertSessionHasErrors('email');
+
+    expect($booking->refresh()->status)->toBe(Booking::STATUS_PENDING);
+    expect($booking->client_id)->toBeNull();
+    expect($payment->refresh()->status)->toBe(Payment::STATUS_PENDING);
+    expect((float) $payment->amount)->toBe(750000.0);
+    expect($booking->schedules()->where('type', 'hari_h')->exists())->toBeFalse();
+});
+
+it('rejects non-client ids in booking management and client routes', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+
+    $this->actingAs($admin)->post('/admin/bookings', [
+        'client_mode' => 'existing',
+        'client_id' => $owner->id,
+        'package_id' => $package->id,
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'dp1_amount' => 1000000,
+    ])->assertSessionHasErrors('client_id');
+
+    $booking = Booking::firstOrFail();
+    $booking->update(['client_id' => $owner->id]);
+    $this->actingAs($owner)->get(route('client.booking', $booking))->assertForbidden();
+});
+
+it('does not book a pending booking when a non-DP1 payment is verified', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+    $booking = Booking::create([
+        'code' => Booking::generateCode(),
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => 'Tahap Salah',
+        'phone' => '081200000002',
+        'email' => 'tahap-salah@example.com',
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'status' => Booking::STATUS_PENDING,
+    ]);
+    $payment = $booking->payments()->create([
+        'type' => 'PELUNASAN',
+        'amount' => 500000,
+        'status' => Payment::STATUS_PENDING,
+    ]);
+
+    $this->actingAs($admin)->post(route('admin.payments.verify', $payment), [
+        'amount' => 500000,
+    ])->assertRedirect();
+
+    expect($booking->refresh()->status)->toBe(Booking::STATUS_PENDING);
+    expect($booking->client_id)->toBeNull();
+});
+
+it('previews and repairs corrupted booking client links with the backfill command', function () {
+    Mail::fake();
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+    $wrongLink = Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $owner->id,
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => $client->name,
+        'phone' => $client->phone,
+        'email' => $owner->email,
+        'instagram' => '@salah',
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'status' => Booking::STATUS_BOOKED,
+    ]);
+    $missingLink = Booking::create([
+        'code' => Booking::generateCode(),
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => 'Client Backfill',
+        'phone' => '081277766655',
+        'email' => 'backfill@example.com',
+        'event_date' => now()->addMonths(3)->toDateString(),
+        'status' => Booking::STATUS_BOOKED,
+    ]);
+    $mismatchedIdentity = Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => 'Nama Lama',
+        'phone' => '080000000000',
+        'email' => 'lama@example.com',
+        'instagram' => '@lama',
+        'event_date' => now()->addMonths(4)->toDateString(),
+        'status' => Booking::STATUS_COMPLETED,
+    ]);
+
+    $this->artisan('bookings:backfill-clients')->assertExitCode(0);
+    expect($wrongLink->refresh()->client_id)->toBe($owner->id);
+    expect($missingLink->refresh()->client_id)->toBeNull();
+    expect($mismatchedIdentity->refresh()->name)->toBe('Nama Lama');
+
+    $this->artisan('bookings:backfill-clients', ['--force' => true])->assertExitCode(0);
+
+    expect($wrongLink->refresh()->client_id)->toBe($client->id);
+    expect($wrongLink->name)->toBe($client->name);
+    expect($wrongLink->phone)->toBe($client->phone);
+    expect($wrongLink->email)->toBe($client->email);
+    expect($wrongLink->instagram)->toBe($client->instagram);
+    $createdClient = User::where('email', 'backfill@example.com')->firstOrFail();
+    expect($missingLink->refresh()->client_id)->toBe($createdClient->id);
+    $mismatchedIdentity->refresh();
+    expect($mismatchedIdentity->name)->toBe($client->name);
+    expect($mismatchedIdentity->phone)->toBe($client->phone);
+    expect($mismatchedIdentity->email)->toBe($client->email);
+    expect($mismatchedIdentity->instagram)->toBe($client->instagram);
+    Mail::assertNothingSent();
+});
+
+it('synchronizes the client and invoice when Hari H is finished', function () {
+    Mail::fake();
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+    $booking = Booking::create([
+        'code' => Booking::generateCode(),
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => 'Hari H Client',
+        'phone' => '081266655544',
+        'email' => 'hari-h@example.com',
+        'event_date' => now()->addDay()->toDateString(),
+        'status' => Booking::STATUS_BOOKED,
+    ]);
+    $schedule = $booking->schedules()->create([
+        'type' => Schedule::TYPE_HARI_H,
+        'date' => $booking->event_date,
+        'status' => Schedule::STATUS_SCHEDULED,
+    ]);
+
+    $this->actingAs($admin)->post(route('admin.schedules.status', $schedule), [
+        'status' => Schedule::STATUS_FINISHED,
+    ])->assertRedirect();
+
+    expect($schedule->refresh()->status)->toBe(Schedule::STATUS_FINISHED);
+    expect($booking->refresh()->status)->toBe(Booking::STATUS_COMPLETED);
+    expect($booking->client?->role)->toBe(User::ROLE_CLIENT);
+    expect($booking->invoice)->not->toBeNull();
+});
+
+it('rolls back finishing Hari H when its booking is still pending', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+    $booking = Booking::create([
+        'code' => Booking::generateCode(),
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => 'Hari H Pending',
+        'phone' => '081266655533',
+        'email' => 'hari-h-pending@example.com',
+        'event_date' => now()->addDay()->toDateString(),
+        'status' => Booking::STATUS_PENDING,
+    ]);
+    $schedule = $booking->schedules()->create([
+        'type' => Schedule::TYPE_HARI_H,
+        'date' => $booking->event_date,
+        'status' => Schedule::STATUS_SCHEDULED,
+    ]);
+
+    $this->actingAs($admin)->post(route('admin.schedules.status', $schedule), [
+        'status' => Schedule::STATUS_FINISHED,
+    ])->assertSessionHasErrors('status');
+
+    expect($schedule->refresh()->status)->toBe(Schedule::STATUS_SCHEDULED);
+    expect($booking->refresh()->status)->toBe(Booking::STATUS_PENDING);
 });
 
 it('admin payment verification can correct the client submitted nominal', function () {
@@ -958,8 +1305,8 @@ it('renders MVP back office pages and hides deferred features', function () {
 
     // Modul fase 2 sudah aktif
     foreach (['/admin/inventory', '/admin/inventory-categories', '/admin/benefits', '/admin/benefit-categories',
-              '/admin/users/staff', '/admin/users/clients',
-              '/admin/content/testimonials', '/admin/content/gallery', '/admin/content/faqs', '/admin/content/settings'] as $url) {
+        '/admin/users/staff', '/admin/users/clients',
+        '/admin/content/testimonials', '/admin/content/gallery', '/admin/content/faqs', '/admin/content/settings'] as $url) {
         $this->actingAs($owner)->get($url)->assertOk();
     }
 

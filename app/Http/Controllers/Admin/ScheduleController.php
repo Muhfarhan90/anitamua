@@ -7,8 +7,12 @@ use App\Models\Booking;
 use App\Models\Schedule;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\ClientAccountService;
+use App\Services\InvoiceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ScheduleController extends Controller
 {
@@ -84,27 +88,47 @@ class ScheduleController extends Controller
         return back()->with('success', 'Jadwal berhasil ditambahkan.');
     }
 
-    public function updateStatus(Schedule $schedule, Request $request)
-    {
+    public function updateStatus(
+        Schedule $schedule,
+        Request $request,
+        ClientAccountService $clientAccounts,
+        InvoiceService $invoiceService,
+    ) {
         $data = $request->validate([
             'status' => ['required', 'in:scheduled,on_going,finished,cancelled'],
             'notes' => ['nullable', 'string'],
         ]);
 
-        $schedule->update($data);
+        DB::transaction(function () use ($schedule, $data, $clientAccounts, $invoiceService) {
+            $schedule->update($data);
 
-        ActivityLogger::log(
-            'schedule_status_changed',
-            'Status jadwal diubah',
-            'Jadwal '.Schedule::typeLabel($schedule->type).' ('.$schedule->booking->name.') berubah menjadi '.$data['status'],
-            $schedule->booking_id,
-        );
+            ActivityLogger::log(
+                'schedule_status_changed',
+                'Status jadwal diubah',
+                'Jadwal '.Schedule::typeLabel($schedule->type).' ('.$schedule->booking->name.') berubah menjadi '.$data['status'],
+                $schedule->booking_id,
+            );
 
-        if ($schedule->type === Schedule::TYPE_HARI_H && $data['status'] === Schedule::STATUS_FINISHED) {
-            $schedule->booking->update(['status' => Booking::STATUS_COMPLETED]);
+            if ($schedule->type !== Schedule::TYPE_HARI_H || $data['status'] !== Schedule::STATUS_FINISHED) {
+                return;
+            }
 
-            ActivityLogger::log('booking_completed', 'Project selesai', 'Project '.$schedule->booking->code.' selesai setelah Hari H.', $schedule->booking_id);
-        }
+            $booking = Booking::query()->lockForUpdate()->findOrFail($schedule->booking_id);
+            if ($booking->status === Booking::STATUS_COMPLETED) {
+                return;
+            }
+            if ($booking->status !== Booking::STATUS_BOOKED) {
+                throw ValidationException::withMessages([
+                    'status' => 'Hari H hanya dapat diselesaikan untuk booking berstatus BOOKED.',
+                ]);
+            }
+
+            $clientAccounts->ensure($booking);
+            $booking->update(['status' => Booking::STATUS_COMPLETED]);
+            $invoiceService->sync($booking->fresh());
+
+            ActivityLogger::log('booking_completed', 'Project selesai', 'Project '.$booking->code.' selesai setelah Hari H.', $booking->id);
+        });
 
         return back()->with('success', 'Status jadwal diperbarui.');
     }

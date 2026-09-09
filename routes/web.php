@@ -51,8 +51,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middl
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/client/booking/{booking}', [ClientController::class, 'booking'])->name('client.booking');
-    Route::post('/client/booking/{booking}/proof', [ClientController::class, 'uploadProof'])->name('client.booking.proof');
+    Route::middleware('role:client')->group(function () {
+        Route::get('/client/booking/{booking}', [ClientController::class, 'booking'])->name('client.booking');
+        Route::post('/client/booking/{booking}/proof', [ClientController::class, 'uploadProof'])->name('client.booking.proof');
+    });
 
     // Profil & ganti password
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');

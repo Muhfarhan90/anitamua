@@ -136,13 +136,6 @@
 
             <x-input name="location" label="Lokasi Acara" placeholder="Alamat lokasi acara" :value="$booking->location" />
 
-            <x-select name="status" label="Status" required>
-                <option value="pending" @selected(old('status', $booking->status) === 'pending')>Pending</option>
-                <option value="booked" @selected(old('status', $booking->status) === 'booked')>Booked</option>
-                <option value="completed" @selected(old('status', $booking->status) === 'completed')>Selesai</option>
-                <option value="cancelled" @selected(old('status', $booking->status) === 'cancelled')>Dibatalkan</option>
-            </x-select>
-
             <x-textarea name="notes" label="Catatan" placeholder="Catatan tambahan untuk booking ini..." :value="$booking->notes" />
 
             </div>

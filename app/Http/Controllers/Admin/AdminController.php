@@ -9,6 +9,7 @@ use App\Models\Reminder;
 use App\Models\User;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
@@ -61,7 +62,7 @@ class AdminController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users'],
-            'phone' => ['nullable', 'string', 'max:30'],
+            'phone' => ['required', 'string', 'max:30'],
             'password' => ['required', 'min:6'],
         ]);
 
@@ -97,7 +98,7 @@ class AdminController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email,'.$user->id],
-            'phone' => ['nullable', 'string', 'max:30'],
+            'phone' => [Rule::requiredIf($user->isClient()), 'nullable', 'string', 'max:30'],
             'role' => ['nullable', 'in:owner,admin,team,client'],
             'password' => ['nullable', 'min:6'],
             'is_active' => ['nullable', 'boolean'],

@@ -22,7 +22,7 @@
 
             <x-input name="name" label="Nama Lengkap" :value="old('name', $user->name)" required />
             <x-input name="email" label="Email" type="email" :value="old('email', $user->email)" required />
-            <x-input name="phone" label="No HP" :value="old('phone', $user->phone)" placeholder="08xxxxxxxxxx" />
+            <x-input name="phone" label="No HP" :value="old('phone', $user->phone)" placeholder="08xxxxxxxxxx" :required="! $isStaff" />
             <x-input name="password" label="Password Baru (kosongkan jika tidak diganti)" type="password" minlength="6" />
 
             @if($isStaff)
