@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\EntranceGate;
 use App\Models\Fitting;
 use App\Models\Survey;
+use App\Models\Tent;
 use App\Models\User;
 use App\Models\WeddingStage;
 use App\Services\ActivityLogger;
@@ -28,7 +30,7 @@ class FieldWorkController extends Controller
 
     public function fieldwork(Booking $booking)
     {
-        $booking->load(['survey.weddingStage', 'fittings', 'package']);
+        $booking->load(['survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings', 'package']);
 
         $currentDecorationId = $booking->survey?->wedding_stage_id;
         $weddingStages = WeddingStage::query()
@@ -41,9 +43,20 @@ class FieldWorkController extends Controller
             ->orderBy('name')
             ->get();
 
+        $currentTentId = $booking->survey?->tent_id;
+        $tents = Tent::query()
+            ->where(fn ($query) => $query->where('is_active', true)->when($currentTentId, fn ($query) => $query->orWhere('id', $currentTentId)))
+            ->orderBy('name')
+            ->get();
+        $currentEntranceGateId = $booking->survey?->entrance_gate_id;
+        $entranceGates = EntranceGate::query()
+            ->where(fn ($query) => $query->where('is_active', true)->when($currentEntranceGateId, fn ($query) => $query->orWhere('id', $currentEntranceGateId)))
+            ->orderBy('name')
+            ->get();
+
         $teamMembers = User::where('role', User::ROLE_TEAM)->where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.fieldwork.booking', compact('booking', 'teamMembers', 'weddingStages'));
+        return view('admin.fieldwork.booking', compact('booking', 'teamMembers', 'weddingStages', 'tents', 'entranceGates'));
     }
 
     public function surveyStore(Request $request)
@@ -51,6 +64,8 @@ class FieldWorkController extends Controller
         $data = $request->validate([
             'booking_id' => ['required', 'exists:bookings,id'],
             'wedding_stage_id' => ['nullable', 'exists:wedding_stages,id'],
+            'tent_id' => ['nullable', 'exists:tents,id'],
+            'entrance_gate_id' => ['nullable', 'exists:entrance_gates,id'],
             'flower_color' => ['nullable', 'string', 'max:255'],
             'stage_size' => ['nullable', 'string', 'max:255'],
             'stage_size_other' => ['nullable', 'string', 'max:255'],
@@ -122,6 +137,16 @@ class FieldWorkController extends Controller
             ]);
         }
 
+        $tent = ! empty($data['tent_id']) ? Tent::findOrFail($data['tent_id']) : null;
+        if ($tent && ! $tent->is_active && $existing?->tent_id !== $tent->id) {
+            throw ValidationException::withMessages(['tent_id' => 'Tenda yang tidak aktif tidak dapat dipilih.']);
+        }
+
+        $entranceGate = ! empty($data['entrance_gate_id']) ? EntranceGate::findOrFail($data['entrance_gate_id']) : null;
+        if ($entranceGate && ! $entranceGate->is_active && $existing?->entrance_gate_id !== $entranceGate->id) {
+            throw ValidationException::withMessages(['entrance_gate_id' => 'Gapura yang tidak aktif tidak dapat dipilih.']);
+        }
+
         $survey = DB::transaction(function () use ($request, $data, $existing) {
             $data['tent_sizes'] = array_values($data['tent_sizes'] ?? []);
             $data['tent_additions'] = array_values($data['tent_additions'] ?? []);
@@ -154,6 +179,7 @@ class FieldWorkController extends Controller
             'status' => ['required', 'in:scheduled,on_going,finished'],
             'items' => ['nullable', 'array'],
             'items.*.notes' => ['nullable', 'string', 'max:2000'],
+            'items.*.size' => ['nullable', 'string', 'max:255'],
             'items.*.photo' => ['nullable', 'image', 'max:5120'],
             'photos' => ['nullable', 'array'],
             'photos.*' => ['image', 'max:5120'],
@@ -162,6 +188,12 @@ class FieldWorkController extends Controller
         // Simpan file baru, lalu gabungkan dengan foto yang sudah ada
         $existing = Fitting::where('booking_id', $data['booking_id'])->first();
         $data['photos'] = array_merge($existing?->photos ?? [], $this->storeFiles($request, 'photos'));
+        $data['item_sizes'] = $existing?->item_sizes ?? [];
+        foreach ($request->input('items', []) as $itemKey => $item) {
+            if (array_key_exists('size', $item)) {
+                $data['item_sizes'][$itemKey] = $item['size'];
+            }
+        }
         $data['created_by'] = auth()->id();
 
         // Fitting hanya 1 per booking (sesuai PRD) — update record yang sama

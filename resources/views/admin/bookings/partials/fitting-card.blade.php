@@ -53,6 +53,7 @@
                         $photoColumn = $itemKey.'_photo_path';
                         $itemNotes = $fitting?->{$notesColumn};
                         $itemPhoto = $fitting?->{$photoColumn};
+                        $itemSize = $fitting?->item_sizes[$itemKey] ?? null;
                         $allowsPhoto = str_contains($itemKey, 'busana_') || str_starts_with($itemKey, 'among_');
                         $detailLabel = str_contains($itemKey, 'stylist') ? 'Nama stylist / hijab' : 'Detail / catatan';
                         $detailPlaceholder = str_contains($itemKey, 'stylist') ? 'Tulis nama stylist atau hijab' : 'Tulis detail item';
@@ -61,8 +62,10 @@
                         <div class="min-w-0"><p class="text-sm font-semibold leading-5 text-gray-700 break-words">{{ $label }}</p>@if($allowsPhoto && $itemPhoto)<a href="{{ asset('storage/'.$itemPhoto) }}" onclick="openProof(event, this.href)" class="inline-flex items-center gap-1 text-xs text-brand mt-1 no-underline"><i class="fas fa-image"></i> Lihat foto</a>@endif</div>
                         @if($allowsPhoto)
                             <div><label for="item-{{ $itemKey }}-photo" class="block text-xs font-medium text-gray-500 mb-1">Foto busana</label><input id="item-{{ $itemKey }}-photo" type="file" name="items[{{ $itemKey }}][photo]" accept="image/*" class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200"></div>
+                            <div><label for="item-{{ $itemKey }}-notes" class="block text-xs font-medium text-gray-500 mb-1">Keterangan</label><textarea id="item-{{ $itemKey }}-notes" name="items[{{ $itemKey }}][notes]" maxlength="2000" rows="2" placeholder="Keterangan busana" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200">{{ old('items.'.$itemKey.'.notes', $itemNotes ?? '') }}</textarea></div>
+                            <div><label for="item-{{ $itemKey }}-size" class="block text-xs font-medium text-gray-500 mb-1">Ukuran</label><input id="item-{{ $itemKey }}-size" type="text" name="items[{{ $itemKey }}][size]" maxlength="255" value="{{ old('items.'.$itemKey.'.size', $itemSize ?? '') }}" placeholder="Contoh: M atau LD 92 / PB 140" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200"></div>
                         @else
-                            <div><label for="item-{{ $itemKey }}-notes" class="block text-xs font-medium text-gray-500 mb-1">{{ $detailLabel }}</label><input id="item-{{ $itemKey }}-notes" type="text" name="items[{{ $itemKey }}][notes]" value="{{ old('items.'.$itemKey.'.notes', $itemNotes ?? '') }}" placeholder="{{ $detailPlaceholder }}" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200"></div>
+                            <div><label for="item-{{ $itemKey }}-notes" class="block text-xs font-medium text-gray-500 mb-1">{{ $detailLabel }}</label><input id="item-{{ $itemKey }}-notes" type="text" name="items[{{ $itemKey }}][notes]" maxlength="2000" value="{{ old('items.'.$itemKey.'.notes', $itemNotes ?? '') }}" placeholder="{{ $detailPlaceholder }}" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200"></div>
                         @endif
                     </article>
                 @endforeach

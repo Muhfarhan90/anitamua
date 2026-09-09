@@ -40,15 +40,27 @@ class FinanceController extends Controller
             ];
         });
 
+        $yearBookings = Booking::whereYear('created_at', $year)->get(['created_at', 'referral_source']);
+        $bookingSources = $yearBookings
+            ->groupBy(fn (Booking $booking) => filled($booking->referral_source) ? $booking->referral_source : 'Tidak diketahui')
+            ->map(fn ($bookings, $label) => ['label' => $label, 'count' => $bookings->count()])
+            ->sortByDesc('count')
+            ->values();
+        $monthlyBookings = collect(range(1, 12))->map(fn (int $month) => [
+            'label' => Carbon::create($year, $month, 1)->translatedFormat('M'),
+            'count' => $yearBookings->filter(fn (Booking $booking) => $booking->created_at->month === $month)->count(),
+        ]);
+
         $years = $allTransactions
             ->pluck('date')
             ->map(fn (Carbon $date) => $date->year)
+            ->concat(Booking::pluck('created_at')->filter()->map(fn ($date) => Carbon::parse($date)->year))
             ->push($year)
             ->unique()
             ->sortDesc()
             ->values();
         return view('admin.finances.index', compact(
-            'incomes', 'expenses', 'profit', 'margin', 'monthly', 'year', 'years'
+            'incomes', 'expenses', 'profit', 'margin', 'monthly', 'bookingSources', 'monthlyBookings', 'year', 'years'
         ));
     }
 
@@ -112,11 +124,11 @@ class FinanceController extends Controller
 
         $vendorExpenses = BookingVendor::with(['booking', 'vendor.category'])
             ->where('status', '!=', 'cancelled')
-            ->whereNotNull('price')
-            ->where('price', '>', 0)
             ->get()
             ->filter(fn (BookingVendor $bookingVendor) =>
-                $bookingVendor->booking && $bookingVendor->booking->status !== Booking::STATUS_CANCELLED
+                $bookingVendor->booking
+                && $bookingVendor->booking->status !== Booking::STATUS_CANCELLED
+                && $bookingVendor->total_price > 0
             )
             ->map(function (BookingVendor $bookingVendor) {
                 $booking = $bookingVendor->booking;
@@ -127,7 +139,7 @@ class FinanceController extends Controller
                     'id' => 'vendor-'.$bookingVendor->id,
                     'type' => 'expense',
                     'category' => $vendor?->category?->name ?? 'Vendor',
-                    'amount' => (float) $bookingVendor->price,
+                    'amount' => $bookingVendor->total_price,
                     'date' => Carbon::parse($date),
                     'description' => 'Biaya '.($vendor?->name ?? 'Vendor').' — '.$booking->name,
                 ];

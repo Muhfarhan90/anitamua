@@ -42,7 +42,7 @@
     <div class="lg:col-span-2 space-y-5">
 
         <x-card title="Informasi Booking" title-icon="fa-file-invoice">
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
                 <div>
                     <span class="text-gray-500">Kode</span>
                     <p class="font-semibold text-gray-800"><x-badge>{{ $booking->code }}</x-badge></p>
@@ -57,11 +57,15 @@
                 </div>
                 <div>
                     <span class="text-gray-500">Telepon</span>
-                    <p class="font-semibold text-gray-800">{{ $booking->client->phone ?? '-' }}</p>
+                    <p class="font-semibold text-gray-800">{{ $booking->client?->phone ?? $booking->phone ?? '-' }}</p>
                 </div>
                 <div>
                     <span class="text-gray-500">Instagram</span>
                     <p class="font-semibold text-gray-800">{{ $booking->instagram ?? '-' }}</p>
+                </div>
+                <div>
+                    <span class="text-gray-500">Sumber Booking</span>
+                    <p class="font-semibold text-gray-800">{{ $booking->referral_source ?? 'Tidak diketahui' }}</p>
                 </div>
             </div>
         </x-card>
@@ -331,8 +335,16 @@
                             <p class="font-semibold text-gray-800">{{ $vendor?->name ?? 'Vendor' }}</p>
                             <p class="text-xs text-brand">{{ $bookingVendor->role ?: $vendor?->category?->name ?: 'Vendor acara' }}</p>
                         </div>
-                        <span class="ml-auto text-sm font-semibold text-gray-700">Rp {{ number_format($bookingVendor->price, 0, ',', '.') }}</span>
+                        <div class="ml-auto text-right"><span class="text-sm font-semibold text-gray-700">Rp {{ number_format($bookingVendor->total_price, 0, ',', '.') }}</span><p class="text-[11px] text-gray-400">Dasar Rp {{ number_format($bookingVendor->price, 0, ',', '.') }}</p></div>
                     </div>
+
+                    @if($bookingVendor->custom_additions)
+                        <div class="mt-3 rounded-xl bg-gray-50 px-3 py-2">
+                            @foreach($bookingVendor->custom_additions as $addition)
+                                <div class="flex items-center justify-between gap-3 py-1 text-xs"><span class="text-gray-600">+ {{ $addition['name'] }}</span><span class="font-semibold text-gray-700">Rp {{ number_format((float) $addition['price'], 0, ',', '.') }}</span></div>
+                            @endforeach
+                        </div>
+                    @endif
 
                 </div>
             @empty

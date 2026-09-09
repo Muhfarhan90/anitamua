@@ -47,7 +47,7 @@ class Fitting extends Model
 
     protected $fillable = [
         'booking_id', 'date', 'time', 'pic', 'notes',
-        'photos', 'status', 'created_by',
+        'photos', 'item_sizes', 'status', 'created_by',
     ];
 
     protected function casts(): array
@@ -56,6 +56,7 @@ class Fitting extends Model
             'date' => 'date',
             'time' => 'datetime:H:i',
             'photos' => 'array',
+            'item_sizes' => 'array',
         ];
     }
 

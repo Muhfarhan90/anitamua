@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\BenefitCategoryController;
 use App\Http\Controllers\Admin\BenefitController;
 use App\Http\Controllers\Admin\BookingManagementController;
 use App\Http\Controllers\Admin\ContentController;
+use App\Http\Controllers\Admin\EntranceGateController;
 use App\Http\Controllers\Admin\FieldWorkController;
 use App\Http\Controllers\Admin\FinanceController;
 use App\Http\Controllers\Admin\InventoryCategoryController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Admin\PackingController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PromoBannerController;
 use App\Http\Controllers\Admin\ScheduleController;
+use App\Http\Controllers\Admin\TentController;
 use App\Http\Controllers\Admin\VendorCategoryController;
 use App\Http\Controllers\Admin\VendorController;
 use App\Http\Controllers\Admin\WeddingStageController;
@@ -125,6 +127,15 @@ Route::middleware('auth')->group(function () {
             Route::resource('/wedding-stages', WeddingStageController::class)
                 ->names('wedding-stages')
                 ->parameters(['wedding-stages' => 'weddingStage'])
+                ->only(['index', 'store', 'update', 'destroy']);
+
+            Route::resource('/tents', TentController::class)
+                ->names('tents')
+                ->only(['index', 'store', 'update', 'destroy']);
+
+            Route::resource('/entrance-gates', EntranceGateController::class)
+                ->names('entrance-gates')
+                ->parameters(['entrance-gates' => 'entranceGate'])
                 ->only(['index', 'store', 'update', 'destroy']);
 
             // Master Benefit (Owner & Admin) — benefit dipakai ulang banyak paket

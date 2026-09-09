@@ -11,6 +11,7 @@ use App\Services\ActivityLogger;
 use App\Services\ImageCompressor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class ContentController extends Controller
 {
@@ -168,11 +169,12 @@ class ContentController extends Controller
 
     public function settings()
     {
-        $keys = ['company_name', 'tagline', 'about', 'address', 'phone', 'email', 'instagram', 'whatsapp', 'bank_name', 'bank_account_number', 'bank_account_name', 'invoice_greeting', 'logo', 'landing_hero_image', 'about_image'];
+        $keys = ['company_name', 'tagline', 'about', 'address', 'phone', 'email', 'instagram', 'whatsapp', 'bank_name', 'bank_account_number', 'bank_account_name', 'invoice_greeting', 'logo', 'landing_hero_image', 'about_image', 'booking_referral_sources'];
 
         $settings = SiteSetting::whereIn('key', $keys)->pluck('value', 'key');
+        $bookingReferralSources = SiteSetting::bookingReferralSources();
 
-        return view('admin.content.settings', compact('settings', 'keys'));
+        return view('admin.content.settings', compact('settings', 'keys', 'bookingReferralSources'));
     }
 
     public function storeSettings(Request $request)
@@ -190,10 +192,27 @@ class ContentController extends Controller
             'bank_account_number' => ['nullable', 'string', 'max:50'],
             'bank_account_name' => ['nullable', 'string', 'max:100'],
             'invoice_greeting' => ['nullable', 'string', 'max:500'],
+            'booking_referral_sources' => ['required'],
+            'booking_referral_sources.*' => ['nullable', 'string', 'max:100'],
             'logo' => ['nullable', 'image', 'max:2048'],
             'landing_hero_image' => ['nullable', 'image', 'max:8192'],
             'about_image' => ['nullable', 'image', 'max:8192'],
         ]);
+
+        $rawBookingReferralSources = is_array($data['booking_referral_sources'])
+            ? $data['booking_referral_sources']
+            : preg_split('/\R/', $data['booking_referral_sources']);
+        $bookingReferralSources = collect($rawBookingReferralSources)
+            ->map(fn ($source) => trim($source))
+            ->filter()
+            ->unique(fn ($source) => mb_strtolower($source))
+            ->values();
+        if ($bookingReferralSources->isEmpty()) {
+            throw ValidationException::withMessages([
+                'booking_referral_sources' => 'Isi minimal satu pilihan sumber booking.',
+            ]);
+        }
+        $data['booking_referral_sources'] = $bookingReferralSources->toJson(JSON_UNESCAPED_UNICODE);
 
         foreach (['logo' => 'uploads/logo', 'landing_hero_image' => 'uploads/site', 'about_image' => 'uploads/site'] as $key => $directory) {
             if ($request->hasFile($key)) {

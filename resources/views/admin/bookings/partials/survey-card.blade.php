@@ -8,7 +8,11 @@
     $tentAdditions = (array) old($fieldName('tent_additions'), $survey?->tent_additions ?? []);
     $tentSizeQuantities = (array) old($fieldName('tent_size_quantities'), $survey?->tent_size_quantities ?? []);
     $tentAdditionQuantities = (array) old($fieldName('tent_addition_quantities'), $survey?->tent_addition_quantities ?? []);
+    $tents = $tents ?? collect();
+    $entranceGates = $entranceGates ?? collect();
     $selectedWeddingStage = $weddingStages->firstWhere('id', (int) $value('wedding_stage_id'));
+    $selectedTent = $tents->firstWhere('id', (int) $value('tent_id'));
+    $selectedEntranceGate = $entranceGates->firstWhere('id', (int) $value('entrance_gate_id'));
     $equipmentFields = [
         'gallery_booth' => 'Galery booth', 'envelope_box' => 'Kotak amplop', 'fruit_shed' => 'Saung buah',
         'akad_table' => 'Meja akad', 'diesel_lights' => 'Diesel + lampu', 'photo_stand' => 'Stand photo',
@@ -49,15 +53,15 @@
         <section class="border-t border-gray-100 pt-4">
             <div class="flex items-center gap-3 mb-4"><span class="w-7 h-7 rounded-lg bg-brand-50 text-brand flex items-center justify-center text-xs font-bold">02</span><div><h4 class="font-semibold text-gray-800">Dekorasi utama</h4><p class="text-xs text-gray-400">Pilihan jenis dan detail pelaminan.</p></div></div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div data-wedding-stage-field>
-                    <x-select name="{{ $fieldName('wedding_stage_id') }}" label="Jenis Pelaminan" data-wedding-stage-select>
+                <div data-master-photo-field>
+                    <x-select name="{{ $fieldName('wedding_stage_id') }}" label="Jenis Pelaminan" data-master-photo-select>
                         <option value="">— Pilih Jenis Pelaminan —</option>
                         @foreach($weddingStages as $weddingStage)
                             <option value="{{ $weddingStage->id }}" data-photo="{{ $weddingStage->photo_path ? asset('storage/'.$weddingStage->photo_path) : '' }}" @selected((string) $value('wedding_stage_id') === (string) $weddingStage->id)>{{ $weddingStage->name }}{{ !$weddingStage->is_active ? ' (nonaktif)' : '' }}</option>
                         @endforeach
                     </x-select>
-                    <div class="{{ $selectedWeddingStage?->photo_path ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-wedding-stage-preview>
-                        <img src="{{ $selectedWeddingStage?->photo_path ? asset('storage/'.$selectedWeddingStage->photo_path) : '' }}" alt="{{ $selectedWeddingStage?->name ?? 'Preview pelaminan' }}" class="h-36 w-full rounded-lg object-contain" style="max-width:100%;display:block" data-wedding-stage-preview-image>
+                    <div class="{{ $selectedWeddingStage?->photo_path ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview>
+                        <img src="{{ $selectedWeddingStage?->photo_path ? asset('storage/'.$selectedWeddingStage->photo_path) : '' }}" alt="{{ $selectedWeddingStage?->name ?? 'Preview pelaminan' }}" class="h-36 w-full rounded-lg object-contain" style="max-width:100%;display:block" data-master-photo-preview-image>
                         <p class="mt-2 text-xs text-gray-500">Preview foto pelaminan</p>
                     </div>
                     @error($fieldName('wedding_stage_id'))<p class="mt-1 text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
@@ -71,7 +75,14 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
                 <div><p class="text-sm font-medium text-gray-600 mb-2">Panggung</p><div class="flex flex-wrap gap-2">@foreach(['Melamin', 'Karpet permadani', 'Karpet warna', 'Lainnya'] as $option)<label class="inline-flex items-center gap-2 text-sm text-gray-600"><input type="radio" name="{{ $fieldName('stage_option') }}" value="{{ $option }}" data-other-group="stage_option" @checked($value('stage_option') === $option) class="text-brand focus:ring-brand">{{ $option }}</label>@endforeach</div><div data-other-wrapper="stage_option" class="{{ $value('stage_option') === 'Lainnya' ? '' : 'hidden' }} mt-2"><input name="{{ $fieldName('stage_option_other') }}" value="{{ $value('stage_option_other') }}" {{ $value('stage_option') === 'Lainnya' ? '' : 'disabled' }} class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm" placeholder="Keterangan panggung lainnya"></div></div>
-                <div><p class="text-sm font-medium text-gray-600 mb-2">Bentuk Tenda</p><div class="flex flex-wrap gap-2">@foreach(['Gelembung', 'Sisir', 'Lainnya'] as $option)<label class="inline-flex items-center gap-2 text-sm text-gray-600"><input type="radio" name="{{ $fieldName('tent_shape') }}" value="{{ $option }}" data-other-group="tent_shape" @checked($value('tent_shape') === $option) class="text-brand focus:ring-brand">{{ $option }}</label>@endforeach</div><div data-other-wrapper="tent_shape" class="{{ $value('tent_shape') === 'Lainnya' ? '' : 'hidden' }} mt-2"><input name="{{ $fieldName('tent_shape_other') }}" value="{{ $value('tent_shape_other') }}" {{ $value('tent_shape') === 'Lainnya' ? '' : 'disabled' }} class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm" placeholder="Keterangan bentuk lainnya"></div></div>
+                <div data-master-photo-field>
+                    <x-select name="{{ $fieldName('tent_id') }}" label="Model Tenda" data-master-photo-select>
+                        <option value="">— Pilih Model Tenda —</option>
+                        @foreach($tents as $tent)<option value="{{ $tent->id }}" data-photo="{{ $tent->photo_path ? asset('storage/'.$tent->photo_path) : '' }}" @selected((string) $value('tent_id') === (string) $tent->id)>{{ $tent->name }}{{ !$tent->is_active ? ' (nonaktif)' : '' }}</option>@endforeach
+                    </x-select>
+                    <div class="{{ $selectedTent?->photo_path ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview><img src="{{ $selectedTent?->photo_path ? asset('storage/'.$selectedTent->photo_path) : '' }}" alt="{{ $selectedTent?->name ?? 'Preview tenda' }}" class="h-36 w-full rounded-lg object-contain" data-master-photo-preview-image><p class="mt-2 text-xs text-gray-500">Preview foto tenda</p></div>
+                    @error($fieldName('tent_id'))<p class="mt-1 text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
+                </div>
             </div>
         </section>
         <section class="border-t border-gray-100 pt-4">
@@ -107,7 +118,15 @@
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-                @foreach(['entrance' => ['Pintu Masuk', ['Gapura', 'Lorong', 'Lainnya']], 'buffet' => ['Prasmanan', ['Standar', 'Rolltop', 'Lainnya']], 'tableware' => ['Piring / Sendok / Garpu', ['Keramik', 'Rotan', 'Lainnya']]] as $field => [$label, $options])
+                <div data-master-photo-field>
+                    <x-select name="{{ $fieldName('entrance_gate_id') }}" label="Pintu Masuk" data-master-photo-select>
+                        <option value="">— Pilih Model Gapura —</option>
+                        @foreach($entranceGates as $gate)<option value="{{ $gate->id }}" data-photo="{{ $gate->photo_path ? asset('storage/'.$gate->photo_path) : '' }}" @selected((string) $value('entrance_gate_id') === (string) $gate->id)>{{ $gate->name }}{{ !$gate->is_active ? ' (nonaktif)' : '' }}</option>@endforeach
+                    </x-select>
+                    <div class="{{ $selectedEntranceGate?->photo_path ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview><img src="{{ $selectedEntranceGate?->photo_path ? asset('storage/'.$selectedEntranceGate->photo_path) : '' }}" alt="{{ $selectedEntranceGate?->name ?? 'Preview gapura' }}" class="h-36 w-full rounded-lg object-contain" data-master-photo-preview-image><p class="mt-2 text-xs text-gray-500">Preview foto gapura</p></div>
+                    @error($fieldName('entrance_gate_id'))<p class="mt-1 text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
+                </div>
+                @foreach(['buffet' => ['Prasmanan', ['Standar', 'Rolltop', 'Lainnya']], 'tableware' => ['Piring / Sendok / Garpu', ['Keramik', 'Rotan', 'Lainnya']]] as $field => [$label, $options])
                 <div><p class="text-sm font-medium text-gray-600 mb-2">{{ $label }}</p><div class="flex flex-wrap gap-2">@foreach($options as $option)<label class="inline-flex items-center gap-2 text-sm text-gray-600"><input type="radio" name="{{ $fieldName($field) }}" value="{{ $option }}" data-other-group="{{ $field }}" @checked($value($field) === $option) class="text-brand focus:ring-brand">{{ $option }}</label>@endforeach</div><div data-other-wrapper="{{ $field }}" class="{{ $value($field) === 'Lainnya' ? '' : 'hidden' }} mt-2"><input name="{{ $fieldName($field.'_other') }}" value="{{ $value($field.'_other') }}" {{ $value($field) === 'Lainnya' ? '' : 'disabled' }} class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm" placeholder="Keterangan lainnya"></div></div>
                 @endforeach
             </div>
@@ -162,14 +181,14 @@
                     syncOtherField();
                 });
 
-                document.querySelectorAll('[data-wedding-stage-field]').forEach(function (field) {
-                    const select = field.querySelector('[data-wedding-stage-select]');
-                    const preview = field.querySelector('[data-wedding-stage-preview]');
-                    const image = field.querySelector('[data-wedding-stage-preview-image]');
+                document.querySelectorAll('[data-master-photo-field]').forEach(function (field) {
+                    const select = field.querySelector('[data-master-photo-select]');
+                    const preview = field.querySelector('[data-master-photo-preview]');
+                    const image = field.querySelector('[data-master-photo-preview-image]');
 
                     if (!select || !preview || !image) return;
 
-                    function syncStagePreview() {
+                    function syncMasterPreview() {
                         const option = select.selectedOptions[0];
                         const photo = option?.dataset.photo || '';
                         const label = option?.textContent.trim() || 'Preview pelaminan';
@@ -184,8 +203,8 @@
                         }
                     }
 
-                    select.addEventListener('change', syncStagePreview);
-                    syncStagePreview();
+                    select.addEventListener('change', syncMasterPreview);
+                    syncMasterPreview();
                 });
             });
         </script>

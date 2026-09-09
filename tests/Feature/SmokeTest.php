@@ -3,6 +3,7 @@
 use App\Mail\ClientAccountCredentials;
 use App\Models\ActivityLog;
 use App\Models\Booking;
+use App\Models\EntranceGate;
 use App\Models\Finance;
 use App\Models\Gallery;
 use App\Models\Invoice;
@@ -11,6 +12,7 @@ use App\Models\Payment;
 use App\Models\Reminder;
 use App\Models\Schedule;
 use App\Models\SiteSetting;
+use App\Models\Tent;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Models\VendorCategory;
@@ -88,10 +90,14 @@ it('team can save survey and fitting data', function () {
     $team = User::where('email', 'team@anitamua.com')->first();
     $booking = Booking::first();
     $weddingStage = WeddingStage::create(['name' => 'Garden Modern', 'is_active' => true]);
+    $tent = Tent::create(['name' => 'Tenda Garden', 'is_active' => true]);
+    $entranceGate = EntranceGate::create(['name' => 'Gapura Garden', 'is_active' => true]);
 
     $this->actingAs($team)->post('/admin/fieldwork/survey', [
         'booking_id' => $booking->id,
         'wedding_stage_id' => $weddingStage->id,
+        'tent_id' => $tent->id,
+        'entrance_gate_id' => $entranceGate->id,
         'flower_color' => 'Putih dan sage',
         'stage_size' => '6m',
         'tent_sizes' => ['4X6', '5X5'],
@@ -110,6 +116,8 @@ it('team can save survey and fitting data', function () {
     expect($survey)->not->toBeNull();
     expect($survey->location)->toBe('The Glass House');
     expect($survey->wedding_stage_id)->toBe($weddingStage->id);
+    expect($survey->tent_id)->toBe($tent->id);
+    expect($survey->entrance_gate_id)->toBe($entranceGate->id);
     expect($survey->tent_sizes)->toBe(['4X6', '5X5']);
     expect($survey->tent_size_quantities)->toBe(['4X6' => 2, '5X5' => 1]);
     expect($survey->tent_addition_quantities)->toBe(['4X4' => 1]);
@@ -162,6 +170,35 @@ it('admin can manage wedding stages', function () {
     expect(WeddingStage::find($weddingStage->id))->toBeNull();
 });
 
+it('admin can manage tent and entrance gate masters and cannot delete used items', function () {
+    Storage::fake('public');
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+
+    $this->actingAs($admin)->post('/admin/tents', [
+        'name' => 'Tenda Transparan', 'is_active' => 1,
+        'photo' => UploadedFile::fake()->image('tent.jpg'),
+    ])->assertRedirect();
+    $this->actingAs($admin)->post('/admin/entrance-gates', [
+        'name' => 'Gapura Bunga', 'is_active' => 1,
+        'photo' => UploadedFile::fake()->image('gate.jpg'),
+    ])->assertRedirect();
+
+    $tent = Tent::where('name', 'Tenda Transparan')->firstOrFail();
+    $gate = EntranceGate::where('name', 'Gapura Bunga')->firstOrFail();
+    Storage::disk('public')->assertExists($tent->photo_path);
+    Storage::disk('public')->assertExists($gate->photo_path);
+
+    $this->actingAs($admin)->put('/admin/tents/'.$tent->id, [
+        'name' => $tent->name, 'is_active' => 0,
+    ])->assertRedirect();
+    expect($tent->refresh()->is_active)->toBeFalse();
+
+    Booking::firstOrFail()->survey()->updateOrCreate([], ['tent_id' => $tent->id, 'entrance_gate_id' => $gate->id]);
+    $this->actingAs($admin)->delete('/admin/tents/'.$tent->id)->assertSessionHas('warning');
+    $this->actingAs($admin)->delete('/admin/entrance-gates/'.$gate->id)->assertSessionHas('warning');
+    expect($tent->fresh())->not->toBeNull()->and($gate->fresh())->not->toBeNull();
+});
+
 it('saves fitting checklist notes and keeps an item photo on edit', function () {
     Storage::fake('public');
     $team = User::where('email', 'team@anitamua.com')->first();
@@ -173,7 +210,7 @@ it('saves fitting checklist notes and keeps an item photo on edit', function () 
         'date' => now()->addDays(8)->toDateString(),
         'status' => 'on_going',
         'items' => [
-            'cpp_busana_akad' => ['notes' => 'Jas hitam', 'photo' => $photo],
+            'cpp_busana_akad' => ['notes' => 'Jas hitam', 'size' => 'L', 'photo' => $photo],
             'ukuran_bb_tb_ld' => ['notes' => '70 kg / 175 cm / 92 cm'],
         ],
     ])->assertRedirect();
@@ -181,6 +218,7 @@ it('saves fitting checklist notes and keeps an item photo on edit', function () 
     $fitting = $booking->fittings()->firstOrFail();
     $photoPath = $fitting->cpp_busana_akad_photo_path;
     expect($fitting->cpp_busana_akad_notes)->toBe('Jas hitam');
+    expect($fitting->item_sizes['cpp_busana_akad'])->toBe('L');
     expect($photoPath)->toStartWith('uploads/photos/');
     Storage::disk('public')->assertExists($photoPath);
 
@@ -189,13 +227,14 @@ it('saves fitting checklist notes and keeps an item photo on edit', function () 
         'date' => now()->addDays(8)->toDateString(),
         'status' => 'finished',
         'items' => [
-            'cpp_busana_akad' => ['notes' => 'Jas hitam sudah pas'],
+            'cpp_busana_akad' => ['notes' => 'Jas hitam sudah pas', 'size' => 'LD 92 / PB 140'],
         ],
     ])->assertRedirect();
 
     $fitting->refresh();
     expect($fitting->cpp_busana_akad_notes)->toBe('Jas hitam sudah pas');
     expect($fitting->cpp_busana_akad_photo_path)->toBe($photoPath);
+    expect($fitting->item_sizes['cpp_busana_akad'])->toBe('LD 92 / PB 140');
 });
 
 it('rejects selecting an inactive decoration for a new survey', function () {
@@ -207,6 +246,23 @@ it('rejects selecting an inactive decoration for a new survey', function () {
         'booking_id' => $booking->id,
         'wedding_stage_id' => $weddingStage->id,
     ])->assertSessionHasErrors('wedding_stage_id');
+});
+
+it('rejects inactive tent and entrance gate for a new survey', function () {
+    $team = User::where('email', 'team@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $tent = Tent::create(['name' => 'Tenda Nonaktif', 'is_active' => false]);
+    $gate = EntranceGate::create(['name' => 'Gapura Nonaktif', 'is_active' => false]);
+
+    $this->actingAs($team)->post('/admin/fieldwork/survey', [
+        'booking_id' => $booking->id,
+        'tent_id' => $tent->id,
+    ])->assertSessionHasErrors('tent_id');
+
+    $this->actingAs($team)->post('/admin/fieldwork/survey', [
+        'booking_id' => $booking->id,
+        'entrance_gate_id' => $gate->id,
+    ])->assertSessionHasErrors('entrance_gate_id');
 });
 
 it('admin creating booking auto-verifies dp, books it, and adds hari h schedule', function () {
@@ -229,6 +285,7 @@ it('admin creating booking auto-verifies dp, books it, and adds hari h schedule'
     $this->actingAs($admin)->post('/admin/bookings', [
         'client_mode' => 'existing',
         'client_id' => $client->id,
+        'referral_source' => 'Instagram',
         'package_id' => $package->id,
         'event_date' => $eventDate,
         'event_time' => '18:30',
@@ -276,6 +333,7 @@ it('admin can create and edit manual booking add-ons without changing payments',
     $this->actingAs($admin)->post('/admin/bookings', [
         'client_mode' => 'existing',
         'client_id' => $client->id,
+        'referral_source' => 'Instagram',
         'package_id' => $package->id,
         'event_date' => now()->addMonths(2)->toDateString(),
         'dp1_amount' => 1000000,
@@ -297,6 +355,7 @@ it('admin can create and edit manual booking add-ons without changing payments',
         'name' => $booking->name,
         'phone' => $booking->phone,
         'email' => $booking->email,
+        'referral_source' => $booking->referral_source,
         'event_date' => $booking->event_date->toDateString(),
         'location' => $booking->location,
         'notes' => $booking->notes,
@@ -346,6 +405,7 @@ it('updates the vendor snapshot when an admin changes a booking package', functi
         'name' => $booking->name,
         'phone' => $booking->phone,
         'email' => $booking->email,
+        'referral_source' => 'Instagram',
         'event_date' => $booking->event_date->toDateString(),
         'location' => $booking->location,
         'notes' => $booking->notes,
@@ -394,20 +454,76 @@ it('admin can replace a booking vendor within the same category', function () {
         ->and($bookingVendor->status)->toBe('changed');
 });
 
+it('admin saves custom additions with the booking changes and finance uses the total', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $booking = Booking::where('status', '!=', Booking::STATUS_CANCELLED)->firstOrFail();
+    $bookingVendor = $booking->bookingVendors()
+        ->whereHas('vendor', fn ($query) => $query->whereNotNull('vendor_category_id'))
+        ->firstOrFail();
+    $currentVendor = $bookingVendor->vendor;
+    $replacementVendor = Vendor::create([
+        'vendor_category_id' => $currentVendor->vendor_category_id,
+        'name' => 'Vendor Pengganti Utama',
+        'price' => $currentVendor->price,
+        'status' => 'active',
+    ]);
+    $year = $bookingVendor->created_at->year;
+    $expensesBefore = (float) $this->actingAs($owner)->get('/admin/finances?year='.$year)->viewData('expenses');
+
+    $this->actingAs($admin)->patch(route('admin.bookings.update', $booking), [
+        'client_id' => $booking->client_id,
+        'package_id' => $booking->package_id,
+        'name' => $booking->name,
+        'phone' => $booking->phone,
+        'email' => $booking->email,
+        'referral_source' => $booking->referral_source ?: 'Instagram',
+        'event_date' => $booking->event_date->toDateString(),
+        'event_time' => $booking->event_time ? substr((string) $booking->event_time, 0, 5) : null,
+        'vendor_changes' => [$bookingVendor->id => ['vendor_id' => $replacementVendor->id]],
+        'vendor_additions_present' => [$bookingVendor->id => 1],
+        'vendor_additions' => [
+            $bookingVendor->id => [
+                ['name' => 'Transport luar kota', 'price' => 250000],
+                ['name' => 'Crew tambahan', 'price' => 150000],
+            ],
+        ],
+    ])->assertRedirect()->assertSessionHas('success');
+
+    $bookingVendor->refresh();
+    expect($bookingVendor->vendor_id)->toBe($replacementVendor->id)
+        ->and($bookingVendor->custom_additions)->toBe([
+        ['name' => 'Transport luar kota', 'price' => 250000],
+        ['name' => 'Crew tambahan', 'price' => 150000],
+    ])->and($bookingVendor->custom_additions_total)->toBe(400000.0)
+        ->and($bookingVendor->total_price)->toBe((float) $bookingVendor->price + 400000.0);
+
+    $expensesAfter = (float) $this->actingAs($owner)->get('/admin/finances?year='.$year)->viewData('expenses');
+    expect($expensesAfter - $expensesBefore)->toBe(400000.0);
+
+    $this->actingAs($admin)->get('/admin/bookings/'.$booking->id)
+        ->assertOk()->assertSee('Transport luar kota')->assertSee('Crew tambahan');
+});
+
 it('admin booking form saves survey and fitting details', function () {
     Storage::fake('public');
     $admin = User::where('email', 'admin@anitamua.com')->first();
     $client = User::where('email', 'client@anitamua.com')->first();
     $package = Package::first();
     $stage = WeddingStage::create(['name' => 'Classic White', 'is_active' => true]);
+    $tent = Tent::create(['name' => 'Sisir Premium', 'is_active' => true]);
+    $gate = EntranceGate::create(['name' => 'Lorong Bunga', 'is_active' => true]);
 
     $this->actingAs($admin)->post('/admin/bookings', [
         'client_mode' => 'existing',
         'client_id' => $client->id,
+        'referral_source' => 'Instagram',
         'package_id' => $package->id,
         'event_date' => now()->addMonths(3)->toDateString(),
         'dp1_amount' => 1000000,
         'survey_wedding_stage_id' => $stage->id,
+        'survey_tent_id' => $tent->id,
+        'survey_entrance_gate_id' => $gate->id,
         'survey_location' => 'Gedung Serbaguna',
         'survey_flower_color' => 'Putih',
         'survey_tent_sizes' => ['4X6', '5X5'],
@@ -419,6 +535,7 @@ it('admin booking form saves survey and fitting details', function () {
         'items' => [
             'cpp_busana_akad' => [
                 'notes' => 'Jas hitam',
+                'size' => 'L',
                 'photo' => UploadedFile::fake()->image('cpp-akad.jpg'),
             ],
         ],
@@ -426,9 +543,12 @@ it('admin booking form saves survey and fitting details', function () {
 
     $booking = Booking::where('client_id', $client->id)->latest('id')->firstOrFail();
     expect($booking->survey->wedding_stage_id)->toBe($stage->id);
+    expect($booking->survey->tent_id)->toBe($tent->id);
+    expect($booking->survey->entrance_gate_id)->toBe($gate->id);
     expect($booking->survey->tent_sizes)->toBe(['4X6', '5X5']);
     expect($booking->survey->tent_size_quantities)->toBe(['4X6' => 2, '5X5' => 1]);
     expect($booking->fittings->first()->cpp_busana_akad_notes)->toBe('Jas hitam');
+    expect($booking->fittings->first()->item_sizes['cpp_busana_akad'])->toBe('L');
     expect($booking->fittings->first()->cpp_busana_akad_photo_path)->not->toBeNull();
     Storage::disk('public')->assertExists($booking->fittings->first()->cpp_busana_akad_photo_path);
 
@@ -452,6 +572,7 @@ it('rejects invalid manual booking add-ons', function () {
     $this->actingAs($admin)->post('/admin/bookings', [
         'client_mode' => 'existing',
         'client_id' => $client->id,
+        'referral_source' => 'Instagram',
         'package_id' => $package->id,
         'event_date' => now()->addMonths(2)->toDateString(),
         'dp1_amount' => 1000000,
@@ -471,6 +592,7 @@ it('guest can create booking without an account', function () {
         'name' => 'Reno & Dewi',
         'phone' => '0812999888777',
         'email' => 'renodewi@test.com',
+        'referral_source' => 'Instagram',
         'event_date' => now()->addMonths(2)->toDateString(),
         'location' => 'Ballroom Hotel X',
         'amount' => 1800000,
@@ -493,6 +615,7 @@ it('guest can book with compressed initial-payment proof upload', function () {
         'name' => 'Reno & Dewi',
         'phone' => '0812999888777',
         'email' => 'renodewi@test.com',
+        'referral_source' => 'Instagram',
         'event_date' => now()->addMonths(2)->toDateString(),
         'location' => 'Ballroom Hotel X',
         'amount' => 1800000,
@@ -519,6 +642,7 @@ it('admin verifying the initial payment creates client account automatically', f
         'name' => 'Reno & Dewi',
         'phone' => '0812999888777',
         'email' => 'renodewi@test.com',
+        'referral_source' => 'Instagram',
         'event_date' => now()->addMonths(2)->toDateString(),
         'location' => 'Ballroom Hotel X',
         'amount' => 1800000,
@@ -569,6 +693,7 @@ it('guest booking with existing client email waits for verification before attac
         'name' => 'Dewi Anggraini',
         'phone' => $client->phone,
         'email' => $client->email,
+        'referral_source' => 'Rekomendasi',
         'event_date' => now()->addMonths(2)->toDateString(),
         'location' => 'The Glass House',
         'amount' => 1800000,
@@ -604,6 +729,7 @@ it('keeps public booking identity synchronized with the logged in client', funct
         'phone' => '081277788899',
         'email' => 'email-palsu@example.com',
         'instagram' => '@profilbaru',
+        'referral_source' => 'Website',
         'event_date' => now()->addMonths(2)->toDateString(),
         'location' => 'Gedung Uji',
         'amount' => 1000000,
@@ -666,6 +792,7 @@ it('rejects linking an existing client email when the phone does not match', fun
         'name' => 'Identitas Tidak Cocok',
         'phone' => '081200000099',
         'email' => $client->email,
+        'referral_source' => 'Instagram',
         'event_date' => now()->addMonths(2)->toDateString(),
         'location' => 'Gedung Uji',
         'amount' => 1000000,
@@ -698,6 +825,7 @@ it('never assigns an authenticated owner as a public booking client', function (
         'name' => 'Client Baru',
         'phone' => '081299900011',
         'email' => 'client-baru@example.com',
+        'referral_source' => 'TikTok',
         'event_date' => now()->addMonths(2)->toDateString(),
         'location' => 'Gedung Baru',
         'amount' => 1000000,
@@ -718,6 +846,7 @@ it('links a client created from the admin booking form', function () {
         'new_client_name' => 'Ayu & Bima',
         'new_client_email' => 'ayu-bima@example.com',
         'new_client_phone' => '081288877766',
+        'referral_source' => 'Instagram',
         'package_id' => $package->id,
         'event_date' => now()->addMonths(2)->toDateString(),
         'dp1_amount' => 1000000,
@@ -742,6 +871,7 @@ it('rolls back dp verification when the booking email belongs to staff', functio
         'name' => 'Data Salah',
         'phone' => '081200000001',
         'email' => $owner->email,
+        'referral_source' => 'Instagram',
         'event_date' => now()->addMonths(2)->toDateString(),
         'location' => 'Gedung Uji',
         'amount' => 750000,
@@ -1195,11 +1325,45 @@ it('admin can update the invoice greeting from site settings', function () {
     $greeting = 'Terima kasih, pembayaran Anda sudah kami terima.';
 
     $this->actingAs($admin)
-        ->post(route('admin.content.settings.store'), ['invoice_greeting' => $greeting])
+        ->post(route('admin.content.settings.store'), [
+            'invoice_greeting' => $greeting,
+            'booking_referral_sources' => implode("\n", SiteSetting::DEFAULT_BOOKING_REFERRAL_SOURCES),
+        ])
         ->assertRedirect()
         ->assertSessionHas('success');
 
     expect(SiteSetting::get('invoice_greeting'))->toBe($greeting);
+});
+
+it('normalizes booking referral source settings and keeps historical choices visible', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+
+    $this->actingAs($admin)->post(route('admin.content.settings.store'), [
+        'booking_referral_sources' => " Instagram \nTikTok\ninstagram\n\nWebsite ",
+    ])->assertRedirect()->assertSessionHas('success');
+
+    expect(SiteSetting::bookingReferralSources())->toBe(['Instagram', 'TikTok', 'Website']);
+
+    $booking = Booking::firstOrFail();
+    $booking->update(['referral_source' => 'Pameran Lama']);
+    $this->actingAs($admin)->get('/admin/bookings/'.$booking->id.'/edit')
+        ->assertOk()
+        ->assertSee('Pameran Lama');
+});
+
+it('requires a valid referral source for new public bookings', function () {
+    $package = Package::firstOrFail();
+
+    $this->post('/booking', [
+        'package_id' => $package->id,
+        'name' => 'Rani & Raka',
+        'phone' => '081200000222',
+        'email' => 'rani-raka@example.com',
+        'referral_source' => 'Pilihan Tidak Terdaftar',
+        'event_date' => now()->addMonth()->toDateString(),
+        'amount' => 1000000,
+        'proof' => UploadedFile::fake()->image('proof.jpg'),
+    ])->assertSessionHasErrors('referral_source');
 });
 
 it('backfills only missing invoices and uses the first verified payment date', function () {
@@ -1314,6 +1478,10 @@ it('renders MVP back office pages and hides deferred features', function () {
         $this->actingAs($owner)->get($url)->assertOk();
     }
 
+    foreach (['/admin/wedding-stages', '/admin/tents', '/admin/entrance-gates'] as $url) {
+        $this->actingAs($owner)->get($url)->assertOk();
+    }
+
     // Timeline dan Reminder masih dinonaktifkan sementara
     $this->actingAs($owner)->get('/admin/finances')->assertOk();
     foreach (['/admin/timeline', '/admin/reminders'] as $url) {
@@ -1382,6 +1550,35 @@ it('calculates finance from verified payments and booking vendor prices', functi
     $response->assertOk();
     expect((float) $response->viewData('incomes'))->toBe($expectedIncome)
         ->and((float) $response->viewData('expenses'))->toBe($expectedVendorExpense);
+});
+
+it('builds booking source and monthly charts from booking creation dates and all statuses', function () {
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+    $year = now()->year;
+
+    foreach ([
+        ['Instagram', Booking::STATUS_BOOKED, 2],
+        ['Instagram', Booking::STATUS_CANCELLED, 2],
+        [null, Booking::STATUS_PENDING, 3],
+    ] as $index => [$source, $status, $month]) {
+        $chartBooking = Booking::create([
+            'code' => Booking::generateCode(), 'package_id' => $package->id,
+            'package_price' => $package->price, 'name' => 'Grafik '.$index,
+            'phone' => '0812000000'.$index, 'email' => 'grafik'.$index.'@example.com',
+            'referral_source' => $source, 'event_date' => now()->addMonths(6), 'status' => $status,
+        ]);
+        $chartBooking->forceFill(['created_at' => now()->setMonth($month)->startOfMonth()])->saveQuietly();
+    }
+
+    $response = $this->actingAs($owner)->get('/admin/finances?year='.$year)->assertOk();
+    $sources = $response->viewData('bookingSources')->keyBy('label');
+    $months = $response->viewData('monthlyBookings');
+
+    expect($sources['Instagram']['count'])->toBeGreaterThanOrEqual(2)
+        ->and($sources['Tidak diketahui']['count'])->toBeGreaterThanOrEqual(1)
+        ->and($months[1]['count'])->toBeGreaterThanOrEqual(2)
+        ->and($months[2]['count'])->toBeGreaterThanOrEqual(1);
 });
 
 it('renders booking detail page for admin', function () {

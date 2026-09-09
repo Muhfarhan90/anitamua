@@ -353,6 +353,18 @@
 
                             {{-- Catatan Tambahan --}}
                             <div class="mb-3">
+                                <label class="form-label">Tahu Anita dari mana? <span class="text-red-600">*</span></label>
+                                <div class="input-group-icon">
+                                    <i class="fa-solid fa-bullhorn input-icon"></i>
+                                    <select name="referral_source" class="form-select" required>
+                                        <option value="">— Pilih sumber informasi —</option>
+                                        @foreach($referralSources as $source)<option value="{{ $source }}" @selected(old('referral_source') === $source)>{{ $source }}</option>@endforeach
+                                    </select>
+                                </div>
+                                @error('referral_source')<p class="text-xs text-red-600 mt-1"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
+                            </div>
+
+                            <div class="mb-3">
                                 <label class="form-label">Catatan Tambahan</label>
                                 <div class="input-group-icon" style="align-items:flex-start">
                                     <i class="fa-solid fa-pencil input-icon" style="top:1.1rem"></i>
