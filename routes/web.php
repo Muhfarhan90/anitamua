@@ -51,8 +51,10 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middl
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/client/booking/{booking}', [ClientController::class, 'booking'])->name('client.booking');
-    Route::post('/client/booking/{booking}/proof', [ClientController::class, 'uploadProof'])->name('client.booking.proof');
+    Route::middleware('role:client')->group(function () {
+        Route::get('/client/booking/{booking}', [ClientController::class, 'booking'])->name('client.booking');
+        Route::post('/client/booking/{booking}/proof', [ClientController::class, 'uploadProof'])->name('client.booking.proof');
+    });
 
     // Profil & ganti password
     Route::get('/profile', [ProfileController::class, 'show'])->name('profile');
@@ -97,6 +99,8 @@ Route::middleware('auth')->group(function () {
             Route::get('/bookings/{booking}/edit', [BookingManagementController::class, 'edit'])->name('bookings.edit');
             Route::patch('/bookings/{booking}', [BookingManagementController::class, 'update'])->name('bookings.update');
             Route::get('/bookings/{booking}', [BookingManagementController::class, 'show'])->name('bookings.show');
+            Route::post('/bookings/{booking}/vendors', [BookingManagementController::class, 'addVendor'])->name('bookings.vendors.store');
+            Route::patch('/bookings/{booking}/vendors', [BookingManagementController::class, 'changeVendor'])->name('bookings.vendors.update');
             Route::post('/bookings/{booking}/verify-dp', [BookingManagementController::class, 'verifyDp'])->name('bookings.verify-dp');
             Route::post('/bookings/{booking}/payment', [BookingManagementController::class, 'addPayment'])->name('bookings.payment');
             Route::post('/bookings/{booking}/cancel', [BookingManagementController::class, 'cancel'])->name('bookings.cancel');

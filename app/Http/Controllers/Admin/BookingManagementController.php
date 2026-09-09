@@ -19,21 +19,25 @@ use App\Services\InvoiceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class BookingManagementController extends Controller
 {
     public function index(Request $request)
     {
+        $today = Carbon::today()->toDateString();
         $query = Booking::with(['client', 'package', 'payments'])
+            ->whereDate('event_date', '>=', $today)
             ->when($request->status, fn ($q, $s) => $q->where('status', $s))
-            ->when($request->event_date, fn ($q, $date) => $q->whereDate('event_date', $date))
+            ->when($request->start_date, fn ($q, $date) => $q->whereDate('event_date', '>=', $date))
+            ->when($request->end_date, fn ($q, $date) => $q->whereDate('event_date', '<=', $date))
             ->when($request->q, fn ($q, $s) => $q->where(function ($qq) use ($s) {
                 $qq->where('name', 'like', "%{$s}%")
                     ->orWhere('code', 'like', "%{$s}%")
                     ->orWhere('phone', 'like', "%{$s}%");
             }))
-            ->orderByDesc('event_date')
+            ->orderBy('event_date')
             ->orderByDesc('created_at');
 
         $bookings = $query->paginate(15)->withQueryString();
@@ -90,7 +94,14 @@ class BookingManagementController extends Controller
 
     public function edit(Booking $booking)
     {
-        $booking->load(['client', 'package', 'addons', 'survey.weddingStage', 'fittings']);
+        $booking->load(['client', 'package', 'addons', 'bookingVendors.vendor.category', 'survey.weddingStage', 'fittings']);
+        $vendors = Vendor::with('category')
+            ->where(function ($query) use ($booking) {
+                $query->where('status', 'active')
+                    ->orWhereIn('id', $booking->bookingVendors->pluck('vendor_id'));
+            })
+            ->orderBy('name')
+            ->get();
         $packages = Package::where('status', 'active')->get();
         $clients = User::where('role', User::ROLE_CLIENT)->get();
         $teamMembers = User::where('role', User::ROLE_TEAM)->where('is_active', true)->orderBy('name')->get();
@@ -113,14 +124,18 @@ class BookingManagementController extends Controller
             'gedung' => 'Gedung',
         ];
 
-        return view('admin.bookings.edit', compact('booking', 'packages', 'clients', 'subTypeLabels', 'weddingStages', 'teamMembers'));
+        return view('admin.bookings.edit', compact('booking', 'vendors', 'packages', 'clients', 'subTypeLabels', 'weddingStages', 'teamMembers'));
     }
 
     public function store(Request $request, InvoiceService $invoiceService)
     {
         $data = $request->validate([
             'client_mode' => ['required', 'in:existing,new'],
-            'client_id' => ['required_if:client_mode,existing', 'nullable', 'exists:users,id'],
+            'client_id' => [
+                'required_if:client_mode,existing',
+                'nullable',
+                Rule::exists('users', 'id')->where('role', User::ROLE_CLIENT),
+            ],
             'new_client_name' => ['required_if:client_mode,new', 'nullable', 'string', 'max:255'],
             'new_client_email' => ['required_if:client_mode,new', 'nullable', 'email', 'unique:users,email'],
             'new_client_phone' => ['required_if:client_mode,new', 'nullable', 'string', 'max:30'],
@@ -140,62 +155,65 @@ class BookingManagementController extends Controller
         ] + $this->bookingSurveyRules() + $this->bookingFittingRules());
 
         $addons = $data['addons'] ?? [];
-        unset($data['addons']);
+        $dp1Amount = $data['dp1_amount'];
+        unset($data['addons'], $data['dp1_amount']);
 
         $clientWasCreated = $data['client_mode'] === 'new';
-        $client = $clientWasCreated
-            ? User::create([
-                'name' => $data['new_client_name'],
-                'email' => $data['new_client_email'],
-                'phone' => $data['new_client_phone'],
-                'instagram' => $data['new_client_instagram'] ?? null,
-                'password' => User::generateDefaultPassword($data['new_client_name']),
-                'role' => User::ROLE_CLIENT,
-            ])
-            : User::findOrFail($data['client_id']);
+        [$booking, $client] = DB::transaction(function () use ($request, $invoiceService, $addons, $dp1Amount, $clientWasCreated, $data) {
+            $client = $clientWasCreated
+                ? User::create([
+                    'name' => $data['new_client_name'],
+                    'email' => strtolower(trim($data['new_client_email'])),
+                    'phone' => $data['new_client_phone'],
+                    'instagram' => $data['new_client_instagram'] ?? null,
+                    'password' => User::generateDefaultPassword($data['new_client_name']),
+                    'role' => User::ROLE_CLIENT,
+                    'position' => 'Bride',
+                ])
+                : User::where('role', User::ROLE_CLIENT)->findOrFail($data['client_id']);
 
-        // Kontak & nama acara diambil dari data klien.
-        $data['name'] = $client->name;
-        $data['phone'] = $client->phone;
-        $data['email'] = $client->email;
-        $data['instagram'] = $clientWasCreated ? ($data['new_client_instagram'] ?? null) : $client->instagram;
-        unset($data['client_mode'], $data['new_client_name'], $data['new_client_email'], $data['new_client_phone'], $data['new_client_instagram']);
+            // Identitas booking mengikuti akun client yang dipilih/dibuat.
+            $data['client_id'] = $client->id;
+            $data['name'] = $client->name;
+            $data['phone'] = $client->phone;
+            $data['email'] = $client->email;
+            $data['instagram'] = $client->instagram;
+            unset($data['client_mode'], $data['new_client_name'], $data['new_client_email'], $data['new_client_phone'], $data['new_client_instagram']);
 
-        $data['code'] = Booking::generateCode();
-        $data['created_by'] = auth()->id();
-        $data['status'] = Booking::STATUS_BOOKED; // dibuat admin → langsung sah
-        $data['package_price'] = Package::findOrFail($data['package_id'])->price;
+            $data['code'] = Booking::generateCode();
+            $data['created_by'] = auth()->id();
+            $data['status'] = Booking::STATUS_BOOKED; // dibuat admin → langsung sah
+            $data['package_price'] = Package::findOrFail($data['package_id'])->price;
 
-        $booking = Booking::create($data);
-        $booking->addons()->createMany($addons);
-        $booking->syncVendorsFromPackage();
-        DB::transaction(fn () => $this->saveBookingFieldwork($request, $booking));
+            $booking = Booking::create($data);
+            $booking->addons()->createMany($addons);
+            $booking->syncVendorsFromPackage();
+            $this->saveBookingFieldwork($request, $booking);
 
-        ActivityLogger::log('booking_created', 'Booking dibuat oleh Admin', 'Booking '.$booking->code.' untuk '.$booking->name, $booking->id);
+            $paymentData = [
+                'type' => 'DP1',
+                'amount' => $dp1Amount,
+                'due_date' => Carbon::parse($booking->event_date)->subDays(30)->toDateString(),
+                'method' => 'transfer',
+                'status' => Payment::STATUS_VERIFIED,
+                'paid_at' => now(),
+                'verified_by' => auth()->id(),
+                'verified_at' => now(),
+            ];
 
-        // Tahap DP langsung diverifikasi (dibuat oleh admin — bukti opsional, tanpa bukti pun verified)
-        $paymentData = [
-            'type' => 'DP1',
-            'amount' => $data['dp1_amount'],
-            'due_date' => Carbon::parse($booking->event_date)->subDays(30)->toDateString(),
-            'method' => 'transfer',
-            'status' => Payment::STATUS_VERIFIED,
-            'paid_at' => now(),
-            'verified_by' => auth()->id(),
-            'verified_at' => now(),
-        ];
+            if ($request->hasFile('proof')) {
+                $paymentData['proof'] = ImageCompressor::compressAndStore($request->file('proof'));
+            }
 
-        if ($request->hasFile('proof')) {
-            $paymentData['proof'] = ImageCompressor::compressAndStore($request->file('proof'));
-        }
+            $booking->payments()->create($paymentData);
+            $booking->ensureHariHSchedule();
+            $invoiceService->sync($booking->fresh());
 
-        $booking->payments()->create($paymentData);
-        $invoiceService->sync($booking->fresh());
+            ActivityLogger::log('booking_created', 'Booking dibuat oleh Admin', 'Booking '.$booking->code.' untuk '.$booking->name, $booking->id);
+            ActivityLogger::log('dp_verified', 'DP dikonfirmasi', 'DP1 dikonfirmasi oleh '.auth()->user()->name.' (booking dibuat via form admin)', $booking->id);
 
-        ActivityLogger::log('dp_verified', 'DP dikonfirmasi', 'DP1 dikonfirmasi oleh '.auth()->user()->name.' (booking dibuat via form admin)', $booking->id);
-
-        // Jadwal Hari H otomatis masuk kalender
-        $booking->ensureHariHSchedule();
+            return [$booking, $client];
+        });
 
         $message = 'Booking berhasil dibuat. DP1 terverifikasi, status BOOKED, dan jadwal Hari H masuk kalender.';
 
@@ -210,7 +228,10 @@ class BookingManagementController extends Controller
     public function update(Booking $booking, Request $request, InvoiceService $invoiceService)
     {
         $data = $request->validate([
-            'client_id' => ['nullable', 'exists:users,id'],
+            'client_id' => [
+                'nullable',
+                Rule::exists('users', 'id')->where('role', User::ROLE_CLIENT),
+            ],
             'package_id' => ['required', 'exists:packages,id'],
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['required', 'string', 'max:30'],
@@ -221,7 +242,6 @@ class BookingManagementController extends Controller
             'fitting_date' => ['nullable', 'date'],
             'location' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
-            'status' => ['required', 'in:pending,booked,completed,cancelled'],
             'addons' => ['nullable', 'array'],
             'addons.*.name' => ['required', 'string', 'max:255'],
             'addons.*.price' => ['required', 'numeric', 'min:0'],
@@ -230,14 +250,23 @@ class BookingManagementController extends Controller
         $addons = $data['addons'] ?? [];
         unset($data['addons']);
 
+        if (! empty($data['client_id'])) {
+            $client = User::where('role', User::ROLE_CLIENT)->findOrFail($data['client_id']);
+            $data['name'] = $client->name;
+            $data['phone'] = $client->phone;
+            $data['email'] = $client->email;
+            $data['instagram'] = $client->instagram;
+        }
+
         $packageChanged = (int) $data['package_id'] !== (int) $booking->package_id;
         if ($packageChanged) {
             $data['package_price'] = Package::findOrFail($data['package_id'])->price;
         }
 
         $old = $booking->only(array_keys($data));
-        DB::transaction(function () use ($booking, $data, $addons, $request, $packageChanged) {
+        DB::transaction(function () use ($booking, $data, $addons, $request, $packageChanged, $invoiceService) {
             $booking->update($data);
+            $scheduleChanged = $booking->wasChanged(['event_date', 'event_time', 'location', 'name']);
             $booking->addons()->delete();
             $booking->addons()->createMany($addons);
             if ($packageChanged) {
@@ -245,21 +274,26 @@ class BookingManagementController extends Controller
                 $booking->syncVendorsFromPackage();
             }
             $this->saveBookingFieldwork($request, $booking);
+
+            if (in_array($booking->status, [Booking::STATUS_BOOKED, Booking::STATUS_COMPLETED], true)) {
+                app(ClientAccountService::class)->ensure($booking);
+                $booking->ensureHariHSchedule();
+            }
+
+            if ($scheduleChanged) {
+                $booking->schedules()
+                    ->where('type', Schedule::TYPE_HARI_H)
+                    ->update([
+                        'title' => Schedule::typeLabel(Schedule::TYPE_HARI_H).' - '.$booking->name,
+                        'date' => $booking->event_date,
+                        'time' => $booking->event_time,
+                        'location' => $booking->location,
+                        'notes' => 'Hari H - acara '.$booking->name,
+                    ]);
+            }
+
+            $invoiceService->sync($booking->fresh());
         });
-
-        if ($booking->wasChanged(['event_date', 'event_time', 'location', 'name'])) {
-            $booking->schedules()
-                ->where('type', Schedule::TYPE_HARI_H)
-                ->update([
-                    'title' => Schedule::typeLabel(Schedule::TYPE_HARI_H).' - '.$booking->name,
-                    'date' => $booking->event_date,
-                    'time' => $booking->event_time,
-                    'location' => $booking->location,
-                    'notes' => 'Hari H - acara '.$booking->name,
-                ]);
-        }
-
-        $invoiceService->sync($booking->fresh());
 
         ActivityLogger::log(
             'booking_updated',
@@ -284,49 +318,61 @@ class BookingManagementController extends Controller
             'method' => ['required', 'string'],
         ]);
 
-        $payment = $booking->payments()->oldest('id')->first();
-        if ($payment && $payment->status !== Payment::STATUS_PENDING) {
-            return back()->with('warning', 'Pembayaran awal tidak lagi berstatus Pending.');
-        }
-        $payment ??= new Payment(['booking_id' => $booking->id, 'type' => 'DP1']);
+        $account = DB::transaction(function () use ($booking, $data, $invoiceService) {
+            $booking = Booking::query()->lockForUpdate()->findOrFail($booking->id);
+            if ($booking->status !== Booking::STATUS_PENDING) {
+                throw ValidationException::withMessages([
+                    'amount' => 'DP hanya dapat diverifikasi saat booking berstatus Pending.',
+                ]);
+            }
 
-        $payment->fill([
-            'amount' => $data['amount'],
-            'method' => $data['method'],
-            'status' => Payment::STATUS_VERIFIED,
-            'paid_at' => now(),
-            'verified_by' => auth()->id(),
-            'verified_at' => now(),
-        ])->save();
+            $payment = $booking->payments()->oldest('id')->lockForUpdate()->first();
+            if ($payment && $payment->status !== Payment::STATUS_PENDING) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Pembayaran awal tidak lagi berstatus Pending.',
+                ]);
+            }
+            $payment ??= new Payment(['booking_id' => $booking->id, 'type' => 'DP1']);
 
-        $booking->update(['status' => Booking::STATUS_BOOKED]);
+            $payment->fill([
+                'amount' => $data['amount'],
+                'method' => $data['method'],
+                'status' => Payment::STATUS_VERIFIED,
+                'paid_at' => now(),
+                'verified_by' => auth()->id(),
+                'verified_at' => now(),
+            ])->save();
 
-        $booking->ensureHariHSchedule();
+            $booking->update(['status' => Booking::STATUS_BOOKED]);
+            $account = app(ClientAccountService::class)->ensure($booking);
+            $booking->ensureHariHSchedule();
+            $invoiceService->sync($booking->fresh());
 
-        $invoiceService->sync($booking->fresh());
-        $account = app(ClientAccountService::class)->ensure($booking);
-
-        ActivityLogger::log(
-            'dp_verified',
-            'DP1 dikonfirmasi',
-            'DP1 sebesar '.number_format($data['amount']).' dikonfirmasi oleh '.auth()->user()->name,
-            $booking->id,
-            null,
-            ['amount' => $data['amount']],
-        );
-
-        if ($account) {
             ActivityLogger::log(
-                'client_account_created',
-                'Akun portal dibuat otomatis',
-                'Akun portal client '.$account->email.' dibuat otomatis setelah DP terverifikasi.',
+                'dp_verified',
+                'DP1 dikonfirmasi',
+                'DP1 sebesar '.number_format($data['amount']).' dikonfirmasi oleh '.auth()->user()->name,
+                $booking->id,
+                null,
+                ['amount' => $data['amount']],
+            );
+
+            ActivityLogger::log(
+                $account->wasRecentlyCreated ? 'client_account_created' : 'client_account_linked',
+                $account->wasRecentlyCreated ? 'Akun portal dibuat otomatis' : 'Booking ditautkan ke akun client',
+                'Booking '.$booking->code.' ditautkan ke akun client '.$account->email.'.',
                 $booking->id,
             );
 
-            return back()->with('success', 'DP1 terverifikasi. Booking berstatus BOOKED. Akun dashboard untuk '.$account->email.' dibuat otomatis (password default: '.User::generateDefaultPassword($booking->name).').');
+            return $account;
+        });
+
+        $message = 'DP1 terverifikasi. Booking berstatus BOOKED dan terhubung ke akun '.$account->email.'.';
+        if ($account->wasRecentlyCreated) {
+            $message .= ' Password default: '.User::generateDefaultPassword($booking->name).'.';
         }
 
-        return back()->with('success', 'DP1 terverifikasi. Booking berstatus BOOKED.');
+        return back()->with('success', $message);
     }
 
     public function addPayment(Booking $booking, Request $request)
@@ -469,6 +515,12 @@ class BookingManagementController extends Controller
         $oldVendor = $bookingVendor->vendor;
         $newVendor = Vendor::findOrFail($data['vendor_id']);
 
+        abort_unless($newVendor->vendor_category_id === $oldVendor->vendor_category_id, 422, 'Vendor pengganti harus dari kategori yang sama.');
+
+        if ($newVendor->is($oldVendor)) {
+            return back()->with('success', 'Vendor tidak berubah.');
+        }
+
         $bookingVendor->update([
             'vendor_id' => $newVendor->id,
             'price' => $newVendor->price,
@@ -485,6 +537,37 @@ class BookingManagementController extends Controller
         );
 
         return back()->with('success', 'Vendor berhasil diganti.');
+    }
+
+    public function addVendor(Booking $booking, Request $request)
+    {
+        $data = $request->validate([
+            'vendor_id' => ['required', 'exists:vendors,id'],
+        ]);
+
+        $vendor = Vendor::with('category')
+            ->where('status', 'active')
+            ->findOrFail($data['vendor_id']);
+
+        if ($booking->bookingVendors()->where('vendor_id', $vendor->id)->exists()) {
+            return back()->with('warning', 'Vendor tersebut sudah terdaftar di booking ini.');
+        }
+
+        $booking->bookingVendors()->create([
+            'vendor_id' => $vendor->id,
+            'role' => $vendor->category?->name,
+            'price' => $vendor->price,
+            'status' => 'confirmed',
+        ]);
+
+        ActivityLogger::log(
+            'vendor_added',
+            'Vendor tambahan ditambahkan',
+            'Vendor '.$vendor->name.' ('.$vendor->category?->name.') ditambahkan ke booking '.$booking->code,
+            $booking->id,
+        );
+
+        return back()->with('success', 'Vendor tambahan berhasil ditambahkan.');
     }
 
     public function syncVendors(Booking $booking)
@@ -696,8 +779,15 @@ class BookingManagementController extends Controller
 
     public function complete(Booking $booking, InvoiceService $invoiceService)
     {
-        $booking->update(['status' => Booking::STATUS_COMPLETED]);
-        $invoiceService->sync($booking->fresh());
+        if ($booking->status !== Booking::STATUS_BOOKED) {
+            return back()->with('warning', 'Hanya booking berstatus BOOKED yang dapat ditandai selesai.');
+        }
+
+        DB::transaction(function () use ($booking, $invoiceService) {
+            $booking->update(['status' => Booking::STATUS_COMPLETED]);
+            app(ClientAccountService::class)->ensure($booking);
+            $invoiceService->sync($booking->fresh());
+        });
 
         ActivityLogger::log('booking_completed', 'Project selesai', 'Project '.$booking->code.' ditandai selesai.', $booking->id);
 

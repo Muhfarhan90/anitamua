@@ -25,6 +25,22 @@ class User extends Authenticatable
 
     public const ROLE_CLIENT = 'client';
 
+    protected static function booted(): void
+    {
+        static::updated(function (User $user) {
+            if (! $user->isClient() || ! $user->wasChanged(['name', 'phone', 'email', 'instagram'])) {
+                return;
+            }
+
+            $user->bookings()->update([
+                'name' => $user->name,
+                'phone' => $user->phone,
+                'email' => $user->email,
+                'instagram' => $user->instagram,
+            ]);
+        });
+    }
+
     /**
      * Password default akun client dibuat dari nama booking.
      * Contoh: "Reno & Dewi" → "Reno123"

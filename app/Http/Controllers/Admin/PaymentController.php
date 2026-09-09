@@ -5,10 +5,13 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Payment;
+use App\Models\User;
 use App\Services\ActivityLogger;
 use App\Services\ClientAccountService;
 use App\Services\InvoiceService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PaymentController extends Controller
 {
@@ -35,25 +38,41 @@ class PaymentController extends Controller
             'amount' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $payment->update([
-            'amount' => $data['amount'],
-            'status' => Payment::STATUS_VERIFIED,
-            'paid_at' => now(),
-            'verified_by' => auth()->id(),
-            'verified_at' => now(),
-        ]);
+        $account = DB::transaction(function () use ($payment, $data, $invoiceService) {
+            $payment = Payment::query()->lockForUpdate()->findOrFail($payment->id);
+            if ($payment->status !== Payment::STATUS_PENDING) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Hanya pembayaran berstatus Pending yang dapat diverifikasi.',
+                ]);
+            }
 
-        $this->bookIfFirstPayment($payment->booking);
-        $invoiceService->sync($payment->booking->fresh());
+            $payment->update([
+                'amount' => $data['amount'],
+                'status' => Payment::STATUS_VERIFIED,
+                'paid_at' => now(),
+                'verified_by' => auth()->id(),
+                'verified_at' => now(),
+            ]);
 
-        ActivityLogger::log(
-            'payment_verified',
-            Payment::typeLabel($payment->type).' dikonfirmasi',
-            Payment::typeLabel($payment->type).' sebesar '.number_format($payment->amount).' dikonfirmasi oleh '.auth()->user()->name,
-            $payment->booking_id,
-        );
+            $account = $this->bookIfFirstPayment($payment->booking);
+            $invoiceService->sync($payment->booking->fresh());
 
-        return back()->with('success', 'Pembayaran diverifikasi.');
+            ActivityLogger::log(
+                'payment_verified',
+                Payment::typeLabel($payment->type).' dikonfirmasi',
+                Payment::typeLabel($payment->type).' sebesar '.number_format($payment->amount).' dikonfirmasi oleh '.auth()->user()->name,
+                $payment->booking_id,
+            );
+
+            return $account;
+        });
+
+        $message = 'Pembayaran diverifikasi.';
+        if ($account?->wasRecentlyCreated) {
+            $message .= ' Akun client '.$account->email.' dibuat dengan password default '.User::generateDefaultPassword($account->name).'.';
+        }
+
+        return back()->with('success', $message);
     }
 
     public function correctAmount(Request $request, Payment $payment, InvoiceService $invoiceService)
@@ -66,26 +85,29 @@ class PaymentController extends Controller
             'amount' => ['required', 'numeric', 'min:0'],
         ]);
 
-        $oldAmount = $payment->amount;
-        $payment->update(['amount' => $data['amount']]);
-        $invoiceService->sync($payment->booking->fresh());
+        DB::transaction(function () use ($payment, $data, $invoiceService) {
+            $oldAmount = $payment->amount;
+            $payment->update(['amount' => $data['amount']]);
+            $invoiceService->sync($payment->booking->fresh());
 
-        ActivityLogger::log(
-            'payment_amount_corrected',
-            'Nominal pembayaran diedit',
-            Payment::typeLabel($payment->type).' diedit dari '.number_format($oldAmount).' menjadi '.number_format($payment->amount).' oleh '.auth()->user()->name,
-            $payment->booking_id,
-            ['amount' => $oldAmount],
-            ['amount' => $payment->amount],
-        );
+            ActivityLogger::log(
+                'payment_amount_corrected',
+                'Nominal pembayaran diedit',
+                Payment::typeLabel($payment->type).' diedit dari '.number_format($oldAmount).' menjadi '.number_format($payment->amount).' oleh '.auth()->user()->name,
+                $payment->booking_id,
+                ['amount' => $oldAmount],
+                ['amount' => $payment->amount],
+            );
+        });
 
         return back()->with('success', 'Nominal pembayaran berhasil diedit. Status tetap Verified.');
     }
 
-    private function bookIfFirstPayment(Booking $booking): void
+    private function bookIfFirstPayment(Booking $booking): ?User
     {
         if ($booking->status === Booking::STATUS_PENDING) {
             $hasVerifiedPayment = $booking->payments()
+                ->where('type', 'DP1')
                 ->where('status', Payment::STATUS_VERIFIED)
                 ->exists();
 
@@ -99,9 +121,18 @@ class PaymentController extends Controller
                 ActivityLogger::log('dp_verified', 'Booking sah (BOOKED)', 'Pembayaran pertama terverifikasi, booking '.$booking->code.' sah.', $booking->id);
 
                 if ($account) {
-                    ActivityLogger::log('client_account_created', 'Akun portal dibuat otomatis', 'Akun portal client '.$account->email.' dibuat otomatis setelah DP terverifikasi.', $booking->id);
+                    ActivityLogger::log(
+                        $account->wasRecentlyCreated ? 'client_account_created' : 'client_account_linked',
+                        $account->wasRecentlyCreated ? 'Akun portal dibuat otomatis' : 'Booking ditautkan ke akun client',
+                        'Booking '.$booking->code.' ditautkan ke akun client '.$account->email.'.',
+                        $booking->id,
+                    );
                 }
+
+                return $account;
             }
         }
+
+        return null;
     }
 }

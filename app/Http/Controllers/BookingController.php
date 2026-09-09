@@ -5,17 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\Package;
 use App\Models\Payment;
-use App\Models\User;
 use App\Services\ActivityLogger;
 use App\Services\ImageCompressor;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class BookingController extends Controller
 {
     public function create()
     {
         $packages = Package::with(['benefits', 'vendors.category'])->where('status', 'active')->get();
+        $client = auth()->user()?->isClient() ? auth()->user() : null;
 
         $subTypeLabels = [
             'makeup' => 'Makeup Only',
@@ -25,7 +26,7 @@ class BookingController extends Controller
             'gedung' => 'Gedung',
         ];
 
-        return view('landing.booking', compact('packages', 'subTypeLabels'));
+        return view('landing.booking', compact('packages', 'subTypeLabels', 'client'));
     }
 
     public function store(Request $request)
@@ -47,40 +48,56 @@ class BookingController extends Controller
         $amount = $data['amount'];
         unset($data['amount']);
         $data['package_price'] = Package::findOrFail($data['package_id'])->price;
+        $data['email'] = strtolower(trim($data['email']));
 
-        // Akun dibuat otomatis saat DP diverifikasi admin.
-        // Jika email sudah punya akun client, booking melekat ke akun tersebut.
-        $existingUser = User::where('email', $data['email'])->where('role', User::ROLE_CLIENT)->first();
-        if ($existingUser && filled($data['instagram'] ?? null)) {
-            $existingUser->update(['instagram' => $data['instagram']]);
-        }
-        $data['client_id'] = $existingUser->id ?? auth()->id();
-        $data['created_by'] = auth()->id() ?? $existingUser->id ?? null;
+        // Guest menunggu verifikasi DP sebelum akun dibuat/ditautkan.
+        // User back-office tidak boleh pernah menjadi client sebuah booking.
+        $authenticatedClient = auth()->user()?->isClient() ? auth()->user() : null;
+        $data['client_id'] = $authenticatedClient?->id;
+        $data['created_by'] = auth()->id();
         $data['status'] = Booking::STATUS_PENDING;
 
-        $booking = Booking::create($data);
-        $booking->syncVendorsFromPackage();
+        $booking = DB::transaction(function () use ($request, $data, $amount, $authenticatedClient) {
+            if ($authenticatedClient) {
+                $authenticatedClient->update([
+                    'name' => $data['name'],
+                    'phone' => $data['phone'],
+                    'instagram' => $data['instagram'] ?? null,
+                ]);
 
-        // Nominal DP dari client menjadi nilai awal; admin tetap memverifikasi dan dapat mengoreksinya.
-        $paymentData = [
-            'type' => 'DP1',
-            'amount' => $amount,
-            'due_date' => Carbon::parse($booking->event_date)->subDays(30)->toDateString(),
-            'method' => 'transfer',
-            'status' => Payment::STATUS_PENDING,
-        ];
+                $data['name'] = $authenticatedClient->name;
+                $data['phone'] = $authenticatedClient->phone;
+                $data['email'] = $authenticatedClient->email;
+                $data['instagram'] = $authenticatedClient->instagram;
+            }
 
-        if ($request->hasFile('proof')) {
-            $paymentData['proof'] = ImageCompressor::compressAndStore($request->file('proof'));
-            $paymentData['paid_at'] = now();
-        }        $booking->payments()->create($paymentData);
+            $booking = Booking::create($data);
+            $booking->syncVendorsFromPackage();
 
-        ActivityLogger::log(
-            'booking_created',
-            'Booking dibuat',
-            'Booking '.$booking->code.' untuk '.$booking->name,
-            $booking->id,
-        );
+            // Nominal DP dari client menjadi nilai awal; admin tetap memverifikasi dan dapat mengoreksinya.
+            $paymentData = [
+                'type' => 'DP1',
+                'amount' => $amount,
+                'due_date' => Carbon::parse($booking->event_date)->subDays(30)->toDateString(),
+                'method' => 'transfer',
+                'status' => Payment::STATUS_PENDING,
+            ];
+
+            if ($request->hasFile('proof')) {
+                $paymentData['proof'] = ImageCompressor::compressAndStore($request->file('proof'));
+                $paymentData['paid_at'] = now();
+            }
+            $booking->payments()->create($paymentData);
+
+            ActivityLogger::log(
+                'booking_created',
+                'Booking dibuat',
+                'Booking '.$booking->code.' untuk '.$booking->name,
+                $booking->id,
+            );
+
+            return $booking;
+        });
 
         return redirect()
             ->route('booking.success', $booking->code)

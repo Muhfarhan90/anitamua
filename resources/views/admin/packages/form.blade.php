@@ -10,7 +10,7 @@
         @csrf
         @if($package) @method('PUT') @endif
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
             <x-input name="name" label="Nama Paket" required :value="$package->name ?? ''" />
             <div>
                 <label for="type" class="block text-sm font-medium text-gray-600 mb-1">Jenis Paket <span class="text-red-500">*</span></label>
@@ -21,7 +21,9 @@
                 </select>
             </div>
             <x-input name="price" label="Harga" currency :value="$package->price ?? 0" min="0" step="1000" required />
+            <x-input name="original_price" label="Harga Coret" currency :value="$package->original_price ?? ''" min="0" step="1000" placeholder="Opsional" />
         </div>
+        <p class="-mt-3 text-xs text-gray-400">Harga coret digunakan sebagai harga sebelum diskon dan hanya ditampilkan jika lebih besar dari harga paket.</p>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
             <div class="md:col-span-2">
@@ -103,7 +105,7 @@
             @endphp
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 @forelse($vendorsByCategory as $categoryName => $categoryVendors)
-                    @php($selectedVendorId = $categoryVendors->pluck('id')->first(fn ($id) => in_array((int) $id, $selectedVendors, true)))
+                            @php $selectedVendorId = $categoryVendors->pluck('id')->first(fn ($id) => in_array((int) $id, $selectedVendors, true)); @endphp
                     <div class="rounded-xl border border-gray-200 bg-gray-50/60 p-3">
                         <label for="vendor-category-{{ Str::slug($categoryName) }}" class="mb-1.5 block text-xs font-bold uppercase tracking-wider text-brand">{{ $categoryName }}</label>
                         <select name="vendor_ids[]" id="vendor-category-{{ Str::slug($categoryName) }}" class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-800 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand-200">

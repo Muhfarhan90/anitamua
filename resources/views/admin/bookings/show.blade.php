@@ -25,11 +25,13 @@
         @if($hasFitting)
         <x-button href="{{ route('admin.bookings.packing', $booking) }}" color="primary"><i class="fas fa-box"></i> Packing Checklist</x-button>
         @endif
-        @if($booking->status !== 'completed' && $booking->status !== 'cancelled')
+        @if($booking->status === \App\Models\Booking::STATUS_BOOKED)
         <form action="{{ route('admin.bookings.complete', $booking) }}" method="POST" class="inline">
             @csrf
             <x-button color="success" type="submit" onclick="return confirm('Tandai booking ini sebagai selesai?')"><i class="fas fa-check"></i> Tandai Selesai</x-button>
         </form>
+        @endif
+        @if(in_array($booking->status, [\App\Models\Booking::STATUS_PENDING, \App\Models\Booking::STATUS_BOOKED], true))
         <x-button color="danger" onclick="document.getElementById('cancelModal').classList.remove('hidden')"><i class="fas fa-ban"></i> Batalkan Booking</x-button>
         @endif
     </x-slot:actions>
@@ -311,6 +313,31 @@
                 @endif
             </div>
             @endif
+        </x-card>
+
+        <x-card title="Daftar Vendor" title-icon="fa-store">
+            @forelse($booking->bookingVendors as $bookingVendor)
+                @php $vendor = $bookingVendor->vendor; @endphp
+                <div class="border-b border-gray-100 py-4 first:pt-0 last:border-0 last:pb-0">
+                    <div class="flex items-center gap-3">
+                        @if($vendor?->logo)
+                            <img src="{{ asset('storage/'.$vendor->logo) }}" alt="Logo {{ $vendor->name }}" class="h-10 w-10 shrink-0 rounded-full border border-brand-100 bg-white object-cover">
+                        @else
+                            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand">
+                                <i class="fas fa-store"></i>
+                            </div>
+                        @endif
+                        <div class="min-w-0">
+                            <p class="font-semibold text-gray-800">{{ $vendor?->name ?? 'Vendor' }}</p>
+                            <p class="text-xs text-brand">{{ $bookingVendor->role ?: $vendor?->category?->name ?: 'Vendor acara' }}</p>
+                        </div>
+                        <span class="ml-auto text-sm font-semibold text-gray-700">Rp {{ number_format($bookingVendor->price, 0, ',', '.') }}</span>
+                    </div>
+
+                </div>
+            @empty
+                <x-empty-state icon="fa-store" title="Belum ada vendor booking" text="Jalankan backfill vendor untuk menyalin vendor dari paket." />
+            @endforelse
         </x-card>
     </div>
 </div>

@@ -22,7 +22,7 @@
             </select>
         </div>
         <x-button type="submit"><i class="fas fa-filter"></i> Filter</x-button>
-        <a href="{{ route('admin.invoices.index') }}" class="text-gray-400 hover:text-gray-600 px-2 py-2 text-sm">Reset</a>
+        <x-button color="outline" href="{{ route('admin.invoices.index') }}"><i class="fas fa-rotate-left"></i> Reset</x-button>
     </form>
 </x-card>
 

@@ -1,4 +1,4 @@
-@php($addonRows = $addonRows ?? [])
+@php $addonRows = $addonRows ?? []; @endphp
 
 <div class="rounded-xl border border-brand-100 bg-brand-50/30 p-4">
     <div class="flex items-center justify-between gap-3 mb-3">
