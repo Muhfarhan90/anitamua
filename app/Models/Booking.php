@@ -31,7 +31,7 @@ class Booking extends Model
     }
 
     protected $fillable = [
-        'code', 'client_id', 'package_id', 'package_price', 'name', 'phone', 'email', 'instagram', 'referral_source',
+        'code', 'client_id', 'package_id', 'package_price', 'discount_type', 'discount_value', 'name', 'phone', 'email', 'instagram', 'referral_source',
         'event_date', 'event_time', 'event_type', 'number_of_guests',
         'survey_date', 'fitting_date', 'location', 'notes',
         'status', 'cancelled_reason', 'cancelled_at', 'created_by',
@@ -41,6 +41,7 @@ class Booking extends Model
     {
         return [
             'package_price' => 'decimal:2',
+            'discount_value' => 'decimal:2',
             'event_date' => 'date',
             'survey_date' => 'date',
             'fitting_date' => 'date',
@@ -152,7 +153,36 @@ class Booking extends Model
 
     public function getTotalPriceAttribute(): float
     {
+        return max(0, $this->subtotal_price - $this->discount_amount);
+    }
+
+    public function getSubtotalPriceAttribute(): float
+    {
         return (float) ($this->package_price ?? $this->package?->price ?? 0) + (float) $this->addons->sum('price');
+    }
+
+    public function getDiscountAmountAttribute(): float
+    {
+        $value = max(0, (float) ($this->discount_value ?? 0));
+        $discount = match ($this->discount_type) {
+            'percentage' => $this->subtotal_price * min(100, $value) / 100,
+            'fixed' => $value,
+            default => 0,
+        };
+
+        return round(min($this->subtotal_price, $discount), 2);
+    }
+
+    public function getDiscountValueLabelAttribute(): string
+    {
+        return rtrim(rtrim(number_format((float) ($this->discount_value ?? 0), 2, '.', ''), '0'), '.');
+    }
+
+    public function getDiscountLabelAttribute(): string
+    {
+        return $this->discount_type === 'percentage'
+            ? 'Diskon ('.$this->discount_value_label.'%)'
+            : 'Diskon';
     }
 
     public function getIsBookedAttribute(): bool

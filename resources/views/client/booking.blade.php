@@ -226,6 +226,16 @@
 
             <x-card title="Ringkasan Keuangan" title-icon="fa-wallet">
                 <div class="space-y-2 text-sm mb-4">
+                    @if($booking->discount_amount > 0)
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">Subtotal Booking</span>
+                        <span class="font-bold text-gray-800">Rp {{ number_format($booking->subtotal_price, 0, ',', '.') }}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">{{ $booking->discount_label }}</span>
+                        <span class="font-bold text-red-500">-Rp {{ number_format($booking->discount_amount, 0, ',', '.') }}</span>
+                    </div>
+                    @endif
                     <div class="flex justify-between">
                         <span class="text-gray-500">Total Tagihan</span>
                         <span class="font-bold text-gray-800">Rp {{ number_format($totalPrice, 0, ',', '.') }}</span>

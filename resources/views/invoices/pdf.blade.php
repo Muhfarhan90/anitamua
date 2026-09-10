@@ -118,7 +118,7 @@
     <div class="service">
         <div class="service-title">Rincian layanan</div>
         <table class="items"><thead><tr><th>Layanan</th><th style="width:42px;text-align:center;">Qty</th><th style="width:100px;text-align:right;">Harga</th><th style="width:100px;text-align:right;">Total</th></tr></thead><tbody>
-            @foreach($invoice->items ?? [] as $item)<tr><td>{{ $item['name'] }}</td><td style="text-align:center;">{{ $item['quantity'] ?? 1 }}</td><td style="text-align:right;">Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}</td><td style="text-align:right;font-weight:bold;color:#8e2d63;">Rp {{ number_format($item['total'] ?? 0, 0, ',', '.') }}</td></tr>@endforeach
+            @foreach($invoice->items ?? [] as $item)@php $itemPrice = (float) ($item['price'] ?? 0); $itemTotal = (float) ($item['total'] ?? 0); @endphp<tr><td>{{ $item['name'] }}</td><td style="text-align:center;">{{ $item['quantity'] ?? 1 }}</td><td style="text-align:right;">{{ $itemPrice < 0 ? '-Rp ' : 'Rp ' }}{{ number_format(abs($itemPrice), 0, ',', '.') }}</td><td style="text-align:right;font-weight:bold;color:#8e2d63;">{{ $itemTotal < 0 ? '-Rp ' : 'Rp ' }}{{ number_format(abs($itemTotal), 0, ',', '.') }}</td></tr>@endforeach
         </tbody></table>
     </div>
 

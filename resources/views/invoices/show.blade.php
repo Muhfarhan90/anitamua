@@ -216,7 +216,8 @@
                         <thead><tr><th>Layanan</th><th class="text-center">Qty</th><th class="text-right">Harga</th><th class="text-right">Total</th></tr></thead>
                         <tbody>
                             @foreach($invoice->items ?? [] as $item)
-                            <tr><td>{{ $item['name'] }}</td><td class="text-center">{{ $item['quantity'] ?? 1 }}</td><td class="text-right">Rp {{ number_format($item['price'] ?? 0, 0, ',', '.') }}</td><td class="text-right">Rp {{ number_format($item['total'] ?? 0, 0, ',', '.') }}</td></tr>
+                            @php $itemPrice = (float) ($item['price'] ?? 0); $itemTotal = (float) ($item['total'] ?? 0); @endphp
+                            <tr><td>{{ $item['name'] }}</td><td class="text-center">{{ $item['quantity'] ?? 1 }}</td><td class="text-right">{{ $itemPrice < 0 ? '-Rp ' : 'Rp ' }}{{ number_format(abs($itemPrice), 0, ',', '.') }}</td><td class="text-right">{{ $itemTotal < 0 ? '-Rp ' : 'Rp ' }}{{ number_format(abs($itemTotal), 0, ',', '.') }}</td></tr>
                             @endforeach
                         </tbody>
                     </table>

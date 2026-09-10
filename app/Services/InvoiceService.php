@@ -37,6 +37,15 @@ class InvoiceService
             ];
         }
 
+        if ($booking->discount_amount > 0) {
+            $items[] = [
+                'name' => $booking->discount_label,
+                'quantity' => 1,
+                'price' => -$booking->discount_amount,
+                'total' => -$booking->discount_amount,
+            ];
+        }
+
         $totalAmount = collect($items)->sum('total');
         $paidAmount = $booking->payments
             ->where('status', Payment::STATUS_VERIFIED)
@@ -51,7 +60,7 @@ class InvoiceService
             'total_amount' => $totalAmount,
             'paid_amount' => $paidAmount,
             'remaining_amount' => max(0, $totalAmount - $paidAmount),
-            'status' => $paidAmount >= $totalAmount && $totalAmount > 0
+            'status' => $totalAmount <= 0 || $paidAmount >= $totalAmount
                 ? Invoice::STATUS_PAID
                 : ($paidAmount > 0 ? Invoice::STATUS_PARTIAL : Invoice::STATUS_UNPAID),
         ])->save();

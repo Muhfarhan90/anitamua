@@ -45,8 +45,9 @@ class BookingProgress
             $statuses['fitting'] = 'done';
         }
 
-        $pelunasanVerified = $booking->total_price > 0
-            && (float) $booking->payments->where('status', Payment::STATUS_VERIFIED)->sum('amount') >= $booking->total_price;
+        $verifiedTotal = (float) $booking->payments->where('status', Payment::STATUS_VERIFIED)->sum('amount');
+        $pelunasanVerified = ($booking->total_price <= 0 && $hasVerifiedDp1)
+            || ($booking->total_price > 0 && $verifiedTotal >= $booking->total_price);
 
         if ($pelunasanVerified) {
             $statuses['pelunasan'] = 'done';

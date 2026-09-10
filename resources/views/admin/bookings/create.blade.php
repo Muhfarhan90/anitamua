@@ -63,7 +63,7 @@
             <x-select name="package_id" id="package_id" label="Pilih Paket" required
                 placeholder="— Pilih Jenis Paket dahulu —">
                 @foreach ($packages ?? [] as $package)
-                    <option value="{{ $package->id }}" data-type="{{ $package->type }}" @selected(old('package_id') == $package->id)>
+                    <option value="{{ $package->id }}" data-type="{{ $package->type }}" data-price="{{ $package->price }}" @selected(old('package_id') == $package->id)>
                         {{ $package->name }}@if ($package->sub_type)
                             ({{ $subTypeLabels[$package->sub_type] ?? $package->sub_type }})
                         @endif - Rp {{ number_format($package->price, 0, ',', '.') }}
@@ -72,6 +72,21 @@
             </x-select>
 
             @include('admin.bookings.partials.addons-fields', ['addonRows' => old('addons', [])])
+
+            <div class="rounded-xl border border-brand-100 bg-brand-50/30 p-4">
+                <div class="mb-3">
+                    <p class="text-sm font-semibold text-gray-700">Diskon Booking</p>
+                    <p class="mt-0.5 text-xs text-gray-400">Opsional. Diskon akan mengurangi total tagihan booking.</p>
+                </div>
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <x-select name="discount_type" label="Jenis Diskon">
+                        <option value="">Tanpa diskon</option>
+                        <option value="percentage" @selected(old('discount_type') === 'percentage')>Persentase (%)</option>
+                        <option value="fixed" @selected(old('discount_type') === 'fixed')>Nominal (Rp)</option>
+                    </x-select>
+                    <x-input name="discount_value" label="Nilai Diskon" type="number" min="0" step="0.01" :value="old('discount_value')" placeholder="Contoh: 10 atau 500000" />
+                </div>
+            </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <x-input name="event_date" id="event_date" label="Tanggal Acara" type="date" required />
@@ -145,6 +160,18 @@
                 const selectClient = document.getElementById('client_id');
                 const preview = document.getElementById('client-preview');
                 const newClientInputs = newClientFields.querySelectorAll('input');
+                const discountType = document.getElementById('discount_type');
+                const discountValue = document.getElementById('discount_value');
+
+                function syncDiscountField(reset = false) {
+                    if (reset) discountValue.value = '';
+                    discountValue.disabled = !discountType.value;
+                    discountValue.step = discountType.value === 'fixed' ? '1' : '0.01';
+                    discountValue.placeholder = discountType.value === 'fixed' ? 'Contoh: 500000' : 'Contoh: 10';
+                }
+
+                discountType.addEventListener('change', () => syncDiscountField(true));
+                syncDiscountField();
 
                 function oneMonthBefore(value) {
                     const [year, month, day] = value.split('-').map(Number);

@@ -1,6 +1,7 @@
 <?php
 
 use App\Mail\ClientAccountCredentials;
+use App\Helpers\BookingProgress;
 use App\Models\ActivityLog;
 use App\Models\Booking;
 use App\Models\EntranceGate;
@@ -1318,6 +1319,110 @@ it('creates one invoice per booked booking and updates it from verified payments
         ->assertOk()
         ->assertHeader('content-type', 'application/pdf')
         ->assertHeader('content-disposition', 'inline; filename="Invoice-'.$paid->invoice_number.'.pdf"');
+});
+
+it('applies percentage and nominal booking discounts to totals and invoices', function () {
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+
+    $booking = Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'discount_type' => 'percentage',
+        'discount_value' => 10,
+        'name' => 'Diskon Persen',
+        'phone' => '081234567890',
+        'email' => $client->email,
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'status' => Booking::STATUS_BOOKED,
+    ]);
+    $booking->addons()->create(['name' => 'Tambahan', 'price' => 250000]);
+
+    $subtotal = (float) $package->price + 250000;
+    expect($booking->refresh()->discount_amount)->toBe(round($subtotal * .1, 2))
+        ->and($booking->discount_label)->toBe('Diskon (10%)')
+        ->and($booking->total_price)->toBe(round($subtotal * .9, 2));
+
+    $invoice = app(InvoiceService::class)->sync($booking->fresh());
+    expect((float) $invoice->total_amount)->toBe((float) round($subtotal * .9, 2))
+        ->and((float) collect($invoice->items)->last()['total'])->toBe((float) -round($subtotal * .1, 2));
+
+    $booking->update(['discount_type' => 'fixed', 'discount_value' => 100000]);
+    expect($booking->refresh()->discount_amount)->toBe(100000.0)
+        ->and($booking->total_price)->toBe($subtotal - 100000.0);
+
+    $booking->update(['discount_type' => 'percentage', 'discount_value' => 100]);
+    $booking->payments()->create([
+        'type' => 'DP1',
+        'amount' => 0,
+        'method' => 'transfer',
+        'status' => Payment::STATUS_VERIFIED,
+        'paid_at' => now(),
+    ]);
+    $zeroInvoice = app(InvoiceService::class)->sync($booking->fresh());
+    $progress = BookingProgress::calculate($booking->fresh(['payments', 'survey', 'fittings', 'schedules']));
+    expect((float) $zeroInvoice->total_amount)->toBe(0.0)
+        ->and($zeroInvoice->status)->toBe(Invoice::STATUS_PAID)
+        ->and(collect($progress['steps'])->firstWhere('key', 'pelunasan')['state'])->toBe('done');
+});
+
+it('validates discount changes against type, rupiah precision, and received payments', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+    $booking = Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'discount_type' => 'percentage',
+        'discount_value' => 10,
+        'name' => 'Validasi Diskon',
+        'phone' => '081234567890',
+        'email' => $client->email,
+        'referral_source' => 'Instagram',
+        'event_date' => now()->addMonths(2)->toDateString(),
+        'status' => Booking::STATUS_BOOKED,
+    ]);
+    $payload = fn (array $discount) => array_merge([
+        'package_id' => $package->id,
+        'name' => $booking->name,
+        'phone' => $booking->phone,
+        'email' => $booking->email,
+        'referral_source' => $booking->referral_source,
+        'event_date' => $booking->event_date->toDateString(),
+    ], $discount);
+
+    $this->actingAs($admin)
+        ->patch(route('admin.bookings.update', $booking), $payload(['discount_type' => '']))
+        ->assertRedirect()
+        ->assertSessionDoesntHaveErrors();
+    expect($booking->refresh()->discount_type)->toBeNull()
+        ->and((float) $booking->discount_value)->toBe(0.0);
+
+    $this->actingAs($admin)
+        ->patch(route('admin.bookings.update', $booking), $payload([
+            'discount_type' => 'fixed',
+            'discount_value' => 100000.50,
+        ]))
+        ->assertSessionHasErrors('discount_value');
+
+    $booking->payments()->create([
+        'type' => 'DP1',
+        'amount' => $booking->subtotal_price,
+        'method' => 'transfer',
+        'status' => Payment::STATUS_VERIFIED,
+        'paid_at' => now(),
+    ]);
+    $this->actingAs($admin)
+        ->patch(route('admin.bookings.update', $booking), $payload([
+            'discount_type' => 'percentage',
+            'discount_value' => 10,
+        ]))
+        ->assertSessionHasErrors('discount_value');
+    expect($booking->refresh()->discount_type)->toBeNull();
 });
 
 it('admin can update the invoice greeting from site settings', function () {
