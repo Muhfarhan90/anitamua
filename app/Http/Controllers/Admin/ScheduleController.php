@@ -23,6 +23,10 @@ class ScheduleController extends Controller
         $date = Carbon::create($year, $month, 1);
 
         $monthSchedules = Schedule::with('booking')
+            ->whereHas('booking', fn ($query) => $query->whereNotIn('status', [
+                Booking::STATUS_CANCELLED,
+                Booking::STATUS_COMPLETED,
+            ]))
             ->whereBetween('date', [$date->copy()->startOfMonth(), $date->copy()->endOfMonth()])
             ->get();
 
@@ -45,7 +49,7 @@ class ScheduleController extends Controller
             ->toArray();
 
         $bookings = Booking::with(['package', 'client'])
-            ->where('status', '!=', Booking::STATUS_CANCELLED)
+            ->whereNotIn('status', [Booking::STATUS_CANCELLED, Booking::STATUS_COMPLETED])
             ->orderBy('event_date')
             ->get();
 

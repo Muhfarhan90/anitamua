@@ -153,6 +153,42 @@
     </div>
 </section>
 
+{{-- ══════════ DEKOR & TENDA ══════════ --}}
+<section class="py-16 landing-section" style="background:#fff;">
+    <div class="container">
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+            <div>
+                <p class="section-eyebrow mb-2">Dekor & Tenda</p>
+                <h2 class="font-display font-bold section-heading mb-0">Pilihan untuk Hari Istimewa</h2>
+            </div>
+            <a href="{{ route('decor-tents') }}" class="btn-outline-pink">Lihat Semua <i class="fas fa-arrow-right ml-1"></i></a>
+        </div>
+        <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+            @foreach([
+                ['items' => $weddingStages->take(2), 'label' => 'Pelaminan', 'icon' => 'fa-panorama'],
+                ['items' => $entranceGates->take(2), 'label' => 'Gapura', 'icon' => 'fa-door-open'],
+                ['items' => $tents->take(2), 'label' => 'Tenda', 'icon' => 'fa-campground'],
+            ] as $catalogSection)
+                @foreach($catalogSection['items'] as $item)
+                    <article class="group text-center">
+                        <div class="overflow-hidden rounded-t-[999px] rounded-b-2xl border border-pink-100 bg-pink-50 shadow-sm transition duration-300 group-hover:-translate-y-1 group-hover:shadow-lg">
+                            @if($item->photo_path)
+                                <button type="button" class="block w-full cursor-zoom-in" aria-label="Buka foto {{ $item->name }}" data-gallery-lightbox data-gallery-photos="{{ base64_encode(json_encode([asset('storage/'.$item->photo_path)])) }}" data-gallery-title="{{ $item->name }}">
+                                    <img src="{{ asset('storage/'.$item->photo_path) }}" alt="{{ $item->name }}" class="aspect-[4/5] w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy">
+                                </button>
+                            @else
+                                <div class="flex aspect-[4/5] items-center justify-center text-3xl text-brand"><i class="fas {{ $catalogSection['icon'] }}"></i></div>
+                            @endif
+                        </div>
+                        <p class="mt-3 text-xs font-semibold uppercase tracking-wide text-gray-500">{{ $catalogSection['label'] }}</p>
+                        <h3 class="font-display text-base font-semibold text-gray-800">{{ $item->name }}</h3>
+                    </article>
+                @endforeach
+            @endforeach
+        </div>
+    </div>
+</section>
+
 {{-- ══════════ GALERI ══════════ --}}
 <section class="py-16 landing-section" style="background:var(--bg);">
     <div class="container">

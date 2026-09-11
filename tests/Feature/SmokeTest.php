@@ -36,11 +36,68 @@ it('renders landing pages', function () {
     $this->get('/tentang')->assertOk();
     $this->get('/paket')->assertOk();
     $this->get('/galeri')->assertOk();
+    $this->get('/dekor-tenda')->assertOk();
     $this->get('/testimoni')->assertOk();
     $this->get('/faq')->assertOk();
     $this->get('/kontak')->assertOk();
     $this->get('/booking')->assertOk();
     $this->get('/booking/sukses/'.Booking::where('name', 'Dewi & Andi')->value('code'))->assertOk();
+});
+
+it('shows only active decorations, gates, and tents in the public catalog', function () {
+    WeddingStage::create(['name' => 'Dekor Publik', 'is_active' => true]);
+    WeddingStage::create(['name' => 'Dekor Disembunyikan', 'is_active' => false]);
+    EntranceGate::create(['name' => 'Gapura Publik', 'is_active' => true]);
+    EntranceGate::create(['name' => 'Gapura Disembunyikan', 'is_active' => false]);
+    Tent::create(['name' => 'Tenda Publik', 'is_active' => true]);
+    Tent::create(['name' => 'Tenda Disembunyikan', 'is_active' => false]);
+
+    $this->get('/dekor-tenda')
+        ->assertOk()
+        ->assertSee('Dekor Publik')
+        ->assertSee('Gapura Publik')
+        ->assertSee('Tenda Publik')
+        ->assertDontSee('Dekor Disembunyikan')
+        ->assertDontSee('Gapura Disembunyikan')
+        ->assertDontSee('Tenda Disembunyikan');
+
+    $this->get('/admin/tents')->assertRedirect('/login');
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $this->actingAs($client)->get('/admin/tents')->assertForbidden();
+});
+
+it('hides cancelled and completed booking schedules from the calendar without deleting them', function () {
+    $team = User::where('email', 'team@anitamua.com')->firstOrFail();
+    $source = Booking::firstOrFail();
+    $bookings = collect([
+        [Booking::STATUS_BOOKED, 'Jadwal Aktif'],
+        [Booking::STATUS_CANCELLED, 'Jadwal Batal'],
+        [Booking::STATUS_COMPLETED, 'Jadwal Selesai'],
+    ])->map(function ($item) use ($source) {
+        [$status, $title] = $item;
+        $booking = $source->replicate();
+        $booking->code = Booking::generateCode();
+        $booking->name = $title;
+        $booking->status = $status;
+        $booking->save();
+        $booking->schedules()->create([
+            'type' => Schedule::TYPE_HARI_H,
+            'title' => $title,
+            'date' => now()->toDateString(),
+            'status' => Schedule::STATUS_SCHEDULED,
+        ]);
+
+        return $booking;
+    });
+
+    $this->actingAs($team)
+        ->get('/admin/calendar?month='.now()->month.'&year='.now()->year)
+        ->assertOk()
+        ->assertSee('Jadwal Aktif')
+        ->assertDontSee('Jadwal Batal')
+        ->assertDontSee('Jadwal Selesai');
+
+    expect(Schedule::whereIn('booking_id', $bookings->pluck('id'))->count())->toBe(3);
 });
 
 it('client can login with email or whatsapp number', function () {
@@ -455,6 +512,144 @@ it('admin can replace a booking vendor within the same category', function () {
         ->and($bookingVendor->status)->toBe('changed');
 });
 
+it('admin can add another vendor from an existing category but cannot duplicate a vendor', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $existingBookingVendor = $booking->bookingVendors()->with('vendor')->firstOrFail();
+    $additionalVendor = Vendor::create([
+        'vendor_category_id' => $existingBookingVendor->vendor->vendor_category_id,
+        'name' => 'Vendor Kedua Satu Kategori',
+        'price' => 950000,
+        'status' => 'active',
+    ]);
+    $payload = [
+        'package_id' => $booking->package_id,
+        'name' => $booking->name,
+        'phone' => $booking->phone,
+        'email' => $booking->email,
+        'referral_source' => $booking->referral_source ?: 'Instagram',
+        'event_date' => $booking->event_date->toDateString(),
+        'event_time' => $booking->event_time ? substr((string) $booking->event_time, 0, 5) : null,
+        'additional_vendor_ids' => [$additionalVendor->id],
+        'additional_vendor_additions' => [
+            $additionalVendor->id => [
+                ['name' => 'Transport vendor kedua', 'price' => 125000],
+            ],
+        ],
+    ];
+
+    $this->actingAs($admin)
+        ->patch(route('admin.bookings.update', $booking), $payload)
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect($booking->bookingVendors()
+        ->whereHas('vendor', fn ($query) => $query->where('vendor_category_id', $additionalVendor->vendor_category_id))
+        ->count())->toBeGreaterThanOrEqual(2);
+
+    $this->actingAs($admin)
+        ->patch(route('admin.bookings.update', $booking), $payload)
+        ->assertSessionHasErrors('additional_vendor_ids');
+
+    expect($booking->bookingVendors()->where('vendor_id', $additionalVendor->id)->count())->toBe(1);
+    expect($booking->bookingVendors()->where('vendor_id', $additionalVendor->id)->first()->custom_additions)->toBe([
+        ['name' => 'Transport vendor kedua', 'price' => 125000],
+    ]);
+});
+
+it('renders booking vendors in server-rendered category cards with compact custom additions', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $booking = Booking::has('bookingVendors')->firstOrFail();
+
+    $this->actingAs($admin)
+        ->get(route('admin.bookings.edit', $booking))
+        ->assertOk()
+        ->assertSee('data-vendor-category-card', false)
+        ->assertSee('Hapus Kategori')
+        ->assertSee('<details', false)
+        ->assertSee('data-vendor-additions', false)
+        ->assertSee('confirmDeferredRemoval', false)
+        ->assertSee('Perubahan baru diterapkan setelah Anda menekan Simpan Perubahan.', false)
+        ->assertSee('data-category-name', false)
+        ->assertSee('option.hidden = false', false)
+        ->assertDontSee('data-vendor-change', false);
+});
+
+it('admin can remove one vendor or an entire vendor category when saving booking edits', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $singleCategory = VendorCategory::create(['name' => 'Vendor Untuk Dihapus', 'slug' => 'vendor-untuk-dihapus']);
+    $singleVendor = Vendor::create([
+        'vendor_category_id' => $singleCategory->id,
+        'name' => 'Vendor Satu Dihapus',
+        'price' => 400000,
+        'status' => 'active',
+    ]);
+    $category = VendorCategory::create(['name' => 'Kategori Untuk Dihapus', 'slug' => 'kategori-untuk-dihapus']);
+    $categoryVendorOne = Vendor::create([
+        'vendor_category_id' => $category->id,
+        'name' => 'Vendor Kategori Satu',
+        'price' => 500000,
+        'status' => 'active',
+    ]);
+    $categoryVendorTwo = Vendor::create([
+        'vendor_category_id' => $category->id,
+        'name' => 'Vendor Kategori Dua',
+        'price' => 600000,
+        'status' => 'active',
+    ]);
+    $booking->bookingVendors()->createMany([
+        ['vendor_id' => $singleVendor->id, 'role' => $singleCategory->name, 'price' => $singleVendor->price, 'status' => 'confirmed'],
+        ['vendor_id' => $categoryVendorOne->id, 'role' => $category->name, 'price' => $categoryVendorOne->price, 'custom_additions' => [['name' => 'Tambahan lama', 'price' => 100000]], 'status' => 'confirmed'],
+        ['vendor_id' => $categoryVendorTwo->id, 'role' => $category->name, 'price' => $categoryVendorTwo->price, 'status' => 'confirmed'],
+    ]);
+    $singleBookingVendor = $booking->bookingVendors()->where('vendor_id', $singleVendor->id)->firstOrFail();
+
+    $this->actingAs($admin)->patch(route('admin.bookings.update', $booking), [
+        'package_id' => $booking->package_id,
+        'name' => $booking->name,
+        'phone' => $booking->phone,
+        'email' => $booking->email,
+        'referral_source' => $booking->referral_source ?: 'Instagram',
+        'event_date' => $booking->event_date->toDateString(),
+        'removed_booking_vendor_ids' => [$singleBookingVendor->id],
+        'removed_vendor_category_ids' => [$category->id],
+    ])->assertRedirect()->assertSessionHas('success');
+
+    expect($booking->bookingVendors()->whereKey($singleBookingVendor->id)->exists())->toBeFalse()
+        ->and($booking->bookingVendors()->whereHas('vendor', fn ($query) => $query->where('vendor_category_id', $category->id))->exists())->toBeFalse()
+        ->and(Vendor::whereKey($singleVendor->id)->exists())->toBeTrue()
+        ->and(VendorCategory::whereKey($category->id)->exists())->toBeTrue();
+});
+
+it('rejects replacing a booking vendor with another vendor already on the booking', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $firstBookingVendor = $booking->bookingVendors()->with('vendor')->firstOrFail();
+    $duplicateTarget = Vendor::create([
+        'vendor_category_id' => $firstBookingVendor->vendor->vendor_category_id,
+        'name' => 'Target Vendor Terpakai',
+        'price' => 900000,
+        'status' => 'active',
+    ]);
+    $booking->bookingVendors()->create([
+        'vendor_id' => $duplicateTarget->id,
+        'role' => $firstBookingVendor->role,
+        'price' => $duplicateTarget->price,
+        'status' => 'confirmed',
+    ]);
+
+    $this->actingAs($admin)
+        ->patch("/admin/bookings/{$booking->id}/vendors", [
+            'booking_vendor_id' => $firstBookingVendor->id,
+            'vendor_id' => $duplicateTarget->id,
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('warning');
+
+    expect($firstBookingVendor->fresh()->vendor_id)->not->toBe($duplicateTarget->id);
+});
+
 it('admin saves custom additions with the booking changes and finance uses the total', function () {
     $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
     $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
@@ -504,6 +699,18 @@ it('admin saves custom additions with the booking changes and finance uses the t
 
     $this->actingAs($admin)->get('/admin/bookings/'.$booking->id)
         ->assertOk()->assertSee('Transport luar kota')->assertSee('Crew tambahan');
+});
+
+it('renders fixed booking discounts without trailing decimal zeroes', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $booking->update(['discount_type' => 'fixed', 'discount_value' => 100000]);
+
+    $this->actingAs($admin)
+        ->get(route('admin.bookings.edit', $booking))
+        ->assertOk()
+        ->assertSee('value="100000"', false)
+        ->assertDontSee('value="100000.00"', false);
 });
 
 it('admin booking form saves survey and fitting details', function () {
@@ -1191,6 +1398,49 @@ it('lets client view their booking detail', function () {
     $this->actingAs($client)->get("/client/booking/{$booking->id}")->assertOk();
 });
 
+it('shows all booking activities in one scrollable history ordered newest first', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $booking->activityLogs()->delete();
+
+    foreach (range(1, 7) as $number) {
+        $activity = ActivityLog::create([
+            'booking_id' => $booking->id,
+            'user_id' => $admin->id,
+            'action' => 'test_activity_'.$number,
+            'title' => 'Aktivitas '.$number,
+            'description' => 'Aktivitas '.$number,
+        ]);
+        $activity->forceFill([
+            'created_at' => now()->addSeconds($number),
+            'updated_at' => now()->addSeconds($number),
+        ])->save();
+    }
+
+    $response = $this->actingAs($admin)->get(route('admin.bookings.show', $booking))->assertOk();
+    $response->assertSeeInOrder(['Aktivitas 7', 'Aktivitas 6', 'Aktivitas 5', 'Aktivitas 4', 'Aktivitas 3', 'Aktivitas 2', 'Aktivitas 1']);
+    $response->assertSee('data-activities-scroll', false)
+        ->assertSee('max-h-48', false)
+        ->assertDontSee('Aktivitas sebelumnya')
+        ->assertDontSee('data-recent-activities', false)
+        ->assertDontSee('data-older-activities', false);
+});
+
+it('renders scoped reset and hide controls for survey and fitting forms', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $team = User::where('email', 'team@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+
+    $createHtml = $this->actingAs($admin)->get(route('admin.bookings.create'))->assertOk()->getContent();
+    $editHtml = $this->actingAs($admin)->get(route('admin.bookings.edit', $booking))->assertOk()->getContent();
+    $fieldworkHtml = $this->actingAs($team)->get(route('admin.fieldwork.booking', $booking))->assertOk()->getContent();
+
+    foreach ([$createHtml, $editHtml, $fieldworkHtml] as $html) {
+        expect(substr_count($html, '<button type="button" data-fieldwork-reset'))->toBe(2)
+            ->and(substr_count($html, '<button type="button" data-fieldwork-toggle'))->toBe(2);
+    }
+});
+
 it('client can add a new payment stage with custom label and nominal', function () {
     Storage::fake('public');
     $client = User::where('email', 'client@anitamua.com')->first();
@@ -1655,6 +1905,89 @@ it('calculates finance from verified payments and booking vendor prices', functi
     $response->assertOk();
     expect((float) $response->viewData('incomes'))->toBe($expectedIncome)
         ->and((float) $response->viewData('expenses'))->toBe($expectedVendorExpense);
+});
+
+it('lists completed or fully paid bookings with contract income and vendor expenses', function () {
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+    $year = now()->year + 1;
+    $category = VendorCategory::create(['name' => 'Vendor Profit Booking', 'slug' => 'vendor-profit-booking']);
+    $vendor = Vendor::create([
+        'vendor_category_id' => $category->id,
+        'name' => 'Vendor Profit Booking',
+        'price' => 250000,
+        'status' => 'active',
+    ]);
+
+    $completed = Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => 'Booking Selesai Profit',
+        'phone' => $client->phone,
+        'email' => $client->email,
+        'event_date' => now()->setYear($year)->toDateString(),
+        'status' => Booking::STATUS_COMPLETED,
+    ]);
+    $completed->addons()->create(['name' => 'Tambahan Dekor', 'price' => 100000]);
+    $completed->update(['discount_type' => 'fixed', 'discount_value' => 50000]);
+    $completed->bookingVendors()->create([
+        'vendor_id' => $vendor->id,
+        'role' => $category->name,
+        'price' => $vendor->price,
+        'custom_additions' => [['name' => 'Transport', 'price' => 75000]],
+        'status' => 'confirmed',
+    ]);
+
+    $paid = Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => 'Booking Lunas Profit',
+        'phone' => $client->phone,
+        'email' => $client->email,
+        'event_date' => now()->setYear($year)->addDay()->toDateString(),
+        'status' => Booking::STATUS_BOOKED,
+    ]);
+    $paid->payments()->create([
+        'type' => 'pelunasan',
+        'amount' => $paid->total_price,
+        'method' => 'transfer',
+        'status' => Payment::STATUS_VERIFIED,
+        'verified_at' => now(),
+    ]);
+
+    $cancelled = Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => 'Booking Cancelled Profit',
+        'phone' => $client->phone,
+        'email' => $client->email,
+        'event_date' => now()->setYear($year)->addDays(2)->toDateString(),
+        'status' => Booking::STATUS_CANCELLED,
+    ]);
+    $cancelled->payments()->create([
+        'type' => 'pelunasan',
+        'amount' => $cancelled->total_price,
+        'method' => 'transfer',
+        'status' => Payment::STATUS_VERIFIED,
+        'verified_at' => now(),
+    ]);
+
+    $response = $this->actingAs($owner)->get('/admin/finances?year='.$year)->assertOk();
+    $bookings = $response->viewData('bookingProfits')->keyBy(fn ($row) => $row['booking']->id);
+
+    expect($bookings->has($completed->id))->toBeTrue()
+        ->and($bookings->has($paid->id))->toBeTrue()
+        ->and($bookings->has($cancelled->id))->toBeFalse()
+        ->and($bookings[$completed->id]['income'])->toBe($completed->total_price)
+        ->and($bookings[$completed->id]['expense'])->toBe(325000.0)
+        ->and($bookings[$completed->id]['profit'])->toBe($completed->total_price - 325000.0);
 });
 
 it('builds booking source and monthly charts from booking creation dates and all statuses', function () {

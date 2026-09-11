@@ -234,16 +234,18 @@
 
         {{-- ACTIVITY --}}
         <x-card title="Aktivitas" title-icon="fa-clock-rotate-left">
-            <div class="relative pl-6 border-l-2 border-brand-100 space-y-5">
-                @forelse($booking->activityLogs ?? [] as $activity)
-                <div class="relative">
-                    <div class="absolute -left-[31px] top-1 w-3 h-3 rounded-full border-2 border-white shadow bg-brand"></div>
-                    <p class="text-xs text-gray-400">{{ $activity->created_at ? $activity->created_at->format('d M Y H:i') : '' }} Â· <span class="font-semibold text-brand">{{ $activity->user->name ?? 'Sistem' }}</span></p>
-                    <p class="text-sm text-gray-700">{{ $activity->description }}</p>
+            <div class="max-h-48 overflow-y-auto overscroll-contain pr-2" data-activities-scroll>
+                <div class="relative space-y-5 border-l-2 border-brand-100 pl-6">
+                    @forelse(($booking->activityLogs ?? collect()) as $activity)
+                        <div class="relative">
+                            <div class="absolute -left-[31px] top-1 h-3 w-3 rounded-full border-2 border-white bg-brand shadow"></div>
+                            <p class="text-xs text-gray-400">{{ $activity->created_at ? $activity->created_at->format('d M Y H:i') : '' }} &middot; <span class="font-semibold text-brand">{{ $activity->user->name ?? 'Sistem' }}</span></p>
+                            <p class="text-sm text-gray-700">{{ $activity->description }}</p>
+                        </div>
+                    @empty
+                        <x-empty-state icon="fa-clock-rotate-left" title="Belum ada aktivitas" />
+                    @endforelse
                 </div>
-                @empty
-                <x-empty-state icon="fa-clock-rotate-left" title="Belum ada aktivitas" />
-                @endforelse
             </div>
         </x-card>
     </div>

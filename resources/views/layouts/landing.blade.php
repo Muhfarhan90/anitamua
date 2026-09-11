@@ -32,6 +32,7 @@
             <a class="nav-menu-link {{ request()->routeIs('about')?'active':'' }}" href="{{ route('about') }}">Tentang</a>
             <a class="nav-menu-link {{ request()->routeIs('packages')?'active':'' }}" href="{{ route('packages') }}">Paket</a>
             <a class="nav-menu-link {{ request()->routeIs('gallery')?'active':'' }}" href="{{ route('gallery') }}">Galeri</a>
+            <a class="nav-menu-link {{ request()->routeIs('decor-tents')?'active':'' }}" href="{{ route('decor-tents') }}">Dekor & Tenda</a>
             <a class="nav-menu-link {{ request()->routeIs('testimonials')?'active':'' }}" href="{{ route('testimonials') }}">Testimoni</a>
             <a class="nav-menu-link {{ request()->routeIs('faq')?'active':'' }}" href="{{ route('faq') }}">FAQ</a>
             <a class="nav-menu-link {{ request()->routeIs('contact')?'active':'' }}" href="{{ route('contact') }}">Kontak</a>

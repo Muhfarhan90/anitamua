@@ -21,7 +21,12 @@
     ];
 @endphp
 
-<x-card title="Data Survey" title-icon="fa-map-location-dot" class="survey-card">
+<x-card title="Data Survey" title-icon="fa-map-location-dot" class="survey-card" data-fieldwork-card>
+    <x-slot:actions>
+        <button type="button" data-fieldwork-reset class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-500 hover:bg-gray-100 hover:text-gray-700"><i class="fas fa-rotate-left"></i> Reset</button>
+        <button type="button" data-fieldwork-toggle aria-expanded="true" class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand hover:bg-brand-50"><i class="fas fa-eye-slash" data-fieldwork-toggle-icon></i> <span data-fieldwork-toggle-label>Hide</span></button>
+    </x-slot:actions>
+    <div data-fieldwork-content>
     @if($survey && !$embedded)
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
         <div><span class="text-gray-500">Lokasi</span><p class="font-semibold text-gray-800">{{ $survey->location ?? '-' }}</p></div>
@@ -155,6 +160,7 @@
         </section>
         @if(!$embedded)<x-button color="primary" type="submit"><i class="fas fa-save"></i> {{ $survey ? 'Perbarui Survey' : 'Simpan Survey' }}</x-button>@endif
     @if(!$embedded)</form>@else</div>@endif
+    </div>
 </x-card>
 
 @once
@@ -168,7 +174,7 @@
             document.addEventListener('DOMContentLoaded', function () {
                 document.querySelectorAll('[data-other-wrapper]').forEach(function (wrapper) {
                     const group = wrapper.dataset.otherWrapper;
-                    const controls = document.querySelectorAll('[data-other-group="' + group + '"]');
+                    const controls = wrapper.closest('[data-fieldwork-card]').querySelectorAll('[data-other-group="' + group + '"]');
                     const input = wrapper.querySelector('input');
 
                     function syncOtherField() {
@@ -205,6 +211,36 @@
 
                     select.addEventListener('change', syncMasterPreview);
                     syncMasterPreview();
+                });
+
+                document.querySelectorAll('[data-fieldwork-card]').forEach(function (card) {
+                    const content = card.querySelector('[data-fieldwork-content]');
+                    const toggle = card.querySelector('[data-fieldwork-toggle]');
+                    const reset = card.querySelector('[data-fieldwork-reset]');
+
+                    toggle?.addEventListener('click', function () {
+                        const hidden = content.classList.toggle('hidden');
+                        toggle.setAttribute('aria-expanded', String(!hidden));
+                        toggle.querySelector('[data-fieldwork-toggle-label]').textContent = hidden ? 'Show' : 'Hide';
+                        toggle.querySelector('[data-fieldwork-toggle-icon]').className = hidden ? 'fas fa-eye' : 'fas fa-eye-slash';
+                    });
+
+                    reset?.addEventListener('click', function () {
+                        if (!window.confirm('Kosongkan semua input pada bagian ini? Data tersimpan tidak berubah sebelum tombol Simpan ditekan.')) return;
+
+                        card.querySelectorAll('input, select, textarea').forEach(function (control) {
+                            if (control.type === 'hidden') return;
+
+                            if (control.type === 'checkbox' || control.type === 'radio') {
+                                control.checked = false;
+                            } else {
+                                control.value = control.dataset.resetValue ?? '';
+                            }
+
+                            control.dispatchEvent(new Event('input', { bubbles: true }));
+                            control.dispatchEvent(new Event('change', { bubbles: true }));
+                        });
+                    });
                 });
             });
         </script>

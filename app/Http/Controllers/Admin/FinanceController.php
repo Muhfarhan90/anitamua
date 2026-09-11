@@ -51,16 +51,44 @@ class FinanceController extends Controller
             'count' => $yearBookings->filter(fn (Booking $booking) => $booking->created_at->month === $month)->count(),
         ]);
 
+        $bookingProfits = Booking::with(['client', 'addons', 'payments', 'bookingVendors'])
+            ->whereYear('event_date', $year)
+            ->where('status', '!=', Booking::STATUS_CANCELLED)
+            ->orderBy('event_date')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (Booking $booking) =>
+                $booking->status === Booking::STATUS_COMPLETED
+                || (float) $booking->payments->where('status', Payment::STATUS_VERIFIED)->sum('amount') >= $booking->total_price
+            )
+            ->map(function (Booking $booking) {
+                $income = $booking->total_price;
+                $expense = (float) $booking->bookingVendors
+                    ->where('status', '!=', 'cancelled')
+                    ->sum(fn (BookingVendor $bookingVendor) => $bookingVendor->total_price);
+
+                return [
+                    'booking' => $booking,
+                    'income' => $income,
+                    'expense' => $expense,
+                    'profit' => $income - $expense,
+                    'paid' => (float) $booking->payments->where('status', Payment::STATUS_VERIFIED)->sum('amount'),
+                    'is_completed' => $booking->status === Booking::STATUS_COMPLETED,
+                ];
+            })
+            ->values();
+
         $years = $allTransactions
             ->pluck('date')
             ->map(fn (Carbon $date) => $date->year)
             ->concat(Booking::pluck('created_at')->filter()->map(fn ($date) => Carbon::parse($date)->year))
+            ->concat(Booking::pluck('event_date')->filter()->map(fn ($date) => Carbon::parse($date)->year))
             ->push($year)
             ->unique()
             ->sortDesc()
             ->values();
         return view('admin.finances.index', compact(
-            'incomes', 'expenses', 'profit', 'margin', 'monthly', 'bookingSources', 'monthlyBookings', 'year', 'years'
+            'incomes', 'expenses', 'profit', 'margin', 'monthly', 'bookingSources', 'monthlyBookings', 'bookingProfits', 'year', 'years'
         ));
     }
 

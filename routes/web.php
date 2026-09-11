@@ -33,6 +33,7 @@ Route::get('/', [LandingController::class, 'index'])->name('home');
 Route::get('/tentang', [LandingController::class, 'about'])->name('about');
 Route::get('/paket', [LandingController::class, 'packages'])->name('packages');
 Route::get('/galeri', [LandingController::class, 'gallery'])->name('gallery');
+Route::get('/dekor-tenda', [LandingController::class, 'decorTents'])->name('decor-tents');
 Route::get('/testimoni', [LandingController::class, 'testimonials'])->name('testimonials');
 Route::get('/faq', [LandingController::class, 'faq'])->name('faq');
 Route::get('/kontak', [LandingController::class, 'contact'])->name('contact');

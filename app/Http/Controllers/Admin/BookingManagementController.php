@@ -55,6 +55,7 @@ class BookingManagementController extends Controller
             'client', 'package', 'payments', 'invoice', 'bookingVendors.vendor.category',
             'addons',
             'schedules.picUser', 'survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings', 'packingLists.items.inventoryItem',
+            'activityLogs' => fn ($query) => $query->latest(),
             'activityLogs.user', 'packageChangeRequests.oldPackage', 'packageChangeRequests.newPackage',
         ]);
         if (in_array($booking->status, [Booking::STATUS_BOOKED, Booking::STATUS_COMPLETED], true)) {
@@ -277,17 +278,28 @@ class BookingManagementController extends Controller
             'vendor_additions.*.*.price' => ['required', 'numeric', 'min:0'],
             'vendor_changes' => ['nullable', 'array'],
             'vendor_changes.*.vendor_id' => ['required', 'exists:vendors,id'],
+            'removed_booking_vendor_ids' => ['nullable', 'array'],
+            'removed_booking_vendor_ids.*' => ['required', 'integer', 'distinct'],
+            'removed_vendor_category_ids' => ['nullable', 'array'],
+            'removed_vendor_category_ids.*' => ['required', 'integer', 'distinct', 'exists:vendor_categories,id'],
             'additional_vendor_ids' => ['nullable', 'array'],
-            'additional_vendor_ids.*' => ['required', 'integer', 'exists:vendors,id'],
+            'additional_vendor_ids.*' => ['required', 'integer', 'distinct', 'exists:vendors,id'],
+            'additional_vendor_additions' => ['nullable', 'array'],
+            'additional_vendor_additions.*' => ['nullable', 'array'],
+            'additional_vendor_additions.*.*.name' => ['required', 'string', 'max:255'],
+            'additional_vendor_additions.*.*.price' => ['required', 'numeric', 'min:0'],
         ] + $this->bookingSurveyRules() + $this->bookingFittingRules());
 
         $addons = $data['addons'] ?? [];
         $vendorAdditions = $data['vendor_additions'] ?? [];
         $vendorAdditionsPresent = $data['vendor_additions_present'] ?? [];
         $vendorChanges = $data['vendor_changes'] ?? [];
+        $removedBookingVendorIds = $data['removed_booking_vendor_ids'] ?? [];
+        $removedVendorCategoryIds = $data['removed_vendor_category_ids'] ?? [];
         $additionalVendorIds = $data['additional_vendor_ids'] ?? [];
+        $additionalVendorAdditions = $data['additional_vendor_additions'] ?? [];
         unset($data['addons']);
-        unset($data['vendor_additions'], $data['vendor_additions_present'], $data['vendor_changes'], $data['additional_vendor_ids']);
+        unset($data['vendor_additions'], $data['vendor_additions_present'], $data['vendor_changes'], $data['removed_booking_vendor_ids'], $data['removed_vendor_category_ids'], $data['additional_vendor_ids'], $data['additional_vendor_additions']);
 
         $packageChanged = (int) $data['package_id'] !== (int) $booking->package_id;
         $packagePrice = $packageChanged
@@ -304,25 +316,67 @@ class BookingManagementController extends Controller
         }
 
         $old = $booking->only(array_keys($data));
-        DB::transaction(function () use ($booking, $data, $addons, $vendorAdditions, $vendorAdditionsPresent, $vendorChanges, $additionalVendorIds, $request, $packageChanged, $invoiceService) {
+        DB::transaction(function () use ($booking, $data, $addons, $vendorAdditions, $vendorAdditionsPresent, $vendorChanges, $removedBookingVendorIds, $removedVendorCategoryIds, $additionalVendorIds, $additionalVendorAdditions, $request, $packageChanged, $invoiceService) {
             $booking->update($data);
             $scheduleChanged = $booking->wasChanged(['event_date', 'event_time', 'location', 'name']);
             $booking->addons()->delete();
             $booking->addons()->createMany($addons);
+
             if ($packageChanged) {
                 $booking->unsetRelation('package');
                 $booking->syncVendorsFromPackage();
-            } else {
+            }
+
+            // Hapus assignment vendor setelah snapshot paket baru terbentuk agar
+            // penghapusan kategori tetap berlaku meskipun paket ikut diganti.
+            $booking->bookingVendors()
+                ->whereIn('id', $removedBookingVendorIds)
+                ->delete();
+            if ($removedVendorCategoryIds) {
+                $booking->bookingVendors()
+                    ->whereHas('vendor', fn ($query) => $query->whereIn('vendor_category_id', $removedVendorCategoryIds))
+                    ->delete();
+            }
+
+            if (! $packageChanged) {
+                $bookingVendorRows = $booking->bookingVendors()->with('vendor.category')->get()->keyBy('id');
+                $selectedVendorIds = $bookingVendorRows->pluck('vendor_id')->map(fn ($id) => (int) $id)->all();
+
                 foreach ($vendorChanges as $bookingVendorId => $vendorChange) {
-                    $bookingVendor = $booking->bookingVendors()->with('vendor.category')->find($bookingVendorId);
+                    $bookingVendor = $bookingVendorRows->get((int) $bookingVendorId);
                     if (! $bookingVendor) {
-                        continue;
+                        throw ValidationException::withMessages([
+                            "vendor_changes.{$bookingVendorId}.vendor_id" => 'Vendor booking tidak ditemukan.',
+                        ]);
                     }
 
                     $oldVendor = $bookingVendor->vendor;
-                    $newVendor = Vendor::with('category')->findOrFail($vendorChange['vendor_id']);
-                    abort_unless($oldVendor && $newVendor->vendor_category_id === $oldVendor->vendor_category_id, 422, 'Vendor pengganti harus dari kategori yang sama.');
+                    $newVendor = Vendor::with('category')->find($vendorChange['vendor_id']);
+                    if (! $oldVendor || ! $newVendor || $newVendor->vendor_category_id !== $oldVendor->vendor_category_id) {
+                        throw ValidationException::withMessages([
+                            "vendor_changes.{$bookingVendorId}.vendor_id" => 'Vendor pengganti harus dari kategori yang sama.',
+                        ]);
+                    }
 
+                    if ($newVendor->status !== 'active' && ! $newVendor->is($oldVendor)) {
+                        throw ValidationException::withMessages([
+                            "vendor_changes.{$bookingVendorId}.vendor_id" => 'Vendor yang tidak aktif tidak dapat dipilih.',
+                        ]);
+                    }
+
+                    $selectedVendorIds = array_values(array_diff($selectedVendorIds, [(int) $bookingVendor->vendor_id]));
+                    if (in_array((int) $newVendor->id, $selectedVendorIds, true)) {
+                        throw ValidationException::withMessages([
+                            "vendor_changes.{$bookingVendorId}.vendor_id" => 'Vendor tersebut sudah terdaftar di booking ini.',
+                        ]);
+                    }
+                    $selectedVendorIds[] = (int) $newVendor->id;
+                }
+
+                foreach ($vendorChanges as $bookingVendorId => $vendorChange) {
+                    $bookingVendor = $bookingVendorRows->get((int) $bookingVendorId);
+                    $oldVendor = $bookingVendor->vendor;
+                    $newVendor = Vendor::with('category')->findOrFail($vendorChange['vendor_id']);
                     if ($newVendor->is($oldVendor)) {
                         continue;
                     }
@@ -364,9 +418,9 @@ class BookingManagementController extends Controller
                     ->where('status', 'active')
                     ->findOrFail($vendorId);
 
-                if (! $vendor->vendor_category_id || $booking->bookingVendors()->whereHas('vendor', fn ($query) => $query->where('vendor_category_id', $vendor->vendor_category_id))->exists()) {
+                if (! $vendor->vendor_category_id) {
                     throw ValidationException::withMessages([
-                        'additional_vendor_ids' => 'Vendor tambahan hanya dapat ditambahkan dari kategori yang belum ada di booking.',
+                        'additional_vendor_ids' => 'Vendor tambahan harus memiliki kategori.',
                     ]);
                 }
 
@@ -380,6 +434,10 @@ class BookingManagementController extends Controller
                     'vendor_id' => $vendor->id,
                     'role' => $vendor->category?->name,
                     'price' => $vendor->price,
+                    'custom_additions' => collect($additionalVendorAdditions[$vendor->id] ?? [])->map(fn ($addition) => [
+                        'name' => trim($addition['name']),
+                        'price' => (float) $addition['price'],
+                    ])->values()->all(),
                     'status' => 'confirmed',
                 ]);
 
@@ -658,8 +716,16 @@ class BookingManagementController extends Controller
 
         abort_unless($newVendor->vendor_category_id === $oldVendor->vendor_category_id, 422, 'Vendor pengganti harus dari kategori yang sama.');
 
+        if ($newVendor->status !== 'active' && ! $newVendor->is($oldVendor)) {
+            return back()->with('warning', 'Vendor yang tidak aktif tidak dapat dipilih.');
+        }
+
         if ($newVendor->is($oldVendor)) {
             return back()->with('success', 'Vendor tidak berubah.');
+        }
+
+        if ($booking->bookingVendors()->whereKeyNot($bookingVendor->id)->where('vendor_id', $newVendor->id)->exists()) {
+            return back()->with('warning', 'Vendor tersebut sudah terdaftar di booking ini.');
         }
 
         $bookingVendor->update([
@@ -690,8 +756,8 @@ class BookingManagementController extends Controller
             ->where('status', 'active')
             ->findOrFail($data['vendor_id']);
 
-        if (! $vendor->vendor_category_id || $booking->bookingVendors()->whereHas('vendor', fn ($query) => $query->where('vendor_category_id', $vendor->vendor_category_id))->exists()) {
-            return back()->with('warning', 'Vendor tambahan hanya dapat ditambahkan dari kategori yang belum ada di booking.');
+        if (! $vendor->vendor_category_id) {
+            return back()->with('warning', 'Vendor tambahan harus memiliki kategori.');
         }
 
         if ($booking->bookingVendors()->where('vendor_id', $vendor->id)->exists()) {

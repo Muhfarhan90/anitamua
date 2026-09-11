@@ -7,13 +7,18 @@
     $statusField = $embedded ? 'fitting_status' : 'status';
 @endphp
 
-<div class="rounded-2xl border border-brand-100 bg-white p-5 shadow-sm space-y-6">
+<div class="rounded-2xl border border-brand-100 bg-white p-5 shadow-sm space-y-6" data-fieldwork-card>
     <div>
         <div class="flex items-center justify-between gap-3">
             <h3 class="text-lg font-semibold text-gray-800"><i class="fas fa-shirt text-brand mr-2"></i>Data Fitting</h3>
+            <div class="flex shrink-0 items-center gap-2">
+                <button type="button" data-fieldwork-reset class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-500 hover:bg-gray-100 hover:text-gray-700"><i class="fas fa-rotate-left"></i> Reset</button>
+                <button type="button" data-fieldwork-toggle aria-expanded="true" class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand hover:bg-brand-50"><i class="fas fa-eye-slash" data-fieldwork-toggle-icon></i> <span data-fieldwork-toggle-label>Hide</span></button>
+            </div>
         </div>
         <p class="mt-1 text-sm text-gray-500">Lengkapi detail busana, ukuran, dan foto fitting sesuai kebutuhan booking.</p>
     </div>
+    <div class="space-y-6" data-fieldwork-content>
     @if(!$embedded)
     @if($fitting)
     <div class="flex items-center justify-between gap-4 px-4 py-3 mb-4 {{ $fitting->status === 'finished' ? 'bg-emerald-50/50' : 'bg-gray-50/60' }}">
@@ -41,7 +46,7 @@
                 <x-input name="time" label="Jam" type="time" :value="$fitting?->time?->format('H:i') ?? ''" />
             @endif
             <x-select :name="$fieldName('pic')" label="PIC (Tim Lapangan)"><option value="">— Pilih Tim Lapangan —</option>@foreach($teamMembers as $member)<option value="{{ $member->name }}" @selected(($fitting?->pic ?? '') === $member->name)>{{ $member->name }}</option>@endforeach</x-select>
-            <div><label for="{{ $statusField }}" class="block text-sm font-medium text-gray-600 mb-1">Status</label><select name="{{ $statusField }}" id="{{ $statusField }}" required class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200"><option value="scheduled" @selected(($fitting?->status ?? 'scheduled') === 'scheduled')>Scheduled</option><option value="on_going" @selected(($fitting?->status ?? '') === 'on_going')>On Going</option><option value="finished" @selected(($fitting?->status ?? '') === 'finished')>Finished</option></select></div>
+            <div><label for="{{ $statusField }}" class="block text-sm font-medium text-gray-600 mb-1">Status</label><select name="{{ $statusField }}" id="{{ $statusField }}" required data-reset-value="scheduled" class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200"><option value="scheduled" @selected(($fitting?->status ?? 'scheduled') === 'scheduled')>Scheduled</option><option value="on_going" @selected(($fitting?->status ?? '') === 'on_going')>On Going</option><option value="finished" @selected(($fitting?->status ?? '') === 'finished')>Finished</option></select></div>
         </div>
         @foreach(App\Models\Fitting::CHECKLIST as $category => $checklist)
         <section class="overflow-hidden">
@@ -84,4 +89,5 @@
     @else
     </div>
     @endif
+    </div>
 </div>

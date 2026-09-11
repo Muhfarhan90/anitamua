@@ -47,6 +47,40 @@
         <p class="mt-4 border-t border-gray-100 pt-3 text-xs text-gray-400">Menghitung seluruh status booking pada tahun {{ $year }}.</p>
     </x-card>
 </div>
+
+<x-card class="mt-5">
+    <div class="-mx-2 overflow-x-auto px-2">
+        <table class="min-w-full text-left text-sm" data-booking-profit-table>
+            <thead class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
+                <tr>
+                    <th class="px-3 py-3 font-semibold">Booking</th>
+                    <th class="px-3 py-3 font-semibold">Klien</th>
+                    <th class="px-3 py-3 font-semibold">Tanggal Acara</th>
+                    <th class="px-3 py-3 font-semibold">Status</th>
+                    <th class="px-3 py-3 text-right font-semibold">Pendapatan</th>
+                    <th class="px-3 py-3 text-right font-semibold">Pengeluaran Vendor</th>
+                    <th class="px-3 py-3 text-right font-semibold">Profit</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+                @forelse($bookingProfits as $row)
+                    @php $booking = $row['booking']; @endphp
+                    <tr class="text-gray-700 hover:bg-brand-50/30">
+                        <td class="px-3 py-3 whitespace-nowrap"><a href="{{ route('admin.bookings.show', $booking) }}" class="font-semibold text-brand hover:underline">{{ $booking->code }}</a></td>
+                        <td class="px-3 py-3"><p class="font-medium text-gray-800">{{ $booking->client?->name ?? $booking->name }}</p><p class="text-xs text-gray-400">{{ $booking->client?->email ?? $booking->email }}</p></td>
+                        <td class="px-3 py-3 whitespace-nowrap">{{ $booking->event_date?->format('d M Y') ?? '-' }}</td>
+                        <td class="px-3 py-3 whitespace-nowrap"><span class="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">{{ $row['is_completed'] ? 'Selesai' : 'Lunas' }}</span></td>
+                        <td class="px-3 py-3 whitespace-nowrap text-right font-medium">{{ $money($row['income']) }}</td>
+                        <td class="px-3 py-3 whitespace-nowrap text-right">{{ $money($row['expense']) }}</td>
+                        <td class="px-3 py-3 whitespace-nowrap text-right font-semibold {{ $row['profit'] < 0 ? 'text-red-600' : 'text-emerald-600' }}">{{ $money($row['profit']) }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="7" class="px-3 py-10 text-center text-sm text-gray-400">Belum ada booking selesai atau lunas pada tahun {{ $year }}.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</x-card>
 @endsection
 
 @push('scripts')
