@@ -39,6 +39,16 @@ class Fitting extends Model
         ],
     ];
 
+    public const PACKING_CONDITIONS = [
+        'laundry' => 'Dilaundry',
+        'sewing' => 'Dipermak',
+        'rental' => 'Disewa',
+        'used' => 'Dipakai',
+        'broken' => 'Rusak',
+        // 'unavailable' => 'Tidak ada',
+        // 'other' => 'Lainnya',
+    ];
+
     public const STATUS_SCHEDULED = 'scheduled';
 
     public const STATUS_ONGOING = 'on_going';
@@ -48,6 +58,7 @@ class Fitting extends Model
     protected $fillable = [
         'booking_id', 'date', 'time', 'pic', 'notes',
         'photos', 'item_sizes', 'status', 'created_by',
+        'packing_checklist',
     ];
 
     protected function casts(): array
@@ -57,6 +68,7 @@ class Fitting extends Model
             'time' => 'datetime:H:i',
             'photos' => 'array',
             'item_sizes' => 'array',
+            'packing_checklist' => 'array',
         ];
     }
 
@@ -70,4 +82,66 @@ class Fitting extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function packingSourceItems(): array
+    {
+        $items = [];
+
+        foreach (self::CHECKLIST as $checklist) {
+            foreach ($checklist as $key => $label) {
+                $notes = trim((string) $this->{$key.'_notes'});
+                $size = trim((string) (($this->item_sizes ?? [])[$key] ?? ''));
+                $photoPath = $this->{$key.'_photo_path'};
+
+                $items[] = [
+                    'key' => $key,
+                    'label' => $label,
+                    'notes' => $notes,
+                    'size' => $size,
+                    'photo_path' => $photoPath,
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    public function packingChecklistState(): array
+    {
+        $saved = $this->packing_checklist ?? [];
+
+        if (isset($saved['checked']) || isset($saved['conditions']) || isset($saved['notes'])) {
+            return [
+                'checked' => array_values(array_unique(array_filter(
+                    $saved['checked'] ?? [],
+                    fn ($key) => is_string($key) && $key !== '',
+                ))),
+                'conditions' => array_filter(
+                    $saved['conditions'] ?? [],
+                    fn ($condition, $key) => is_string($key) && array_key_exists($condition, self::PACKING_CONDITIONS),
+                    ARRAY_FILTER_USE_BOTH,
+                ),
+                'notes' => $saved['notes'] ?? [],
+            ];
+        }
+
+        $checked = [];
+        $conditions = [];
+        $notes = [];
+
+        foreach ($saved as $item) {
+            if (is_string($item)) {
+                $checked[] = $item;
+            } elseif (is_array($item) && isset($item['key'])) {
+                if ($item['packed'] ?? false) {
+                    $checked[] = $item['key'];
+                }
+
+                if (filled($item['note'] ?? null)) {
+                    $notes[$item['key']] = $item['note'];
+                }
+            }
+        }
+
+        return ['checked' => array_values(array_unique($checked)), 'conditions' => $conditions, 'notes' => $notes];
+    }
 }

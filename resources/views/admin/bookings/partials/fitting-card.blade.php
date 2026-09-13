@@ -31,11 +31,11 @@
 @endif
 
     @if(!$embedded)
-    <form action="{{ route('admin.fieldwork.fitting') }}" method="POST" enctype="multipart/form-data" class="pt-4 mt-3 space-y-5">
+    <form action="{{ route('admin.fieldwork.fitting') }}" method="POST" enctype="multipart/form-data" class="pt-4 mt-3 space-y-5" data-fieldwork-reset-scope>
         @csrf
         <input type="hidden" name="booking_id" value="{{ $booking->id }}">
     @else
-    <div class="space-y-5">
+    <div class="space-y-5" data-fieldwork-reset-scope>
     @endif
         <div class="grid grid-cols-1 {{ $embedded ? 'md:grid-cols-3' : 'md:grid-cols-4' }} gap-4 items-start">
             <div>

@@ -10,8 +10,6 @@ use App\Models\Fitting;
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\Package;
-use App\Models\PackingItem;
-use App\Models\PackingList;
 use App\Models\Payment;
 use App\Models\Reminder;
 use App\Models\Schedule;
@@ -290,21 +288,16 @@ class DatabaseSeeder extends Seeder
             'created_by' => $team->id,
         ]);
 
-        $packingBefore = PackingList::create([
-            'booking_id' => $booking->id,
-            'type' => PackingList::TYPE_BEFORE,
-            'status' => 'done',
-            'created_by' => $team->id,
-        ]);
-
-        $items = InventoryItem::limit(10)->get();
-        foreach ($items as $item) {
-            PackingItem::create([
-                'packing_list_id' => $packingBefore->id,
-                'inventory_item_id' => $item->id,
-                'status' => PackingItem::STATUS_PACKED,
-            ]);
-        }
+        $fitting->forceFill([
+            'cpw_busana_akad_notes' => 'Gaun akad ivory dengan payet gold.',
+            'cpp_busana_akad_notes' => 'Beskap krem.',
+            'among_ibu_hajat_notes' => 'Kebaya dusty pink.',
+            'item_sizes' => [
+                'cpw_busana_akad' => 'LD 92 / PB 140',
+                'cpp_busana_akad' => 'L',
+                'among_ibu_hajat' => 'XL',
+            ],
+        ])->save();
 
         $reminders = [
             [Reminder::TYPE_H30, 'Reminder Fitting', $eventDate->copy()->subDays(30), 'client'],

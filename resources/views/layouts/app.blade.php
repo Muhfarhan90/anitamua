@@ -136,6 +136,7 @@
                     ['label' => 'Dashboard', 'icon' => 'fa-solid fa-table-cells-large', 'url' => route('dashboard'), 'active' => 'dashboard'],
                     ['label' => 'Jadwal Saya', 'icon' => 'fa-regular fa-calendar', 'url' => route('admin.calendar'), 'active' => 'admin.calendar'],
                     ['label' => 'Tugas Lapangan', 'icon' => 'fa-solid fa-clipboard-list', 'url' => route('admin.fieldwork.index'), 'active' => 'admin.fieldwork.*'],
+                    ['label' => 'Inventory', 'icon' => 'fa-solid fa-shirt', 'url' => route('admin.inventory.index'), 'active' => 'admin.inventory.*'],
                 ]],
             ],
             'client' => [

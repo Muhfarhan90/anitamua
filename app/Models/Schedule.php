@@ -47,6 +47,20 @@ class Schedule extends Model
         return $this->belongsTo(User::class, 'pic_user_id');
     }
 
+    public function scopeAssignedTo($query, User $user)
+    {
+        if ($user->role === User::ROLE_TEAM) {
+            $query->where('pic_user_id', $user->id);
+        }
+
+        return $query;
+    }
+
+    public function isAssignedTo(User $user): bool
+    {
+        return $user->role !== User::ROLE_TEAM || $this->pic_user_id === $user->id;
+    }
+
     public static function typeLabel(string $type): string
     {
         return match ($type) {

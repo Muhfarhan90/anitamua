@@ -23,8 +23,8 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\LandingController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
@@ -76,21 +76,18 @@ Route::middleware('auth')->group(function () {
             ->name('admin.bookings.create')
             ->middleware('role:owner,admin');
 
-        Route::get('/admin/bookings', [BookingManagementController::class, 'index'])->name('admin.bookings.index');
         Route::post('/admin/schedules/{schedule}/status', [ScheduleController::class, 'updateStatus'])->name('admin.schedules.status');
-        Route::post('/admin/schedules/{schedule}/pic', [ScheduleController::class, 'updatePic'])->name('admin.schedules.pic');
 
         // Survey & Fitting (data lapangan)
         Route::get('/admin/fieldwork', [FieldWorkController::class, 'index'])->name('admin.fieldwork.index');
         Route::get('/admin/fieldwork/{booking}', [FieldWorkController::class, 'fieldwork'])->name('admin.fieldwork.booking');
         Route::post('/admin/survey', [FieldWorkController::class, 'surveyStore'])->name('admin.survey.store');
         Route::post('/admin/fitting', [FieldWorkController::class, 'fittingStore'])->name('admin.fitting.store');
+        Route::get('/admin/inventory', [InventoryController::class, 'index'])->name('admin.inventory.index');
 
-        // Packing Checklist (Owner, Admin, Tim Lapangan)
+        // Checklist Packing H-1 dari data fitting (Owner, Admin, Tim Lapangan)
         Route::get('/admin/bookings/{booking}/packing', [PackingController::class, 'show'])->name('admin.bookings.packing');
-        Route::post('/admin/packing', [PackingController::class, 'createChecklist'])->name('admin.packing.create');
-        Route::post('/admin/packing/{packingList}/items/{item}/toggle', [PackingController::class, 'toggleItem'])->name('admin.packing.toggle');
-        Route::post('/admin/packing/{packingList}/close', [PackingController::class, 'close'])->name('admin.packing.close');
+        Route::post('/admin/bookings/{booking}/packing', [PackingController::class, 'update'])->name('admin.packing.update');
 
         // Survey & Fitting (Tim Lapangan)
         Route::post('/admin/fieldwork/survey', [FieldWorkController::class, 'surveyStore'])->name('admin.fieldwork.survey');
@@ -98,6 +95,7 @@ Route::middleware('auth')->group(function () {
 
         Route::prefix('admin')->name('admin.')->middleware('role:owner,admin')->group(function () {
             // Booking management (operasional admin)
+            Route::get('/bookings', [BookingManagementController::class, 'index'])->name('bookings.index');
             Route::post('/bookings', [BookingManagementController::class, 'store'])->name('bookings.store');
             Route::get('/bookings/{booking}/edit', [BookingManagementController::class, 'edit'])->name('bookings.edit');
             Route::patch('/bookings/{booking}', [BookingManagementController::class, 'update'])->name('bookings.update');
@@ -161,7 +159,6 @@ Route::middleware('auth')->group(function () {
             Route::delete('/vendor-categories/{category}', [VendorCategoryController::class, 'destroy'])->name('vendor-categories.destroy');
 
             // Inventory Wardrobe (Owner & Admin)
-            Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
             Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
             Route::put('/inventory/{item}', [InventoryController::class, 'update'])->name('inventory.update');
             Route::delete('/inventory/{item}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
@@ -180,6 +177,7 @@ Route::middleware('auth')->group(function () {
 
             // Schedules (admin)
             Route::post('/schedules', [ScheduleController::class, 'store'])->name('schedules.store');
+            Route::post('/schedules/{schedule}/pic', [ScheduleController::class, 'updatePic'])->name('schedules.pic');
             Route::delete('/schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('schedules.destroy');
 
             // Promo Banner popup (Owner & Admin)
@@ -188,37 +186,37 @@ Route::middleware('auth')->group(function () {
             Route::put('/promo-banners/{banner}', [PromoBannerController::class, 'update'])->name('promo-banners.update');
             Route::delete('/promo-banners/{banner}', [PromoBannerController::class, 'destroy'])->name('promo-banners.destroy');
 
-                // Manajemen Klien (Owner & Admin)
-                Route::get('/users/clients', [AdminController::class, 'clients'])->name('users.clients');
-                Route::post('/users/clients', [AdminController::class, 'storeClient'])->name('users.clients.store');
-                Route::patch('/users/{user}/toggle', [AdminController::class, 'toggleUser'])->name('users.toggle');
-                Route::get('/users/{user}/edit', [AdminController::class, 'edit'])->name('users.edit');
-                Route::patch('/users/{user}', [AdminController::class, 'update'])->name('users.update');
-                Route::delete('/users/{user}', [AdminController::class, 'destroy'])->name('users.destroy');
+            // Manajemen Klien (Owner & Admin)
+            Route::get('/users/clients', [AdminController::class, 'clients'])->name('users.clients');
+            Route::post('/users/clients', [AdminController::class, 'storeClient'])->name('users.clients.store');
+            Route::patch('/users/{user}/toggle', [AdminController::class, 'toggleUser'])->name('users.toggle');
+            Route::get('/users/{user}/edit', [AdminController::class, 'edit'])->name('users.edit');
+            Route::patch('/users/{user}', [AdminController::class, 'update'])->name('users.update');
+            Route::delete('/users/{user}', [AdminController::class, 'destroy'])->name('users.destroy');
 
-                // Manajemen Staff (Owner only)
-                Route::middleware('role:owner')->group(function () {
-                    Route::get('/users/staff', [AdminController::class, 'staffs'])->name('users.staff');
-                    Route::post('/users/staff', [AdminController::class, 'storeStaff'])->name('users.staff.store');
-                });
+            // Manajemen Staff (Owner only)
+            Route::middleware('role:owner')->group(function () {
+                Route::get('/users/staff', [AdminController::class, 'staffs'])->name('users.staff');
+                Route::post('/users/staff', [AdminController::class, 'storeStaff'])->name('users.staff.store');
+            });
 
-                // Konten Website — Owner only
-                Route::get('/content/testimonials', [ContentController::class, 'testimonials'])->name('content.testimonials');
-                Route::post('/content/testimonials', [ContentController::class, 'storeTestimonial'])->name('content.testimonials.store');
-                Route::delete('/content/testimonials/{testimonial}', [ContentController::class, 'destroyTestimonial'])->name('content.testimonials.destroy');
+            // Konten Website — Owner only
+            Route::get('/content/testimonials', [ContentController::class, 'testimonials'])->name('content.testimonials');
+            Route::post('/content/testimonials', [ContentController::class, 'storeTestimonial'])->name('content.testimonials.store');
+            Route::delete('/content/testimonials/{testimonial}', [ContentController::class, 'destroyTestimonial'])->name('content.testimonials.destroy');
 
-                Route::get('/content/gallery', [ContentController::class, 'gallery'])->name('content.gallery');
-                Route::post('/content/gallery', [ContentController::class, 'storeGallery'])->name('content.gallery.store');
-                Route::delete('/content/gallery/{gallery}', [ContentController::class, 'destroyGallery'])->name('content.gallery.destroy');
+            Route::get('/content/gallery', [ContentController::class, 'gallery'])->name('content.gallery');
+            Route::post('/content/gallery', [ContentController::class, 'storeGallery'])->name('content.gallery.store');
+            Route::delete('/content/gallery/{gallery}', [ContentController::class, 'destroyGallery'])->name('content.gallery.destroy');
 
-                Route::get('/content/faqs', [ContentController::class, 'faqs'])->name('content.faqs');
-                Route::post('/content/faqs', [ContentController::class, 'storeFaq'])->name('content.faqs.store');
-                Route::post('/content/faqs/reorder', [ContentController::class, 'reorderFaqs'])->name('content.faqs.reorder');
-                Route::put('/content/faqs/{faq}', [ContentController::class, 'updateFaq'])->name('content.faqs.update');
-                Route::delete('/content/faqs/{faq}', [ContentController::class, 'destroyFaq'])->name('content.faqs.destroy');
+            Route::get('/content/faqs', [ContentController::class, 'faqs'])->name('content.faqs');
+            Route::post('/content/faqs', [ContentController::class, 'storeFaq'])->name('content.faqs.store');
+            Route::post('/content/faqs/reorder', [ContentController::class, 'reorderFaqs'])->name('content.faqs.reorder');
+            Route::put('/content/faqs/{faq}', [ContentController::class, 'updateFaq'])->name('content.faqs.update');
+            Route::delete('/content/faqs/{faq}', [ContentController::class, 'destroyFaq'])->name('content.faqs.destroy');
 
-                Route::get('/content/settings', [ContentController::class, 'settings'])->name('content.settings');
-                Route::post('/content/settings', [ContentController::class, 'storeSettings'])->name('content.settings.store');
+            Route::get('/content/settings', [ContentController::class, 'settings'])->name('content.settings');
+            Route::post('/content/settings', [ContentController::class, 'storeSettings'])->name('content.settings.store');
         });
     });
 });

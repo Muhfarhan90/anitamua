@@ -1,12 +1,14 @@
 <?php
 
-use App\Mail\ClientAccountCredentials;
 use App\Helpers\BookingProgress;
+use App\Mail\ClientAccountCredentials;
 use App\Models\ActivityLog;
 use App\Models\Booking;
 use App\Models\EntranceGate;
 use App\Models\Finance;
+use App\Models\Fitting;
 use App\Models\Gallery;
+use App\Models\InventoryItem;
 use App\Models\Invoice;
 use App\Models\Package;
 use App\Models\Payment;
@@ -73,7 +75,7 @@ it('hides cancelled and completed booking schedules from the calendar without de
         [Booking::STATUS_BOOKED, 'Jadwal Aktif'],
         [Booking::STATUS_CANCELLED, 'Jadwal Batal'],
         [Booking::STATUS_COMPLETED, 'Jadwal Selesai'],
-    ])->map(function ($item) use ($source) {
+    ])->map(function ($item) use ($source, $team) {
         [$status, $title] = $item;
         $booking = $source->replicate();
         $booking->code = Booking::generateCode();
@@ -84,6 +86,7 @@ it('hides cancelled and completed booking schedules from the calendar without de
             'type' => Schedule::TYPE_HARI_H,
             'title' => $title,
             'date' => now()->toDateString(),
+            'pic_user_id' => $team->id,
             'status' => Schedule::STATUS_SCHEDULED,
         ]);
 
@@ -689,9 +692,9 @@ it('admin saves custom additions with the booking changes and finance uses the t
     $bookingVendor->refresh();
     expect($bookingVendor->vendor_id)->toBe($replacementVendor->id)
         ->and($bookingVendor->custom_additions)->toBe([
-        ['name' => 'Transport luar kota', 'price' => 250000],
-        ['name' => 'Crew tambahan', 'price' => 150000],
-    ])->and($bookingVendor->custom_additions_total)->toBe(400000.0)
+            ['name' => 'Transport luar kota', 'price' => 250000],
+            ['name' => 'Crew tambahan', 'price' => 150000],
+        ])->and($bookingVendor->custom_additions_total)->toBe(400000.0)
         ->and($bookingVendor->total_price)->toBe((float) $bookingVendor->price + 400000.0);
 
     $expensesAfter = (float) $this->actingAs($owner)->get('/admin/finances?year='.$year)->viewData('expenses');
@@ -1364,6 +1367,34 @@ it('shows team dashboard', function () {
         ->assertSee('Jadwal Tugas');
 });
 
+it('shows one dashboard row per assigned booking with a fieldwork action', function () {
+    $team = User::where('email', 'team@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail()->replicate();
+    $booking->code = Booking::generateCode();
+    $booking->name = 'Booking Dashboard Tim Unik';
+    $booking->save();
+
+    foreach ([Schedule::TYPE_SURVEY, Schedule::TYPE_FITTING] as $index => $type) {
+        $booking->schedules()->create([
+            'type' => $type,
+            'title' => 'Tugas '.$type,
+            'date' => now()->addDays($index + 1)->toDateString(),
+            'pic_user_id' => $team->id,
+            'status' => Schedule::STATUS_SCHEDULED,
+        ]);
+    }
+
+    $response = $this->actingAs($team)
+        ->get('/dashboard')
+        ->assertOk()
+        ->assertSee('Buka Tugas')
+        ->assertSee('Checklist')
+        ->assertSee(route('admin.bookings.packing', $booking), false)
+        ->assertSee($booking->code);
+
+    expect(substr_count($response->getContent(), $booking->code))->toBe(1);
+});
+
 it('shows client dashboard with booking summary', function () {
     $client = User::where('email', 'client@anitamua.com')->first();
 
@@ -1374,15 +1405,41 @@ it('shows client dashboard with booking summary', function () {
         ->assertSee('Booked');
 });
 
-it('allows team to access booking pages but blocks admin-only pages', function () {
+it('blocks team from admin booking pages while keeping the calendar available', function () {
     $team = User::where('email', 'team@anitamua.com')->first();
     $booking = Booking::first();
 
-    $this->actingAs($team)->get('/admin/bookings')->assertOk();
+    $this->actingAs($team)->get('/admin/bookings')->assertForbidden();
     $this->actingAs($team)->get('/admin/bookings/'.$booking->id)->assertForbidden();
     $this->actingAs($team)->get('/admin/calendar')->assertOk();
     $this->actingAs($team)->get('/admin/payments')->assertForbidden();
     $this->actingAs($team)->get('/admin/packages')->assertForbidden();
+});
+
+it('lets field team view inventory without management actions', function () {
+    $team = User::where('email', 'team@anitamua.com')->firstOrFail();
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+
+    $this->actingAs($team)
+        ->get('/dashboard')
+        ->assertOk()
+        ->assertSee('Inventory');
+
+    $this->actingAs($team)
+        ->get(route('admin.inventory.index'))
+        ->assertOk()
+        ->assertSee('Inventory Wardrobe')
+        ->assertDontSee('Tambah Barang')
+        ->assertDontSee('openEdit(', false)
+        ->assertDontSee('admin.inventory.destroy');
+
+    $this->actingAs($team)->post('/admin/inventory')->assertForbidden();
+
+    $this->actingAs($admin)
+        ->get(route('admin.inventory.index'))
+        ->assertOk()
+        ->assertSee('Tambah Barang')
+        ->assertSee('Aksi');
 });
 
 it('blocks client from back office pages', function () {
@@ -1820,7 +1877,9 @@ it('renders MVP back office pages and hides deferred features', function () {
 
     $booking = Booking::first();
     $this->actingAs($owner)
-        ->get("/admin/bookings/{$booking->id}/packing")->assertOk();
+        ->get("/admin/bookings/{$booking->id}/packing")
+        ->assertOk()
+        ->assertSee('Checklist Packing H-1');
 
     // Modul fase 2 sudah aktif
     foreach (['/admin/inventory', '/admin/inventory-categories', '/admin/benefits', '/admin/benefit-categories',
@@ -2092,4 +2151,162 @@ it('generates reminders via command', function () {
 
     expect(Reminder::where('type', 'h30')->exists())->toBeTrue();
     expect(Reminder::where('type', 'h7')->exists())->toBeTrue();
+});
+
+it('keeps the separate packing checklist synced with every filled fitting item', function () {
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $fitting = $booking->fittings()->firstOrFail();
+    $inventory = InventoryItem::firstOrFail();
+    $inventoryStatus = $inventory->status;
+    $allFittingKeys = collect(Fitting::CHECKLIST)
+        ->flatMap(fn (array $items) => array_keys($items))
+        ->values();
+
+    $fitting->forceFill([
+        'cpw_busana_akad_notes' => 'Gaun akad ivory.',
+        'cpw_stylist_akad_notes' => 'Hijab organza.',
+        'cpw_bb_tb_ld_notes' => '50 kg / 160 cm / 90 cm',
+        'among_ibu_hajat_notes' => 'Kebaya ibu warna dusty pink.',
+        'item_sizes' => ['cpw_busana_akad' => 'M'],
+    ])->save();
+
+    $packingPage = $this->actingAs($owner)
+        ->get(route('admin.bookings.packing', $booking))
+        ->assertOk()
+        ->assertSee('Checklist Packing H-1')
+        ->assertSee('id="packing-item-cpw_busana_akad"', false)
+        ->assertSee('id="packing-item-cpw_stylist_akad"', false)
+        ->assertSee('id="packing-item-cpw_bb_tb_ld"', false)
+        ->assertSee('id="packing-item-cpp_busana_akad"', false)
+        ->assertSee('id="packing-item-among_ibu_hajat"', false)
+        ->assertDontSee('id="packing-note-cpw_stylist_akad"', false)
+        ->assertSee('name="items[cpw_busana_akad][condition]"', false)
+        ->assertSee(route('admin.packing.update', $booking), false)
+        ->assertSee('Simpan Checklist')
+        ->assertDontSee('requestSubmit()', false)
+        ->assertSee('accent-emerald-600', false)
+        ->assertSee('Gaun akad ivory.')
+        ->assertSee('Hijab organza.');
+
+    expect(substr_count($packingPage->getContent(), 'id="packing-item-cpw_busana_akad"'))->toBe(1);
+
+    $this->actingAs($owner)
+        ->get(route('admin.fieldwork.booking', $booking))
+        ->assertOk()
+        ->assertDontSee('Checklist Packing H-1')
+        ->assertDontSee('id="packing-item-cpw_busana_akad"', false)
+        ->assertDontSee('id="packing-note-cpw_stylist_akad"', false)
+        ->assertSee('Gaun akad ivory.')
+        ->assertSee('Hijab organza.');
+
+    $sourceKeys = collect($fitting->packingSourceItems())->pluck('key');
+    expect($sourceKeys->sort()->values()->all())->toBe($allFittingKeys->sort()->values()->all());
+
+    expect($fitting->fresh()->packing_checklist)->toBeNull();
+
+    $fitting->forceFill(['packing_checklist' => [
+        ['key' => 'cpw_busana_akad', 'packed' => true, 'note' => 'Catatan lama'],
+    ]])->save();
+
+    expect($fitting->fresh()->packingChecklistState())
+        ->toBe(['checked' => ['cpw_busana_akad'], 'conditions' => [], 'notes' => ['cpw_busana_akad' => 'Catatan lama']]);
+
+    $fitting->forceFill(['packing_checklist' => null])->save();
+
+    $this->actingAs($owner)
+        ->post(route('admin.packing.update', $booking), [
+            'items' => [
+                'cpw_busana_akad' => [
+                    'packed' => true,
+                    'condition' => 'laundry',
+                ],
+            ],
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect($fitting->fresh()->packingChecklistState()['checked'])->toContain('cpw_busana_akad');
+    expect($fitting->fresh()->packingChecklistState()['conditions']['cpw_busana_akad'])->toBe('laundry');
+
+    $fitting->forceFill([
+        'cpw_busana_akad_notes' => 'Gaun akad diperbarui.',
+        'among_ibu_hajat_notes' => 'Kebaya ibu warna dusty pink.',
+    ])->save();
+
+    $this->actingAs($owner)
+        ->get(route('admin.bookings.packing', $booking))
+        ->assertOk()
+        ->assertSee('Gaun akad diperbarui.')
+        ->assertSee('Kebaya ibu warna dusty pink.')
+        ->assertSee('Sedang dicuci')
+        ->assertDontSee('Gaun akad ivory.');
+
+    expect($fitting->fresh()->packingChecklistState()['checked'])
+        ->toContain('cpw_busana_akad')
+        ->and($inventory->fresh()->status)->toBe($inventoryStatus);
+
+    $this->actingAs($owner)
+        ->post(route('admin.packing.update', $booking), [
+            'items' => [
+                'cpw_busana_akad' => [
+                    'condition' => 'sewing',
+                ],
+            ],
+        ])
+        ->assertRedirect();
+
+    expect($fitting->fresh()->packingChecklistState()['checked'])->toBe([])
+        ->and($fitting->fresh()->packingChecklistState()['conditions']['cpw_busana_akad'])->toBe('sewing');
+});
+
+it('limits team schedules and fieldwork to bookings assigned to that team member', function () {
+    $team = User::where('email', 'team@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $unassignedBooking = $booking->replicate();
+    $unassignedBooking->code = Booking::generateCode();
+    $unassignedBooking->name = 'Tugas Tim Lain';
+    $unassignedBooking->save();
+    $unassignedSchedule = $unassignedBooking->schedules()->create([
+        'type' => Schedule::TYPE_FITTING,
+        'title' => 'Fitting — Tugas Tim Lain',
+        'date' => now()->addDay()->toDateString(),
+        'status' => Schedule::STATUS_SCHEDULED,
+    ]);
+
+    $this->actingAs($team)
+        ->get('/dashboard')
+        ->assertOk()
+        ->assertDontSee('Tugas Tim Lain');
+
+    $this->actingAs($team)
+        ->get('/admin/calendar?month='.now()->month.'&year='.now()->year)
+        ->assertOk()
+        ->assertSee('Buka Tugas')
+        ->assertDontSee('Tugas Tim Lain');
+
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $this->actingAs($owner)
+        ->get('/admin/calendar?month='.now()->month.'&year='.now()->year)
+        ->assertOk()
+        ->assertSee('Detail Booking');
+
+    $this->actingAs($team)
+        ->get(route('admin.fieldwork.index'))
+        ->assertOk()
+        ->assertSee('Checklist')
+        ->assertDontSee('Tugas Tim Lain');
+
+    $this->actingAs($team)
+        ->get(route('admin.fieldwork.booking', $unassignedBooking))
+        ->assertForbidden();
+    $this->actingAs($team)
+        ->get(route('admin.bookings.packing', $unassignedBooking))
+        ->assertForbidden();
+    $this->actingAs($team)
+        ->post(route('admin.schedules.status', $unassignedSchedule), ['status' => 'finished'])
+        ->assertForbidden();
+    $this->actingAs($team)
+        ->get('/admin/bookings')
+        ->assertForbidden();
 });

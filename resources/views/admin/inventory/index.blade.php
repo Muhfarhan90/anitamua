@@ -1,11 +1,17 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Inventory Wardrobe')
 
 @section('content')
-<x-page-header title="Inventory Wardrobe" subtitle="Kelola seluruh gaun, aksesoris, dan perlengkapan makeup">
+@php
+    $canManageInventory = in_array(auth()->user()->role, [App\Models\User::ROLE_OWNER, App\Models\User::ROLE_ADMIN], true);
+@endphp
+
+<x-page-header title="Inventory Wardrobe" :subtitle="$canManageInventory ? 'Kelola seluruh gaun, aksesoris, dan perlengkapan makeup' : 'Lihat daftar gaun, aksesoris, dan perlengkapan makeup'">
     <x-slot:actions>
-        <x-button color="primary" onclick="document.getElementById('addModal').classList.remove('hidden')"><i class="fas fa-plus"></i> Tambah Barang</x-button>
+        @if($canManageInventory)
+            <x-button color="primary" onclick="document.getElementById('addModal').classList.remove('hidden')"><i class="fas fa-plus"></i> Tambah Barang</x-button>
+        @endif
     </x-slot:actions>
 </x-page-header>
 
@@ -61,7 +67,7 @@
                     <th class="px-5 py-2.5 font-medium">Detail</th>
                     <th class="px-5 py-2.5 font-medium">Kondisi</th>
                     <th class="px-5 py-2.5 font-medium">Status</th>
-                    <th class="px-5 py-2.5 font-medium text-center">Aksi</th>
+                    @if($canManageInventory)<th class="px-5 py-2.5 font-medium text-center">Aksi</th>@endif
                 </tr>
             </thead>
             <tbody>
@@ -110,6 +116,7 @@
                             default => 'gray',
                         }">{{ str_replace('_', ' ', ucfirst($item->status)) }}</x-badge>
                     </td>
+                    @if($canManageInventory)
                     <td class="px-5 py-3">
                         <div class="flex items-center justify-center gap-2">
                             <x-button size="sm" color="outline" onclick="openEdit({{ $item->id }})"><i class="fas fa-pen"></i></x-button>
@@ -119,10 +126,11 @@
                             </form>
                         </div>
                     </td>
+                    @endif
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8"><x-empty-state icon="fa-box" title="Belum ada barang inventory" /></td>
+                    <td colspan="{{ $canManageInventory ? 8 : 7 }}"><x-empty-state icon="fa-box" title="Belum ada barang inventory" /></td>
                 </tr>
                 @endforelse
             </tbody>
@@ -134,6 +142,7 @@
 <div class="mt-4">{{ $items->withQueryString()->links() }}</div>
 @endif
 
+@if($canManageInventory)
 {{-- MODAL TAMBAH --}}
 <div id="addModal" class="hidden fixed inset-0 z-[1100] flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-black/50" onclick="document.getElementById('addModal').classList.add('hidden')"></div>
@@ -266,4 +275,5 @@
         document.getElementById('edit-' + id).classList.remove('hidden');
     }
 </script>
+@endif
 @endsection

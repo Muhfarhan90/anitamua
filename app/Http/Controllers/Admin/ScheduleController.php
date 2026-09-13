@@ -18,11 +18,13 @@ class ScheduleController extends Controller
 {
     public function index(Request $request)
     {
+        $user = auth()->user();
         $month = (int) ($request->month ?? now()->month);
         $year = (int) ($request->year ?? now()->year);
         $date = Carbon::create($year, $month, 1);
 
         $monthSchedules = Schedule::with('booking')
+            ->assignedTo($user)
             ->whereHas('booking', fn ($query) => $query->whereNotIn('status', [
                 Booking::STATUS_CANCELLED,
                 Booking::STATUS_COMPLETED,
@@ -42,7 +44,11 @@ class ScheduleController extends Controller
                 'location' => $s->location ?: $s->booking->location,
                 'status' => $s->status,
                 'booking_id' => $s->booking_id,
-                'booking_url' => route('admin.bookings.show', $s->booking_id),
+                'booking_url' => $user->role === User::ROLE_TEAM
+                    ? route('admin.fieldwork.booking', $s->booking_id)
+                    : route('admin.bookings.show', $s->booking_id),
+                'action_label' => $user->role === User::ROLE_TEAM ? 'Buka Tugas' : 'Detail Booking',
+                'action_icon' => $user->role === User::ROLE_TEAM ? 'fa-clipboard-list' : 'fa-eye',
                 'date' => $s->date->format('Y-m-d'),
             ])
             ->groupBy('date')
@@ -98,6 +104,8 @@ class ScheduleController extends Controller
         ClientAccountService $clientAccounts,
         InvoiceService $invoiceService,
     ) {
+        abort_unless($schedule->isAssignedTo(auth()->user()), 403, 'Anda tidak memiliki akses ke jadwal ini.');
+
         $data = $request->validate([
             'status' => ['required', 'in:scheduled,on_going,finished,cancelled'],
             'notes' => ['nullable', 'string'],

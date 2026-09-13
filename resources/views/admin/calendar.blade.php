@@ -132,6 +132,7 @@
     </div>
 </div>
 
+@if(in_array(auth()->user()->role, ['owner', 'admin']))
 {{-- MODAL TAMBAH JADWAL --}}
 <div id="addModal" class="hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col max-h-[85vh] overflow-hidden">
@@ -173,6 +174,7 @@
         </form>
     </div>
 </div>
+@endif
 
 @push('scripts')
 <script>
@@ -246,7 +248,7 @@
                         <a href="${e.booking_url}"
                            class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white no-underline transition-colors"
                            style="background:#d4739a;" onmouseover="this.style.background='#b85a82'" onmouseout="this.style.background='#d4739a'">
-                            <i class="fas fa-eye"></i> Detail Booking
+                            <i class="fas ${e.action_icon}"></i> ${e.action_label}
                         </a>
                     </div>
                 </div>`;
@@ -274,6 +276,7 @@
         if (e.key === 'Escape') closeInfo();
     });
 
+    @if(in_array(auth()->user()->role, ['owner', 'admin']))
     /* ── Modal ── */
     function openModal()  { document.getElementById('addModal').classList.remove('hidden'); }
     function closeModal() { document.getElementById('addModal').classList.add('hidden'); }
@@ -282,6 +285,7 @@
     document.getElementById('addModal').addEventListener('click', function(e) {
         if (e.target === this) closeModal();
     });
+    @endif
 </script>
 @endpush
 @endsection

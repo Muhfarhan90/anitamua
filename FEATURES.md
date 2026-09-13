@@ -20,7 +20,7 @@ Legend: **✅ Aktif** (sudah terhubung route & bisa diakses) | **🟡 Kode siap,
 | Kategori Inventory | CRUD kategori inventory + cegah hapus yang masih dipakai |
 | Survey | Form + tampilan data survey (lokasi, maps, PIC, catatan, foto/video) di detail booking, 1 per booking |
 | Fitting | Form + daftar sesi fitting (tanggal, jam, PIC, foto, status) di detail booking, bisa lebih dari 1 sesi |
-| Packing Checklist | Halaman per booking (`admin.bookings.packing`): checklist sebelum/sesudah fitting + deteksi barang belum kembali |
+| Packing Checklist H-1 | Halaman khusus seluruh item Data Fitting; disimpan sekaligus dari tombol di bawah, dengan centang hijau dan pilihan kondisi manual per item |
 | Reminder Otomatis | Command `reminders:generate` (H-30/H-7/H-2/H-1) + scheduler 06:00 |
 | Kelola Konten Landing | CRUD Testimoni, Galeri, FAQ (drag & drop SortableJS) + pengaturan situs (kontak, bank, sosial media) |
 | Activity Log (backend) | Semua aksi penting tercatat via `ActivityLogger` (siapa, kapan, apa) |

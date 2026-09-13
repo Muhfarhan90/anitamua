@@ -104,9 +104,12 @@ class Booking extends Model
         return $this->hasMany(Fitting::class);
     }
 
-    public function packingLists(): HasMany
+    public function isAssignedTo(User $user): bool
     {
-        return $this->hasMany(PackingList::class);
+        return $user->role !== User::ROLE_TEAM || $this->schedules()
+            ->where('pic_user_id', $user->id)
+            ->where('status', '!=', Schedule::STATUS_CANCELLED)
+            ->exists();
     }
 
     public function reminders(): HasMany

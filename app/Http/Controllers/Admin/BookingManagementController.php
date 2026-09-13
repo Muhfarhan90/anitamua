@@ -54,7 +54,7 @@ class BookingManagementController extends Controller
         $booking->load([
             'client', 'package', 'payments', 'invoice', 'bookingVendors.vendor.category',
             'addons',
-            'schedules.picUser', 'survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings', 'packingLists.items.inventoryItem',
+            'schedules.picUser', 'survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings',
             'activityLogs' => fn ($query) => $query->latest(),
             'activityLogs.user', 'packageChangeRequests.oldPackage', 'packageChangeRequests.newPackage',
         ]);

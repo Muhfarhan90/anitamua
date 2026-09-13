@@ -77,7 +77,10 @@ class DashboardController extends Controller
     private function team()
     {
         $today = Carbon::today();
-        $tasks = Schedule::with('booking')
+        $tasks = Schedule::with('booking.package')
+            ->assignedTo(auth()->user())
+            ->where('status', '!=', Schedule::STATUS_CANCELLED)
+            ->whereHas('booking', fn ($query) => $query->where('status', '!=', Booking::STATUS_CANCELLED))
             ->where(function ($q) use ($today) {
                 $q->where('date', '>=', $today)
                     ->orWhere('status', '!=', Schedule::STATUS_FINISHED);
@@ -85,7 +88,9 @@ class DashboardController extends Controller
             ->orderBy('date')
             ->get();
 
-        return view('dashboard.team', compact('tasks'));
+        $bookings = $tasks->pluck('booking')->filter()->unique('id')->sortByDesc('event_date')->values();
+
+        return view('dashboard.team', compact('tasks', 'bookings'));
     }
 
     private function client()

@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InventoryItem extends Model
 {
@@ -33,8 +32,4 @@ class InventoryItem extends Model
         return $this->belongsTo(InventoryCategory::class, 'inventory_category_id');
     }
 
-    public function packingItems(): HasMany
-    {
-        return $this->hasMany(PackingItem::class);
-    }
 }

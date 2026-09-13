@@ -50,7 +50,7 @@ Akun untuk tim yang bertugas di lokasi acara (survey, fitting, hari H).
 |---|---|
 | **Dashboard** | Daftar tugas jadwal: hari ini dan yang akan datang, termasuk yang belum selesai |
 | **Jadwal Saya** | Kalender berisi semua jadwal (survey, fitting, hari H). Bisa mengubah status jadwal (terjadwal → berlangsung → selesai) |
-| **Tugas Lapangan** | Halaman kerja tim lapangan: memilih acara untuk mengisi data survey dan menambahkan sesi fitting |
+| **Tugas Lapangan** | Satu halaman per acara untuk mengisi survey dan memperbarui data fitting, dengan tombol menuju checklist packing khusus |
 
 Kegiatan yang bisa dilakukan tim lapangan:
 
@@ -58,7 +58,7 @@ Kegiatan yang bisa dilakukan tim lapangan:
 |---|---|
 | **Mengisi Survey** | Mencatat lokasi, link maps, PIC, catatan, dan mengunggah foto/video lokasi |
 | **Mengisi Fitting** | Mencatat sesi fitting: tanggal, jam, PIC, catatan, foto, dan status (terjadwal/berlangsung/selesai) |
-| **Checklist Packing** | Mengecek barang yang dibawa sebelum fitting dan memastikan semua barang kembali setelah fitting |
+| **Checklist Packing H-1** | Halaman khusus berisi seluruh item Data Fitting, termasuk stylist/hijab, ukuran, dan among hajat. Tim memilih kondisi manual (siap, dicuci, dipakai, dijahit, tidak ada, atau lainnya), lalu menyimpan semua perubahan sekaligus dari bagian bawah |
 
 > Catatan: tim lapangan hanya bisa mengubah **status** jadwal. Pembuatan jadwal dan pengaturan tanggal dilakukan oleh Admin/Owner.
 
@@ -84,7 +84,7 @@ Akun yang dibuat otomatis setelah DP 10% terverifikasi.
 | Verifikasi Pembayaran | ✔ | ✔ | – | unggah bukti |
 | Atur Jadwal | ✔ | ✔ | ubah status saja | lihat |
 | Kelola Paket & Fasilitas | ✔ | ✔ | – | lihat |
-| Inventory | ✔ | ✔ | – | – |
+| Inventory | ✔ | ✔ | lihat | – |
 | Isi Survey / Fitting | ✔ | ✔ | ✔ | lihat kemajuan |
 | Checklist Packing | ✔ | ✔ | ✔ | – |
 | Konten Website (Testimoni, Galeri, FAQ, Pengaturan) | ✔ | – | – | – |

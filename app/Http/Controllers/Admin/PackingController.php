@@ -4,146 +4,76 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
-use App\Models\InventoryItem;
-use App\Models\PackingItem;
-use App\Models\PackingList;
-use App\Services\ActivityLogger;
+use App\Models\Fitting;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class PackingController extends Controller
 {
     public function show(Booking $booking)
     {
-        $booking->load(['packingLists.items.inventoryItem.category', 'package']);
+        $this->ensureBookingAccess($booking);
 
-        $before = $booking->packingLists()
-            ->where('type', PackingList::TYPE_BEFORE)
-            ->latest()
-            ->first();
+        $booking->load('package');
+        $fitting = Fitting::where('booking_id', $booking->id)->first();
 
-        $after = $booking->packingLists()
-            ->where('type', PackingList::TYPE_AFTER)
-            ->latest()
-            ->first();
-
-        $inventory = InventoryItem::with('category')->orderBy('code')->get();
-
-        return view('admin.packing.show', compact('booking', 'before', 'after', 'inventory'));
+        return view('admin.packing.show', compact('booking', 'fitting'));
     }
 
-    public function createChecklist(Request $request)
+    public function update(Booking $booking, Request $request)
     {
+        $this->ensureBookingAccess($booking);
+
         $data = $request->validate([
-            'booking_id' => ['required', 'exists:bookings,id'],
-            'type' => ['required', 'in:before_fitting,after_fitting'],
-            'item_ids' => ['sometimes', 'array'],
-            'item_ids.*' => ['exists:inventory_items,id'],
+            'items' => ['required', 'array'],
+            'items.*.packed' => ['nullable', 'boolean'],
+            'items.*.condition' => ['nullable', 'string', Rule::in(array_keys(Fitting::PACKING_CONDITIONS))],
         ]);
 
-        // Checklist sesudah fitting: salin otomatis item dari checklist sebelum fitting
-        if ($data['type'] === PackingList::TYPE_AFTER && empty($data['item_ids'])) {
-            $before = PackingList::where('booking_id', $data['booking_id'])
-                ->where('type', PackingList::TYPE_BEFORE)
-                ->latest()
-                ->first();
+        $fitting = Fitting::where('booking_id', $booking->id)->firstOrFail();
+        $packingState = $fitting->packingChecklistState();
+        $checked = $packingState['checked'];
+        $conditions = $packingState['conditions'];
 
-            $data['item_ids'] = $before ? $before->items->pluck('inventory_item_id')->all() : [];
+        foreach ($fitting->packingSourceItems() as $item) {
+            $key = $item['key'];
 
-            if (empty($data['item_ids'])) {
-                return back()->withErrors(['item_ids' => 'Buat checklist sebelum fitting dulu, karena tidak ada barang untuk checklist sesudah fitting.']);
+            if (! array_key_exists($key, $data['items'])) {
+                continue;
+            }
+
+            $checked = array_values(array_diff($checked, [$key]));
+
+            if ($request->boolean('items.'.$key.'.packed')) {
+                $checked[] = $key;
+            }
+
+            $condition = $data['items'][$key]['condition'] ?? '';
+
+            if ($condition === '') {
+                unset($conditions[$key]);
+            } else {
+                $conditions[$key] = $condition;
             }
         }
 
-        if (empty($data['item_ids'])) {
-            return back()->withErrors(['item_ids' => 'Pilih minimal 1 barang untuk checklist.']);
-        }
+        $fitting->update(['packing_checklist' => [
+            'checked' => array_values(array_unique($checked)),
+            'conditions' => $conditions,
+            'notes' => $packingState['notes'],
+        ]]);
 
-        $existing = PackingList::where('booking_id', $data['booking_id'])
-            ->where('type', $data['type'])
-            ->where('status', 'draft')
-            ->first();
-
-        if (! $existing) {
-            $existing = PackingList::create([
-                'booking_id' => $data['booking_id'],
-                'type' => $data['type'],
-                'status' => 'draft',
-                'created_by' => auth()->id(),
-            ]);
-        }
-
-        foreach ($data['item_ids'] as $itemId) {
-            $existing->items()->firstOrCreate([
-                'inventory_item_id' => $itemId,
-                'status' => PackingItem::STATUS_PACKED,
-            ]);
-        }
-
-        if ($data['type'] === PackingList::TYPE_BEFORE) {
-            InventoryItem::whereIn('id', $data['item_ids'])->update(['status' => 'in_use']);
-        }
-
-        ActivityLogger::log(
-            'packing_created',
-            'Packing checklist dibuat',
-            'Checklist '.($data['type'] === 'before_fitting' ? 'sebelum' : 'sesudah').' fitting untuk '.Booking::find($data['booking_id'])->name,
-            $data['booking_id'],
-        );
-
-        return back()->with('success', 'Checklist berhasil dibuat.');
+        return redirect()->to($this->checklistUrl($booking))
+            ->with('success', 'Checklist packing berhasil disimpan.');
     }
 
-    public function toggleItem(PackingList $packingList, PackingItem $item, Request $request)
+    private function ensureBookingAccess(Booking $booking): void
     {
-        $status = $request->input('status') === 'missing'
-            ? PackingItem::STATUS_MISSING
-            : PackingItem::STATUS_PACKED;
-
-        $item->update(['status' => $status]);
-
-        if ($packingList->type === PackingList::TYPE_AFTER && $status === PackingItem::STATUS_MISSING) {
-            $item->inventoryItem->update(['status' => 'lost']);
-
-            ActivityLogger::log(
-                'item_missing',
-                'Barang belum kembali',
-                $item->inventoryItem->name.' ('.$item->inventoryItem->code.') belum kembali setelah fitting.',
-                $packingList->booking_id,
-            );
-        }
-
-        return back()->with('success', 'Status barang diperbarui.');
+        abort_unless($booking->isAssignedTo(auth()->user()), 403, 'Anda tidak memiliki akses ke tugas booking ini.');
     }
 
-    public function close(PackingList $packingList)
+    private function checklistUrl(Booking $booking): string
     {
-        $packingList->update([
-            'status' => 'done',
-            'closed_at' => now(),
-        ]);
-
-        $missing = $packingList->items()->where('status', 'missing')->count();
-
-        // Checklist sesudah fitting ditutup: barang yang kembali dikembalikan ke status available
-        if ($packingList->type === PackingList::TYPE_AFTER) {
-            $packedIds = $packingList->items()
-                ->where('status', PackingItem::STATUS_PACKED)
-                ->pluck('inventory_item_id');
-
-            InventoryItem::whereIn('id', $packedIds)->update(['status' => 'available']);
-        }
-
-        ActivityLogger::log(
-            'packing_closed',
-            'Packing checklist ditutup',
-            'Checklist '.($packingList->type === 'before_fitting' ? 'sebelum' : 'sesudah').' fitting ditutup. Barang belum kembali: '.$missing,
-            $packingList->booking_id,
-        );
-
-        $message = $missing > 0
-            ? 'Checklist ditutup. '.$missing.' barang belum kembali!'
-            : 'Checklist ditutup. Semua barang kembali.';
-
-        return back()->with($missing > 0 ? 'warning' : 'success', $message);
+        return route('admin.bookings.packing', $booking);
     }
 }

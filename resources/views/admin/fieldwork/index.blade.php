@@ -3,7 +3,7 @@
 @section('title', 'Tugas Lapangan')
 
 @section('content')
-<x-page-header title="Tugas Lapangan" subtitle="Pilih booking untuk mengisi survey, fitting, dan packing checklist" />
+<x-page-header title="Tugas Lapangan" subtitle="Pilih booking untuk mengisi survey, fitting, dan checklist packing H-1" />
 
 <x-card padding="p-0">
     <div class="overflow-x-auto">
@@ -37,9 +37,14 @@
                         }">{{ ucfirst($booking->status) }}</x-badge>
                     </td>
                     <td class="px-5 py-3 text-center">
-                        <x-button size="sm" href="{{ route('admin.fieldwork.booking', $booking) }}">
-                            <i class="fas fa-clipboard-list"></i> Buka Tugas
-                        </x-button>
+                        <div class="flex items-center justify-center gap-2">
+                            <x-button size="sm" color="success" href="{{ route('admin.bookings.packing', $booking) }}">
+                                <i class="fas fa-list-check"></i> Checklist
+                            </x-button>
+                            <x-button size="sm" href="{{ route('admin.fieldwork.booking', $booking) }}">
+                                <i class="fas fa-clipboard-list"></i> Buka Tugas
+                            </x-button>
+                        </div>
                     </td>
                 </tr>
                 @empty

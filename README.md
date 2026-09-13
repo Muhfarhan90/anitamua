@@ -15,7 +15,7 @@ packing checklist, keuangan, kalender, reminder otomatis, dan activity timeline.
 | **Paket** | CRUD paket (Silver/Gold/Diamond/Luxury) + benefit + vendor bawaan dari Master Vendor |
 | **Master Vendor** | Kategori (Photographer, Videographer, Decoration, MC, Catering, Entertainment, WO, dll) |
 | **Inventory Wardrobe** | Barang dengan kode otomatis, kategori, kondisi, status |
-| **Packing Checklist** | Checklist sebelum/sesudah fitting + deteksi otomatis barang belum kembali |
+| **Packing Checklist H-1** | Halaman khusus checklist seluruh item Data Fitting; disimpan sekaligus dari tombol di bagian bawah, dengan centang hijau dan pilihan kondisi manual per item |
 | **Survey & Fitting** | Lokasi, maps, PIC, catatan, foto, status (scheduled/on_going/finished) |
 | **Kalender** | Semua jadwal (survey, fitting, hari H) dalam satu tampilan bulanan |
 | **Reminder Otomatis** | Command `reminders:generate` (H-30, H-7, H-2, H-1) + reminder manual |
@@ -33,8 +33,8 @@ users ──────────────► bookings ─────► 
                         ├──► booking_vendors ───► vendors ──► vendor_categories
                         ├──► schedules           (survey, fitting, hari_h)
                         ├──► surveys
-                        ├──► fittings
-                        ├──► packing_lists ───► packing_items ──► inventory_items ──► inventory_categories
+                        ├──► fittings (data busana + status centang packing H-1)
+                        ├──► inventory_items ───► inventory_categories
                         ├──► reminders
                         ├──► finances
                         ├──► activity_logs
@@ -76,7 +76,7 @@ Akses: `http://localhost:8000`
 | **Pembayaran** | Verifikasi & konfirmasi | Verifikasi & konfirmasi | – | Upload bukti + lihat status |
 | **Paket** | CRUD | CRUD | – | Lihat pricelist |
 | **Master Vendor** | CRUD | CRUD | – | Lihat vendor saya |
-| **Inventory Wardrobe** | CRUD | CRUD | – | – |
+| **Inventory Wardrobe** | CRUD | CRUD | Lihat | – |
 | **Jadwal / Kalender** | Buat/ubah/hapus | Buat/ubah/hapus | Ubah status saja | Lihat jadwal |
 | **Packing Checklist** | Kelola | Kelola | Jalankan checklist | – |
 | **Survey** | Kelola | Kelola | Isi data lapangan | Lihat progress |
@@ -110,7 +110,7 @@ php artisan test
 ```
 
 18 test mencakup: landing pages, autentikasi, role guard, alur DP → BOOKED, pembatalan,
-perubahan paket + sinkronisasi vendor, packing checklist + deteksi barang hilang,
+perubahan paket + sinkronisasi vendor, checklist packing H-1 berbasis fitting,
 render semua halaman back office, dan command reminder.
 
 ## Struktur Utama

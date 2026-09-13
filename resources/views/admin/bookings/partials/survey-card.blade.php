@@ -217,6 +217,7 @@
                     const content = card.querySelector('[data-fieldwork-content]');
                     const toggle = card.querySelector('[data-fieldwork-toggle]');
                     const reset = card.querySelector('[data-fieldwork-reset]');
+                    const resetScope = card.querySelector('[data-fieldwork-reset-scope]') || content || card;
 
                     toggle?.addEventListener('click', function () {
                         const hidden = content.classList.toggle('hidden');
@@ -228,7 +229,7 @@
                     reset?.addEventListener('click', function () {
                         if (!window.confirm('Kosongkan semua input pada bagian ini? Data tersimpan tidak berubah sebelum tombol Simpan ditekan.')) return;
 
-                        card.querySelectorAll('input, select, textarea').forEach(function (control) {
+                        resetScope.querySelectorAll('input, select, textarea').forEach(function (control) {
                             if (control.type === 'hidden') return;
 
                             if (control.type === 'checkbox' || control.type === 'radio') {
