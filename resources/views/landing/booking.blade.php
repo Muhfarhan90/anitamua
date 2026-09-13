@@ -229,7 +229,7 @@
                         <h5 class="font-display font-bold text-xl" style="color:#d4739a; margin-bottom: 16px;">
                             <i class="fa-solid fa-pen-to-square mr-2"></i>Formulir Booking
                         </h5>
-                        <form method="POST" action="{{ route('booking.store') }}" enctype="multipart/form-data">
+                        <form id="bookingForm" method="POST" action="{{ route('booking.store') }}" enctype="multipart/form-data">
                             @csrf
 
                             {{-- Nama Pengantin --}}
@@ -495,14 +495,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* Validasi form, jika lolos baru tampilkan popup konfirmasi */
     window.validateThenSubmit = function () {
-        const form = document.querySelector('form');
+        const form = document.getElementById('bookingForm');
         if (!form.reportValidity()) return;
         openConfirmBookingModal();
     };
 
     document.querySelector('[data-confirm-booking-close]')?.addEventListener('click', closeConfirmBookingModal);
     document.querySelector('[data-confirm-booking-submit]')?.addEventListener('click', function () {
-        document.querySelector('form').submit();
+        // requestSubmit memicu event submit yang membersihkan format titik nominal sebelum dikirim.
+        document.getElementById('bookingForm').requestSubmit();
     });
     confirmModal?.addEventListener('click', function (event) {
         if (event.target === confirmModal) closeConfirmBookingModal();

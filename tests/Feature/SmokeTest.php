@@ -935,7 +935,7 @@ it('guest can create booking without an account', function () {
         'referral_source' => 'Instagram',
         'event_date' => now()->addMonths(2)->toDateString(),
         'location' => 'Ballroom Hotel X',
-        'amount' => 1800000,
+        'amount' => '1.800.000',
         'proof' => UploadedFile::fake()->image('bukti.jpg'),
     ])->assertRedirect();
 
@@ -944,6 +944,7 @@ it('guest can create booking without an account', function () {
     expect($booking->status)->toBe('pending');
     expect($booking->client_id)->toBeNull();
     expect((float) $booking->package_price)->toBe((float) $package->price);
+    expect((float) $booking->payments()->where('type', 'DP1')->value('amount'))->toBe(1800000.0);
 });
 
 it('guest can book with compressed initial-payment proof upload', function () {

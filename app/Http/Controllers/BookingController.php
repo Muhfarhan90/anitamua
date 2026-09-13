@@ -34,6 +34,11 @@ class BookingController extends Controller
 
     public function store(Request $request)
     {
+        $amountInput = (string) $request->input('amount', '');
+        if (preg_match('/^\d{1,3}(?:\.\d{3})+$/', $amountInput)) {
+            $request->merge(['amount' => str_replace('.', '', $amountInput)]);
+        }
+
         $data = $request->validate([
             'package_id' => ['required', 'exists:packages,id'],
             'name' => ['required', 'string', 'max:255'],
