@@ -103,6 +103,61 @@ it('hides cancelled and completed booking schedules from the calendar without de
     expect(Schedule::whereIn('booking_id', $bookings->pluck('id'))->count())->toBe(3);
 });
 
+it('filters the calendar to one date for owner, admin, and field teams', function () {
+    $owner = User::where('role', User::ROLE_OWNER)->firstOrFail();
+    $admin = User::where('role', User::ROLE_ADMIN)->firstOrFail();
+    $team = User::where('email', 'team@anitamua.com')->firstOrFail();
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $source = Booking::firstOrFail();
+    $matchingDate = now()->setDate(2031, 4, 12);
+    $outsideDate = $matchingDate->copy()->addDays(5);
+
+    $makeSchedule = function (string $name, string $date) use ($source, $client, $team) {
+        $booking = $source->replicate();
+        $booking->forceFill([
+            'code' => Booking::generateCode(),
+            'client_id' => $client->id,
+            'name' => $name,
+            'status' => Booking::STATUS_BOOKED,
+        ])->save();
+        $booking->schedules()->create([
+            'type' => Schedule::TYPE_HARI_H,
+            'title' => $name,
+            'date' => $date,
+            'pic_user_id' => $team->id,
+            'status' => Schedule::STATUS_SCHEDULED,
+        ]);
+
+        return $booking;
+    };
+
+    $matching = $makeSchedule('Jadwal Dalam Rentang', $matchingDate->toDateString());
+    $outside = $makeSchedule('Jadwal di Luar Rentang', $outsideDate->toDateString());
+    $query = http_build_query([
+        'month' => $matchingDate->month,
+        'year' => $matchingDate->year,
+        'filter_date' => $matchingDate->toDateString(),
+    ]);
+
+    foreach ([$owner, $admin, $team] as $user) {
+        $this->actingAs($user)->get('/admin/calendar?'.$query)
+            ->assertOk()
+            ->assertSee('"title":"'.$matching->name.'"', false)
+            ->assertDontSee('"title":"'.$outside->name.'"', false)
+            ->assertSee('name="month" value="4"', false)
+            ->assertSee('name="year" value="2031"', false)
+            ->assertSee("const [year, month] = selectedDate.split('-');", false)
+            ->assertSee('this.elements.month.value = Number(month);', false)
+            ->assertSee('filter_date')
+            ->assertDontSee('date_from')
+            ->assertDontSee('date_to');
+    }
+
+    $this->actingAs($owner)->get('/admin/calendar')
+        ->assertOk()
+        ->assertSeeInOrder(['id="calendarDateFilter"', 'Tambah Jadwal'], false);
+});
+
 it('client can login with email or whatsapp number', function () {
     $client = User::where('email', 'client@anitamua.com')->first();
 

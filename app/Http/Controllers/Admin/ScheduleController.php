@@ -19,6 +19,11 @@ class ScheduleController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
+        $filters = $request->validate([
+            'filter_date' => ['nullable', 'date_format:Y-m-d'],
+        ]);
+        $filterDate = $filters['filter_date'] ?? null;
+
         $month = (int) ($request->month ?? now()->month);
         $year = (int) ($request->year ?? now()->year);
         $date = Carbon::create($year, $month, 1);
@@ -30,6 +35,7 @@ class ScheduleController extends Controller
                 Booking::STATUS_COMPLETED,
             ]))
             ->whereBetween('date', [$date->copy()->startOfMonth(), $date->copy()->endOfMonth()])
+            ->when($filterDate, fn ($query) => $query->whereDate('date', $filterDate))
             ->get();
 
         $grouped = $monthSchedules->groupBy(fn ($s) => $s->date->format('Y-m-d'));
@@ -61,7 +67,7 @@ class ScheduleController extends Controller
 
         $teamMembers = User::where('role', User::ROLE_TEAM)->where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.calendar', compact('calendar', 'date', 'bookings', 'eventsByDate', 'teamMembers'));
+        return view('admin.calendar', compact('calendar', 'date', 'filterDate', 'bookings', 'eventsByDate', 'teamMembers'));
     }
 
     public function store(Request $request)

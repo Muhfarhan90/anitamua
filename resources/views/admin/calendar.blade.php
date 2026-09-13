@@ -41,11 +41,26 @@
 
 @section('content')
 <x-page-header title="Kalender Jadwal" subtitle="Semua jadwal survey, fitting, dan Hari H">
-    @if(in_array(auth()->user()->role, ['owner', 'admin']))
     <x-slot:actions>
-        <x-button onclick="openModal()" class="!bg-brand !text-white hover:!bg-brand-dark" style="background:#d4739a;color:#fff;"><i class="fas fa-plus"></i> Tambah Jadwal</x-button>
+        <div class="flex flex-wrap items-end justify-end gap-2">
+            <form id="calendarDateFilter" method="GET" action="{{ route('admin.calendar') }}" class="flex flex-wrap items-end gap-2">
+                <input type="hidden" name="month" value="{{ $date->month }}">
+                <input type="hidden" name="year" value="{{ $date->year }}">
+                <div>
+                    <label for="filter_date" class="mb-1 block text-xs font-medium text-gray-600">Tanggal</label>
+                    <input id="filter_date" name="filter_date" type="date" value="{{ $filterDate }}" class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 focus:border-brand focus:ring-brand">
+                    @error('filter_date')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                </div>
+                <x-button type="submit"><i class="fas fa-filter"></i> Filter</x-button>
+                @if($filterDate)
+                    <a href="{{ route('admin.calendar', ['month' => $date->month, 'year' => $date->year]) }}" class="px-2 py-2 text-sm font-medium text-gray-500 no-underline hover:text-brand">Reset</a>
+                @endif
+            </form>
+            @if(in_array(auth()->user()->role, ['owner', 'admin']))
+                <x-button onclick="openModal()" class="!bg-brand !text-white hover:!bg-brand-dark" style="background:#d4739a;color:#fff;"><i class="fas fa-plus"></i> Tambah Jadwal</x-button>
+            @endif
+        </div>
     </x-slot:actions>
-    @endif
 </x-page-header>
 
 {{-- LEGEND --}}
@@ -189,8 +204,20 @@
         month += dir;
         if (month > 12) { month = 1; year++; }
         if (month < 1)  { month = 12; year--; }
-        window.location.search = `month=${month}&year=${year}`;
+        params.set('month', month);
+        params.set('year', year);
+        params.delete('filter_date');
+        window.location.search = params.toString();
     }
+
+    document.getElementById('calendarDateFilter').addEventListener('submit', function () {
+        const selectedDate = this.elements.filter_date.value;
+        if (!selectedDate) return;
+
+        const [year, month] = selectedDate.split('-');
+        this.elements.month.value = Number(month);
+        this.elements.year.value = Number(year);
+    });
 
     /* ── Select a day cell → tampilkan popup info + CTA detail booking ── */
     function selectDay(dateStr) {
