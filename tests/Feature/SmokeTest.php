@@ -1574,8 +1574,28 @@ it('blocks client from back office pages', function () {
 it('lets client view their booking detail', function () {
     $client = User::where('email', 'client@anitamua.com')->first();
     $booking = $client->bookings()->first();
+    $booking->payments()->create([
+        'type' => 'DP2',
+        'amount' => 1250000,
+        'method' => 'transfer',
+        'status' => Payment::STATUS_PENDING,
+    ]);
+    ActivityLog::create([
+        'booking_id' => $booking->id,
+        'user_id' => $client->id,
+        'action' => 'test_client_history',
+        'title' => 'Riwayat client',
+        'description' => 'Bukti pembayaran diterima.',
+    ]);
 
-    $this->actingAs($client)->get("/client/booking/{$booking->id}")->assertOk();
+    $response = $this->actingAs($client)->get("/client/booking/{$booking->id}")->assertOk();
+    $response->assertSee('id="paymentType"', false)
+        ->assertSee('id="paymentAmount"', false)
+        ->assertSee('data-pending-payment', false)
+        ->assertSee('Data Fitting')
+        ->assertSee('max-h-48 overflow-y-auto overscroll-contain pr-2', false)
+        ->assertSee('&middot;', false)
+        ->assertDontSee('id="paymentSelect"', false);
 });
 
 it('shows all booking activities in one scrollable history ordered newest first', function () {

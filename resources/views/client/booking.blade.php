@@ -90,23 +90,29 @@
                 <form id="proofForm" enctype="multipart/form-data" action="{{ route('client.booking.proof', $booking->id) }}" method="POST" class="space-y-4">
                     @csrf
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <x-select name="payment_id" id="paymentSelect" label="Tahap Pembayaran">
-                            <option value="">— Tambah Tahap Baru (isi label & nominal) —</option>
-                            @forelse($pendingPayments as $p)
-                                <option value="{{ $p->id }}">{{ \App\Models\Payment::typeLabel($p->type) }} — Rp {{ number_format($p->amount, 0, ',', '.') }}</option>
-                            @empty
-                            @endforelse
-                        </x-select>
+                        <x-input name="type" id="paymentType" label="Tahap Pembayaran" placeholder="DP1 / DP2 / DP3 / Pelunasan" :value="old('type', 'DP'.($booking->payments->count() + 1))" required />
                         <x-select name="method" label="Metode Pembayaran" required>
                             <option value="transfer">Transfer Bank</option>
                             <option value="qris">QRIS</option>
                             <option value="cash">Cash</option>
                         </x-select>
                     </div>
-                    <div id="newStageFields" class="hidden grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <x-input name="type" id="newStageType" label="Label Tahap" placeholder="Contoh: Pelunasan / Angsuran 2 / DP Tambahan" :value="old('type', 'DP'.($booking->payments->count() + 1))" />
-                        <x-input name="amount" id="newStageAmount" label="Nominal" currency min="0" step="1000" placeholder="Contoh: 2.500.000" />
+                    <x-input name="amount" id="paymentAmount" label="Nominal" currency min="0" step="1000" placeholder="Contoh: 2.500.000" :value="old('amount')" required />
+                    @if($pendingPayments->isNotEmpty())
+                    <div>
+                        <input type="hidden" name="payment_id" id="existingPaymentId" value="{{ old('payment_id') }}">
+                        <p class="block text-sm font-medium text-gray-600 mb-2">Atau pilih tahap yang sudah dijadwalkan</p>
+                        <div class="flex flex-wrap gap-2">
+                            @foreach($pendingPayments as $p)
+                                <button type="button" data-pending-payment data-payment-id="{{ $p->id }}" data-type="{{ $p->type }}" data-amount="{{ $p->amount }}" class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-left text-sm text-gray-700 transition-colors hover:border-brand hover:bg-brand-50">
+                                    {{ \App\Models\Payment::typeLabel($p->type) }} — Rp {{ number_format($p->amount, 0, ',', '.') }}
+                                </button>
+                            @endforeach
+                            <button type="button" id="newPaymentStage" class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 transition-colors hover:border-brand hover:bg-brand-50">Tahap baru</button>
+                        </div>
+                        <p class="mt-2 text-xs text-gray-400">Pilih tahap yang ada untuk mengirim bukti pembayaran pada tahap tersebut.</p>
                     </div>
+                    @endif
                     <div>
                         <label class="block text-sm font-medium text-gray-600 mb-1">Bukti Transfer <span class="text-red-500">*</span></label>
                         <div id="dropZone" class="border-2 border-dashed border-brand-200 rounded-xl bg-brand-50/30 p-6 text-center cursor-pointer hover:bg-brand-50/60 transition-colors">
@@ -132,18 +138,23 @@
             {{-- RIWAYAT --}}
             @if($booking->activityLogs && $booking->activityLogs->count() > 0)
             <x-card title="Riwayat Pembayaran" title-icon="fa-clock-rotate-left">
-                <div class="relative pl-6 border-l-2 border-brand-100 space-y-5">
+                <div class="max-h-48 overflow-y-auto overscroll-contain pr-2">
+                  <div class="relative pl-6 border-l-2 border-brand-100 space-y-5">
                     @foreach($booking->activityLogs->sortByDesc('created_at') as $log)
                     <div class="relative">
                         <div class="absolute -left-[31px] top-1 w-3 h-3 rounded-full border-2 border-white shadow
                                     {{ str_contains($log->description ?? '', 'verifikasi') ? 'bg-emerald-500' : (str_contains($log->description ?? '', 'upload') || str_contains($log->description ?? '', 'bukti') ? 'bg-brand' : 'bg-gray-300') }}"></div>
-                        <p class="text-xs text-gray-400">{{ \Carbon\Carbon::parse($log->created_at)->format('d M Y H:i') }} WIB @if($log->user)Â· <span class="font-semibold text-brand">{{ $log->user->name }}</span>@endif</p>
+                        <p class="text-xs text-gray-400">{{ \Carbon\Carbon::parse($log->created_at)->format('d M Y H:i') }} WIB @if($log->user)&middot; <span class="font-semibold text-brand">{{ $log->user->name }}</span>@endif</p>
                         <p class="text-sm text-gray-700">{{ $log->description }}</p>
                     </div>
                     @endforeach
+                  </div>
                 </div>
             </x-card>
             @endif
+
+            {{-- DATA FITTING (READ ONLY) --}}
+            @include('admin.bookings.partials.fitting-summary')
         </div>
 
         {{-- SIDEBAR --}}
@@ -276,7 +287,7 @@
                 <div class="space-y-3 text-sm text-gray-600">
                     <div class="flex gap-2 items-start"><i class="fas fa-circle-check text-emerald-500 mt-0.5 text-xs"></i> Booking sah setelah DP1 diverifikasi admin.</div>
                     <div class="flex gap-2 items-start"><i class="fas fa-circle-xmark text-red-500 mt-0.5 text-xs"></i> Pembatalan sepihak menyebabkan DP hangus.</div>
-                    <div class="flex gap-2 items-start"><i class="fas fa-clock text-brand mt-0.5 text-xs"></i> Pembayaran diverifikasi maksimal 1Ã—24 jam pada hari kerja.</div>
+                    <div class="flex gap-2 items-start"><i class="fas fa-clock text-brand mt-0.5 text-xs"></i> Pembayaran diverifikasi maksimal 1&times;24 jam pada hari kerja.</div>
                 </div>
             </x-card>
 
@@ -349,22 +360,37 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Toggle input label & nominal saat "Tambah Tahap Baru" dipilih
-    const paymentSelect = document.getElementById('paymentSelect');
-    const newStageFields = document.getElementById('newStageFields');
-    const newStageType = document.getElementById('newStageType');
-    const newStageAmount = document.getElementById('newStageAmount');
+    const paymentType = document.getElementById('paymentType');
+    const paymentAmount = document.getElementById('paymentAmount');
+    const existingPaymentId = document.getElementById('existingPaymentId');
+    const pendingPaymentButtons = [...document.querySelectorAll('[data-pending-payment]')];
     const nextDpLabel = @json('DP'.($booking->payments->count() + 1));
 
-    function toggleNewStage() {
-        const isNew = !paymentSelect.value;
-        newStageFields.classList.toggle('hidden', !isNew);
-        newStageType.required = isNew;
-        newStageAmount.required = isNew;
-        if (isNew && !newStageType.value) newStageType.value = nextDpLabel;
+    function clearPendingPayment() {
+        existingPaymentId.value = '';
+        paymentType.readOnly = false;
+        paymentAmount.readOnly = false;
+        pendingPaymentButtons.forEach(button => button.classList.remove('border-brand', 'bg-brand-50', 'ring-2', 'ring-brand-200'));
     }
-    paymentSelect.addEventListener('change', toggleNewStage);
-    toggleNewStage();
+
+    pendingPaymentButtons.forEach(button => button.addEventListener('click', () => {
+        clearPendingPayment();
+        existingPaymentId.value = button.dataset.paymentId;
+        paymentType.value = button.dataset.type;
+        paymentAmount.value = button.dataset.amount;
+        paymentType.readOnly = true;
+        paymentAmount.readOnly = true;
+        button.classList.add('border-brand', 'bg-brand-50', 'ring-2', 'ring-brand-200');
+    }));
+
+    document.getElementById('newPaymentStage')?.addEventListener('click', () => {
+        clearPendingPayment();
+        paymentType.value = nextDpLabel;
+        paymentAmount.value = '';
+        paymentAmount.focus();
+    });
+
+    pendingPaymentButtons.find(button => button.dataset.paymentId === existingPaymentId?.value)?.click();
 });
 </script>
 @endpush
