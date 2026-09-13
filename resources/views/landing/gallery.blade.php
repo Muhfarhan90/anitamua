@@ -20,7 +20,9 @@
                 <div class="col-span-full text-center py-12" style="color:var(--muted);">Belum ada galeri.</div>
             @endforelse
         </div>
-        <div class="mt-4">{{ $galleries->links() }}</div>
+        @if($galleries->hasPages())
+            <div class="mt-4">{{ $galleries->links('shared.pagination', ['showSummary' => false]) }}</div>
+        @endif
     </div>
 </section>
 @endsection

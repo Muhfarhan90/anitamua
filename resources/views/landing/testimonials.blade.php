@@ -37,7 +37,9 @@
                 <div class="col-span-full text-center py-12" style="color:var(--muted);">Belum ada testimoni.</div>
             @endforelse
         </div>
-        <div class="mt-4">{{ $testimonials->links() }}</div>
+        @if($testimonials->hasPages())
+            <div class="mt-4">{{ $testimonials->links('shared.pagination', ['showSummary' => false]) }}</div>
+        @endif
     </div>
 </section>
 @endsection

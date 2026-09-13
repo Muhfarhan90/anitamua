@@ -30,8 +30,8 @@
         </div>
 
         <div class="text-center mt-12">
-            <p style="color:var(--muted);">Masih ada pertanyaan? Hubungi kami</p>
-            <a href="{{ route('contact') }}" class="btn-pink px-4">Hubungi Kami</a>
+            <p style="color:var(--muted);">Masih ada pertanyaan?</p>
+            <a href="{{ route('contact') }}" class="btn-pink mt-4 inline-block px-4">Hubungi Kami</a>
         </div>
     </div>
 </section>

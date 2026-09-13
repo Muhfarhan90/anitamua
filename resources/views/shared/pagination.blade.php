@@ -1,12 +1,14 @@
 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-    <p class="text-sm text-gray-500">
-        Menampilkan
-        <span class="font-semibold text-gray-700">{{ $paginator->firstItem() ?? 0 }}</span>
-        @if($paginator->firstItem() !== $paginator->lastItem())
-            –<span class="font-semibold text-gray-700">{{ $paginator->lastItem() ?? 0 }}</span>
-        @endif
-        dari <span class="font-semibold text-gray-700">{{ $paginator->total() }}</span> data
-    </p>
+    @if($showSummary ?? true)
+        <p class="text-sm text-gray-500">
+            Menampilkan
+            <span class="font-semibold text-gray-700">{{ $paginator->firstItem() ?? 0 }}</span>
+            @if($paginator->firstItem() !== $paginator->lastItem())
+                –<span class="font-semibold text-gray-700">{{ $paginator->lastItem() ?? 0 }}</span>
+            @endif
+            dari <span class="font-semibold text-gray-700">{{ $paginator->total() }}</span> data
+        </p>
+    @endif
 
     @if($paginator->hasPages())
         <nav role="navigation" aria-label="Pagination Navigation" class="ml-auto">

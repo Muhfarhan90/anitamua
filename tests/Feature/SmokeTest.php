@@ -34,12 +34,18 @@ beforeEach(function () {
 });
 
 it('renders landing pages', function () {
-    $this->get('/')->assertOk();
+    Gallery::create([
+        'title' => 'Galeri multi foto',
+        'photo' => 'gallery/cover.jpg',
+        'photos' => ['gallery/cover.jpg', 'gallery/detail.jpg'],
+    ]);
+
+    $this->get('/')->assertOk()->assertDontSee('2 foto</div>', false);
     $this->get('/tentang')->assertOk();
     $this->get('/paket')->assertOk();
-    $this->get('/galeri')->assertOk();
+    $this->get('/galeri')->assertOk()->assertDontSee('Menampilkan', false)->assertDontSee('2 foto</div>', false);
     $this->get('/dekor-tenda')->assertOk();
-    $this->get('/testimoni')->assertOk();
+    $this->get('/testimoni')->assertOk()->assertDontSee('Menampilkan', false);
     $this->get('/faq')->assertOk();
     $this->get('/kontak')->assertOk();
     $this->get('/booking')->assertOk();
