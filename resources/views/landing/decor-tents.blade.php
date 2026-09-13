@@ -28,18 +28,14 @@
         </div>
         <div class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
             @forelse($section['items'] as $item)
-                <article class="group relative overflow-hidden rounded-2xl bg-pink-50 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg">
-                    @if($item->photo_path)
-                        <button type="button" class="block aspect-[4/5] w-full cursor-zoom-in" aria-label="Buka foto {{ $item->name }}" data-gallery-lightbox data-gallery-photos="{{ base64_encode(json_encode([asset('storage/'.$item->photo_path)])) }}" data-gallery-title="{{ $item->name }}">
-                            <img src="{{ asset('storage/'.$item->photo_path) }}" alt="{{ $item->name }}" class="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy">
-                        </button>
-                    @else
-                        <div class="flex aspect-[4/5] items-center justify-center text-4xl text-brand" role="img" aria-label="Belum ada foto {{ $item->name }}"><i class="fas {{ $section['icon'] }}"></i></div>
-                    @endif
-                    <div class="absolute inset-x-0 bottom-0 pointer-events-none bg-gradient-to-t from-black/75 via-black/20 to-transparent px-3 pb-3 pt-10 text-white">
-                        <h3 class="font-semibold">{{ $item->name }}</h3>
+                @if($item->photo_urls)
+                    <x-gallery-slider :photos="$item->photo_urls" :title="$item->name" />
+                @else
+                    <div class="relative flex h-[280px] items-center justify-center overflow-hidden rounded-2xl bg-pink-50 text-4xl text-brand shadow-sm">
+                        <i class="fas {{ $section['icon'] }}" aria-hidden="true"></i>
+                        <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-3 pb-3 pt-10 text-sm font-semibold text-white">{{ $item->name }}</div>
                     </div>
-                </article>
+                @endif
             @empty
                 <div class="col-span-full py-10 text-center text-sm text-gray-400">Belum ada pilihan {{ strtolower($section['title']) }} yang aktif.</div>
             @endforelse

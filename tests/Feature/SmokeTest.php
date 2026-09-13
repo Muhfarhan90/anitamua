@@ -47,7 +47,12 @@ it('renders landing pages', function () {
 });
 
 it('shows only active decorations, gates, and tents in the public catalog', function () {
-    WeddingStage::create(['name' => 'Dekor Publik', 'is_active' => true]);
+    WeddingStage::create([
+        'name' => 'Dekor Publik',
+        'photo_path' => 'uploads/decor/dekor-publik.jpg',
+        'photos' => ['uploads/decor/dekor-publik.jpg', 'uploads/decor/dekor-publik-detail.jpg'],
+        'is_active' => true,
+    ]);
     WeddingStage::create(['name' => 'Dekor Disembunyikan', 'is_active' => false]);
     EntranceGate::create(['name' => 'Gapura Publik', 'is_active' => true]);
     EntranceGate::create(['name' => 'Gapura Disembunyikan', 'is_active' => false]);
@@ -57,6 +62,7 @@ it('shows only active decorations, gates, and tents in the public catalog', func
     $this->get('/dekor-tenda')
         ->assertOk()
         ->assertSee('Dekor Publik')
+        ->assertSee('2 foto')
         ->assertSee('Gapura Publik')
         ->assertSee('Tenda Publik')
         ->assertDontSee('Dekor Disembunyikan')
@@ -282,28 +288,47 @@ it('team can save survey and fitting data', function () {
 });
 
 it('admin can manage wedding stages', function () {
+    Storage::fake('public');
     $admin = User::where('email', 'admin@anitamua.com')->first();
 
     $this->actingAs($admin)->post('/admin/wedding-stages', [
         'name' => 'Rustic White',
         'is_active' => 1,
-        'photo' => UploadedFile::fake()->image('rustic-white.jpg'),
+        'photos' => [
+            UploadedFile::fake()->image('rustic-white.jpg'),
+            UploadedFile::fake()->image('rustic-white-detail.jpg'),
+        ],
     ])->assertRedirect();
 
     $weddingStage = WeddingStage::where('name', 'Rustic White')->firstOrFail();
     expect($weddingStage->is_active)->toBeTrue();
     expect($weddingStage->photo_path)->toStartWith('uploads/wedding-stages/');
+    expect($weddingStage->photos)->toHaveCount(2);
     Storage::disk('public')->assertExists($weddingStage->photo_path);
 
     $this->actingAs($admin)->put('/admin/wedding-stages/'.$weddingStage->id, [
         'name' => 'Rustic White Updated',
         'is_active' => 0,
-        'photo' => UploadedFile::fake()->image('rustic-white-updated.jpg'),
+        'photos' => [
+            UploadedFile::fake()->image('rustic-white-updated.jpg'),
+            UploadedFile::fake()->image('rustic-white-detail-updated.jpg'),
+        ],
     ])->assertRedirect();
 
     expect($weddingStage->refresh()->name)->toBe('Rustic White Updated');
     expect($weddingStage->is_active)->toBeFalse();
     expect($weddingStage->photo_path)->toStartWith('uploads/wedding-stages/');
+    expect($weddingStage->photos)->toHaveCount(4);
+
+    $photoToDelete = $weddingStage->photos[1];
+    $this->actingAs($admin)->put('/admin/wedding-stages/'.$weddingStage->id, [
+        'name' => $weddingStage->name,
+        'is_active' => 0,
+        'remove_photos' => [$photoToDelete],
+    ])->assertRedirect();
+    expect($weddingStage->refresh()->photos)->toHaveCount(3)
+        ->and($weddingStage->photos)->not->toContain($photoToDelete);
+    Storage::disk('public')->assertMissing($photoToDelete);
 
     $this->actingAs($admin)->delete('/admin/wedding-stages/'.$weddingStage->id)->assertRedirect();
     expect(WeddingStage::find($weddingStage->id))->toBeNull();
@@ -315,22 +340,42 @@ it('admin can manage tent and entrance gate masters and cannot delete used items
 
     $this->actingAs($admin)->post('/admin/tents', [
         'name' => 'Tenda Transparan', 'is_active' => 1,
-        'photo' => UploadedFile::fake()->image('tent.jpg'),
+        'photos' => [UploadedFile::fake()->image('tent.jpg'), UploadedFile::fake()->image('tent-detail.jpg')],
     ])->assertRedirect();
     $this->actingAs($admin)->post('/admin/entrance-gates', [
         'name' => 'Gapura Bunga', 'is_active' => 1,
-        'photo' => UploadedFile::fake()->image('gate.jpg'),
+        'photos' => [UploadedFile::fake()->image('gate.jpg'), UploadedFile::fake()->image('gate-detail.jpg')],
     ])->assertRedirect();
 
     $tent = Tent::where('name', 'Tenda Transparan')->firstOrFail();
     $gate = EntranceGate::where('name', 'Gapura Bunga')->firstOrFail();
     Storage::disk('public')->assertExists($tent->photo_path);
     Storage::disk('public')->assertExists($gate->photo_path);
+    expect($tent->photos)->toHaveCount(2)->and($gate->photos)->toHaveCount(2);
 
     $this->actingAs($admin)->put('/admin/tents/'.$tent->id, [
         'name' => $tent->name, 'is_active' => 0,
+        'photos' => [UploadedFile::fake()->image('tent-extra.jpg')],
+    ])->assertRedirect();
+    $this->actingAs($admin)->put('/admin/entrance-gates/'.$gate->id, [
+        'name' => $gate->name, 'is_active' => 1,
+        'photos' => [UploadedFile::fake()->image('gate-extra.jpg')],
     ])->assertRedirect();
     expect($tent->refresh()->is_active)->toBeFalse();
+    expect($tent->photos)->toHaveCount(3)->and($gate->refresh()->photos)->toHaveCount(3);
+
+    $tentPhotoToDelete = $tent->photos[1];
+    $gatePhotoToDelete = $gate->photos[1];
+    $this->actingAs($admin)->put('/admin/tents/'.$tent->id, [
+        'name' => $tent->name, 'is_active' => 0, 'remove_photos' => [$tentPhotoToDelete],
+    ])->assertRedirect();
+    $this->actingAs($admin)->put('/admin/entrance-gates/'.$gate->id, [
+        'name' => $gate->name, 'is_active' => 1, 'remove_photos' => [$gatePhotoToDelete],
+    ])->assertRedirect();
+    expect($tent->refresh()->photos)->toHaveCount(2)
+        ->and($gate->refresh()->photos)->toHaveCount(2);
+    Storage::disk('public')->assertMissing($tentPhotoToDelete);
+    Storage::disk('public')->assertMissing($gatePhotoToDelete);
 
     Booking::firstOrFail()->survey()->updateOrCreate([], ['tent_id' => $tent->id, 'entrance_gate_id' => $gate->id]);
     $this->actingAs($admin)->delete('/admin/tents/'.$tent->id)->assertSessionHas('warning');
@@ -2118,13 +2163,56 @@ it('lists completed or fully paid bookings with contract income and vendor expen
 
     $response = $this->actingAs($owner)->get('/admin/finances?year='.$year)->assertOk();
     $bookings = $response->viewData('bookingProfits')->keyBy(fn ($row) => $row['booking']->id);
+    $orderedIds = $response->viewData('bookingProfits')->pluck('booking.id')->all();
 
     expect($bookings->has($completed->id))->toBeTrue()
         ->and($bookings->has($paid->id))->toBeTrue()
         ->and($bookings->has($cancelled->id))->toBeFalse()
+        ->and(array_search($paid->id, $orderedIds))->toBeLessThan(array_search($completed->id, $orderedIds))
         ->and($bookings[$completed->id]['income'])->toBe($completed->total_price)
         ->and($bookings[$completed->id]['expense'])->toBe(325000.0)
         ->and($bookings[$completed->id]['profit'])->toBe($completed->total_price - 325000.0);
+});
+
+it('paginates the finance booking list by ten while keeping newest event dates first', function () {
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $package = Package::firstOrFail();
+    $year = now()->year + 10;
+    $bookings = collect(range(1, 11))->map(fn (int $day) => Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $client->id,
+        'package_id' => $package->id,
+        'package_price' => $package->price,
+        'name' => 'Finance Pagination '.$day,
+        'phone' => $client->phone,
+        'email' => $client->email,
+        'event_date' => sprintf('%d-01-%02d', $year, $day),
+        'status' => Booking::STATUS_COMPLETED,
+    ]));
+
+    $pageOne = $this->actingAs($owner)
+        ->get('/admin/finances?year='.$year)
+        ->assertOk()
+        ->assertSee('page=2')
+        ->assertSee('Menampilkan', false)
+        ->assertSee('aria-label="Pagination Navigation"', false)
+        ->assertSee('aria-label="Halaman 2"', false)
+        ->viewData('bookingProfits');
+
+    expect($pageOne->total())->toBe(11)
+        ->and($pageOne->perPage())->toBe(10)
+        ->and($pageOne->count())->toBe(10)
+        ->and($pageOne->first()['booking']->id)->toBe($bookings->last()->id);
+
+    $pageTwo = $this->actingAs($owner)
+        ->get('/admin/finances?year='.$year.'&page=2')
+        ->assertOk()
+        ->viewData('bookingProfits');
+
+    expect($pageTwo->currentPage())->toBe(2)
+        ->and($pageTwo->count())->toBe(1)
+        ->and($pageTwo->first()['booking']->id)->toBe($bookings->first()->id);
 });
 
 it('builds booking source and monthly charts from booking creation dates and all statuses', function () {

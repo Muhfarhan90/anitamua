@@ -7,6 +7,7 @@ use App\Models\WeddingStage;
 use App\Services\ActivityLogger;
 use App\Services\ImageCompressor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class WeddingStageController extends Controller
 {
@@ -21,11 +22,14 @@ class WeddingStageController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:wedding_stages,name'],
-            'photo' => ['required', 'image', 'max:5120'],
+            'photos' => ['required', 'array', 'min:1'],
+            'photos.*' => ['image', 'max:5120'],
             'is_active' => ['required', 'boolean'],
         ]);
-        $data['photo_path'] = ImageCompressor::compressAndStore($request->file('photo'), 'uploads/wedding-stages');
-        unset($data['photo']);
+        $data['photos'] = collect($request->file('photos'))
+            ->map(fn ($photo) => ImageCompressor::compressAndStore($photo, 'uploads/wedding-stages'))
+            ->all();
+        $data['photo_path'] = $data['photos'][0];
 
         $weddingStage = WeddingStage::create($data);
 
@@ -42,15 +46,35 @@ class WeddingStageController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:wedding_stages,name,'.$weddingStage->id],
-            'photo' => ['nullable', 'image', 'max:5120'],
+            'photos' => ['sometimes', 'array'],
+            'photos.*' => ['image', 'max:5120'],
+            'remove_photos' => ['sometimes', 'array'],
+            'remove_photos.*' => ['string', 'max:2048'],
             'is_active' => ['required', 'boolean'],
         ]);
-        if ($request->hasFile('photo')) {
-            $data['photo_path'] = ImageCompressor::compressAndStore($request->file('photo'), 'uploads/wedding-stages');
+        $currentPhotos = array_values(array_filter($weddingStage->photos ?: [$weddingStage->photo_path]));
+        $removedPhotos = array_values(array_intersect($data['remove_photos'] ?? [], $currentPhotos));
+        $remainingPhotos = array_values(array_diff($currentPhotos, $removedPhotos));
+        unset($data['remove_photos']);
+
+        $newPhotos = [];
+        if ($request->hasFile('photos')) {
+            $newPhotos = collect($request->file('photos'))
+                ->map(fn ($photo) => ImageCompressor::compressAndStore($photo, 'uploads/wedding-stages'))
+                ->all();
         }
-        unset($data['photo']);
+        if ($removedPhotos || $newPhotos) {
+            $data['photos'] = array_values(array_merge($remainingPhotos, $newPhotos));
+            $data['photo_path'] = $data['photos'][0] ?? null;
+        }
 
         $weddingStage->update($data);
+        foreach ($removedPhotos as $photo) {
+            $folder = 'uploads/wedding-stages/';
+            if (str_starts_with($photo, $folder) && basename($photo) === substr($photo, strlen($folder))) {
+                Storage::disk('public')->delete($photo);
+            }
+        }
 
         ActivityLogger::log(
             'wedding_stage_updated',

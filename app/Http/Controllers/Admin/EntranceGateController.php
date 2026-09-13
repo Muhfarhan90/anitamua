@@ -7,6 +7,7 @@ use App\Models\EntranceGate;
 use App\Services\ActivityLogger;
 use App\Services\ImageCompressor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class EntranceGateController extends Controller
 {
@@ -25,11 +26,14 @@ class EntranceGateController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:entrance_gates,name'],
-            'photo' => ['required', 'image', 'max:5120'],
+            'photos' => ['required', 'array', 'min:1'],
+            'photos.*' => ['image', 'max:5120'],
             'is_active' => ['required', 'boolean'],
         ]);
-        $data['photo_path'] = ImageCompressor::compressAndStore($request->file('photo'), 'uploads/entrance-gates');
-        unset($data['photo']);
+        $data['photos'] = collect($request->file('photos'))
+            ->map(fn ($photo) => ImageCompressor::compressAndStore($photo, 'uploads/entrance-gates'))
+            ->all();
+        $data['photo_path'] = $data['photos'][0];
 
         $gate = EntranceGate::create($data);
         ActivityLogger::log('entrance_gate_created', 'Gapura ditambahkan', 'Gapura '.$gate->name.' ditambahkan oleh '.auth()->user()->name);
@@ -41,14 +45,34 @@ class EntranceGateController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:entrance_gates,name,'.$entranceGate->id],
-            'photo' => ['nullable', 'image', 'max:5120'],
+            'photos' => ['sometimes', 'array'],
+            'photos.*' => ['image', 'max:5120'],
+            'remove_photos' => ['sometimes', 'array'],
+            'remove_photos.*' => ['string', 'max:2048'],
             'is_active' => ['required', 'boolean'],
         ]);
-        if ($request->hasFile('photo')) {
-            $data['photo_path'] = ImageCompressor::compressAndStore($request->file('photo'), 'uploads/entrance-gates');
+        $currentPhotos = array_values(array_filter($entranceGate->photos ?: [$entranceGate->photo_path]));
+        $removedPhotos = array_values(array_intersect($data['remove_photos'] ?? [], $currentPhotos));
+        $remainingPhotos = array_values(array_diff($currentPhotos, $removedPhotos));
+        unset($data['remove_photos']);
+
+        $newPhotos = [];
+        if ($request->hasFile('photos')) {
+            $newPhotos = collect($request->file('photos'))
+                ->map(fn ($photo) => ImageCompressor::compressAndStore($photo, 'uploads/entrance-gates'))
+                ->all();
         }
-        unset($data['photo']);
+        if ($removedPhotos || $newPhotos) {
+            $data['photos'] = array_values(array_merge($remainingPhotos, $newPhotos));
+            $data['photo_path'] = $data['photos'][0] ?? null;
+        }
         $entranceGate->update($data);
+        foreach ($removedPhotos as $photo) {
+            $folder = 'uploads/entrance-gates/';
+            if (str_starts_with($photo, $folder) && basename($photo) === substr($photo, strlen($folder))) {
+                Storage::disk('public')->delete($photo);
+            }
+        }
 
         ActivityLogger::log('entrance_gate_updated', 'Gapura diperbarui', 'Gapura '.$entranceGate->name.' diperbarui oleh '.auth()->user()->name);
 

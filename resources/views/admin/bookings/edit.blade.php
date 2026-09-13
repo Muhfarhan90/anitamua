@@ -74,7 +74,9 @@
                                         <div class="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                                             <div class="flex min-w-0 items-center gap-3">
                                                 @if($vendor?->logo)
-                                                    <img src="{{ asset('storage/'.$vendor->logo) }}" alt="Logo {{ $vendor->name }}" class="h-9 w-9 shrink-0 rounded-full border border-brand-100 bg-white object-cover">
+                                                    <a href="{{ asset('storage/'.$vendor->logo) }}" onclick="openProof(event, this.href)" aria-label="Perbesar logo {{ $vendor->name }}" class="shrink-0 cursor-zoom-in">
+                                                        <img src="{{ asset('storage/'.$vendor->logo) }}" alt="Logo {{ $vendor->name }}" class="h-9 w-9 rounded-full border border-brand-100 bg-white object-cover">
+                                                    </a>
                                                 @else
                                                     <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand"><i class="fas fa-store"></i></span>
                                                 @endif

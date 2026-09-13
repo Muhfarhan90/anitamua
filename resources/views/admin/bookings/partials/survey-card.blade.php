@@ -62,12 +62,18 @@
                     <x-select name="{{ $fieldName('wedding_stage_id') }}" label="Jenis Pelaminan" data-master-photo-select>
                         <option value="">— Pilih Jenis Pelaminan —</option>
                         @foreach($weddingStages as $weddingStage)
-                            <option value="{{ $weddingStage->id }}" data-photo="{{ $weddingStage->photo_path ? asset('storage/'.$weddingStage->photo_path) : '' }}" @selected((string) $value('wedding_stage_id') === (string) $weddingStage->id)>{{ $weddingStage->name }}{{ !$weddingStage->is_active ? ' (nonaktif)' : '' }}</option>
+                            <option value="{{ $weddingStage->id }}" data-photos="{{ base64_encode(json_encode($weddingStage->photo_urls)) }}" @selected((string) $value('wedding_stage_id') === (string) $weddingStage->id)>{{ $weddingStage->name }}{{ !$weddingStage->is_active ? ' (nonaktif)' : '' }}</option>
                         @endforeach
                     </x-select>
-                    <div class="{{ $selectedWeddingStage?->photo_path ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview>
-                        <img src="{{ $selectedWeddingStage?->photo_path ? asset('storage/'.$selectedWeddingStage->photo_path) : '' }}" alt="{{ $selectedWeddingStage?->name ?? 'Preview pelaminan' }}" class="h-36 w-full rounded-lg object-contain" style="max-width:100%;display:block" data-master-photo-preview-image>
-                        <p class="mt-2 text-xs text-gray-500">Preview foto pelaminan</p>
+                    <div class="{{ $selectedWeddingStage?->photo_urls ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview>
+                        <div class="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto" data-master-photo-preview-images>
+                            @foreach($selectedWeddingStage?->photo_urls ?? [] as $photoUrl)
+                                <button type="button" onclick="openProof(event, this.dataset.photoUrl)" data-photo-url="{{ $photoUrl }}" aria-label="Perbesar foto pelaminan {{ $loop->iteration }}" class="block w-full cursor-zoom-in">
+                                    <img src="{{ $photoUrl }}" alt="Foto pelaminan {{ $loop->iteration }}" class="h-24 w-full rounded-lg border border-gray-100 object-cover">
+                                </button>
+                            @endforeach
+                        </div>
+                        <p class="mt-2 text-xs text-gray-500" data-master-photo-preview-count>{{ count($selectedWeddingStage?->photo_urls ?? []) }} foto pelaminan</p>
                     </div>
                     @error($fieldName('wedding_stage_id'))<p class="mt-1 text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
                 </div>
@@ -83,9 +89,18 @@
                 <div data-master-photo-field>
                     <x-select name="{{ $fieldName('tent_id') }}" label="Model Tenda" data-master-photo-select>
                         <option value="">— Pilih Model Tenda —</option>
-                        @foreach($tents as $tent)<option value="{{ $tent->id }}" data-photo="{{ $tent->photo_path ? asset('storage/'.$tent->photo_path) : '' }}" @selected((string) $value('tent_id') === (string) $tent->id)>{{ $tent->name }}{{ !$tent->is_active ? ' (nonaktif)' : '' }}</option>@endforeach
+                        @foreach($tents as $tent)<option value="{{ $tent->id }}" data-photos="{{ base64_encode(json_encode($tent->photo_urls)) }}" @selected((string) $value('tent_id') === (string) $tent->id)>{{ $tent->name }}{{ !$tent->is_active ? ' (nonaktif)' : '' }}</option>@endforeach
                     </x-select>
-                    <div class="{{ $selectedTent?->photo_path ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview><img src="{{ $selectedTent?->photo_path ? asset('storage/'.$selectedTent->photo_path) : '' }}" alt="{{ $selectedTent?->name ?? 'Preview tenda' }}" class="h-36 w-full rounded-lg object-contain" data-master-photo-preview-image><p class="mt-2 text-xs text-gray-500">Preview foto tenda</p></div>
+                    <div class="{{ $selectedTent?->photo_urls ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview>
+                        <div class="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto" data-master-photo-preview-images>
+                            @foreach($selectedTent?->photo_urls ?? [] as $photoUrl)
+                                <button type="button" onclick="openProof(event, this.dataset.photoUrl)" data-photo-url="{{ $photoUrl }}" aria-label="Perbesar foto tenda {{ $loop->iteration }}" class="block w-full cursor-zoom-in">
+                                    <img src="{{ $photoUrl }}" alt="Foto tenda {{ $loop->iteration }}" class="h-24 w-full rounded-lg border border-gray-100 object-cover">
+                                </button>
+                            @endforeach
+                        </div>
+                        <p class="mt-2 text-xs text-gray-500" data-master-photo-preview-count>{{ count($selectedTent?->photo_urls ?? []) }} foto tenda</p>
+                    </div>
                     @error($fieldName('tent_id'))<p class="mt-1 text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
                 </div>
             </div>
@@ -126,9 +141,18 @@
                 <div data-master-photo-field>
                     <x-select name="{{ $fieldName('entrance_gate_id') }}" label="Pintu Masuk" data-master-photo-select>
                         <option value="">— Pilih Model Gapura —</option>
-                        @foreach($entranceGates as $gate)<option value="{{ $gate->id }}" data-photo="{{ $gate->photo_path ? asset('storage/'.$gate->photo_path) : '' }}" @selected((string) $value('entrance_gate_id') === (string) $gate->id)>{{ $gate->name }}{{ !$gate->is_active ? ' (nonaktif)' : '' }}</option>@endforeach
+                        @foreach($entranceGates as $gate)<option value="{{ $gate->id }}" data-photos="{{ base64_encode(json_encode($gate->photo_urls)) }}" @selected((string) $value('entrance_gate_id') === (string) $gate->id)>{{ $gate->name }}{{ !$gate->is_active ? ' (nonaktif)' : '' }}</option>@endforeach
                     </x-select>
-                    <div class="{{ $selectedEntranceGate?->photo_path ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview><img src="{{ $selectedEntranceGate?->photo_path ? asset('storage/'.$selectedEntranceGate->photo_path) : '' }}" alt="{{ $selectedEntranceGate?->name ?? 'Preview gapura' }}" class="h-36 w-full rounded-lg object-contain" data-master-photo-preview-image><p class="mt-2 text-xs text-gray-500">Preview foto gapura</p></div>
+                    <div class="{{ $selectedEntranceGate?->photo_urls ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview>
+                        <div class="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto" data-master-photo-preview-images>
+                            @foreach($selectedEntranceGate?->photo_urls ?? [] as $photoUrl)
+                                <button type="button" onclick="openProof(event, this.dataset.photoUrl)" data-photo-url="{{ $photoUrl }}" aria-label="Perbesar foto gapura {{ $loop->iteration }}" class="block w-full cursor-zoom-in">
+                                    <img src="{{ $photoUrl }}" alt="Foto gapura {{ $loop->iteration }}" class="h-24 w-full rounded-lg border border-gray-100 object-cover">
+                                </button>
+                            @endforeach
+                        </div>
+                        <p class="mt-2 text-xs text-gray-500" data-master-photo-preview-count>{{ count($selectedEntranceGate?->photo_urls ?? []) }} foto gapura</p>
+                    </div>
                     @error($fieldName('entrance_gate_id'))<p class="mt-1 text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
                 </div>
                 @foreach(['buffet' => ['Prasmanan', ['Standar', 'Rolltop', 'Lainnya']], 'tableware' => ['Piring / Sendok / Garpu', ['Keramik', 'Rotan', 'Lainnya']]] as $field => [$label, $options])
@@ -190,23 +214,41 @@
                 document.querySelectorAll('[data-master-photo-field]').forEach(function (field) {
                     const select = field.querySelector('[data-master-photo-select]');
                     const preview = field.querySelector('[data-master-photo-preview]');
-                    const image = field.querySelector('[data-master-photo-preview-image]');
+                    const images = field.querySelector('[data-master-photo-preview-images]');
+                    const count = field.querySelector('[data-master-photo-preview-count]');
 
-                    if (!select || !preview || !image) return;
+                    if (!select || !preview || !images) return;
 
                     function syncMasterPreview() {
                         const option = select.selectedOptions[0];
-                        const photo = option?.dataset.photo || '';
                         const label = option?.textContent.trim() || 'Preview pelaminan';
+                        let photos = [];
 
-                        if (photo) {
-                            image.src = photo;
-                            image.alt = label;
-                            preview.classList.remove('hidden');
-                        } else {
-                            image.removeAttribute('src');
-                            preview.classList.add('hidden');
+                        try {
+                            photos = JSON.parse(atob(option?.dataset.photos || ''));
+                        } catch (error) {
+                            photos = [];
                         }
+
+                        if (!Array.isArray(photos)) photos = [];
+
+                        images.replaceChildren(...photos.map(function (photo, index) {
+                            const button = document.createElement('button');
+                            button.type = 'button';
+                            button.className = 'block w-full cursor-zoom-in';
+                            button.setAttribute('aria-label', `Perbesar ${label}, foto ${index + 1}`);
+                            button.addEventListener('click', event => openProof(event, photo));
+
+                            const image = document.createElement('img');
+                            image.src = photo;
+                            image.alt = `${label} - foto ${index + 1}`;
+                            image.className = 'h-24 w-full rounded-lg border border-gray-100 object-cover';
+                            button.append(image);
+
+                            return button;
+                        }));
+                        preview.classList.toggle('hidden', photos.length === 0);
+                        if (count) count.textContent = photos.length ? `${photos.length} foto` : '';
                     }
 
                     select.addEventListener('change', syncMasterPreview);

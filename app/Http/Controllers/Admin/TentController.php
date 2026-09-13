@@ -7,6 +7,7 @@ use App\Models\Tent;
 use App\Services\ActivityLogger;
 use App\Services\ImageCompressor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class TentController extends Controller
 {
@@ -25,11 +26,14 @@ class TentController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:tents,name'],
-            'photo' => ['required', 'image', 'max:5120'],
+            'photos' => ['required', 'array', 'min:1'],
+            'photos.*' => ['image', 'max:5120'],
             'is_active' => ['required', 'boolean'],
         ]);
-        $data['photo_path'] = ImageCompressor::compressAndStore($request->file('photo'), 'uploads/tents');
-        unset($data['photo']);
+        $data['photos'] = collect($request->file('photos'))
+            ->map(fn ($photo) => ImageCompressor::compressAndStore($photo, 'uploads/tents'))
+            ->all();
+        $data['photo_path'] = $data['photos'][0];
 
         $tent = Tent::create($data);
         ActivityLogger::log('tent_created', 'Tenda ditambahkan', 'Tenda '.$tent->name.' ditambahkan oleh '.auth()->user()->name);
@@ -41,14 +45,34 @@ class TentController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:tents,name,'.$tent->id],
-            'photo' => ['nullable', 'image', 'max:5120'],
+            'photos' => ['sometimes', 'array'],
+            'photos.*' => ['image', 'max:5120'],
+            'remove_photos' => ['sometimes', 'array'],
+            'remove_photos.*' => ['string', 'max:2048'],
             'is_active' => ['required', 'boolean'],
         ]);
-        if ($request->hasFile('photo')) {
-            $data['photo_path'] = ImageCompressor::compressAndStore($request->file('photo'), 'uploads/tents');
+        $currentPhotos = array_values(array_filter($tent->photos ?: [$tent->photo_path]));
+        $removedPhotos = array_values(array_intersect($data['remove_photos'] ?? [], $currentPhotos));
+        $remainingPhotos = array_values(array_diff($currentPhotos, $removedPhotos));
+        unset($data['remove_photos']);
+
+        $newPhotos = [];
+        if ($request->hasFile('photos')) {
+            $newPhotos = collect($request->file('photos'))
+                ->map(fn ($photo) => ImageCompressor::compressAndStore($photo, 'uploads/tents'))
+                ->all();
         }
-        unset($data['photo']);
+        if ($removedPhotos || $newPhotos) {
+            $data['photos'] = array_values(array_merge($remainingPhotos, $newPhotos));
+            $data['photo_path'] = $data['photos'][0] ?? null;
+        }
         $tent->update($data);
+        foreach ($removedPhotos as $photo) {
+            $folder = 'uploads/tents/';
+            if (str_starts_with($photo, $folder) && basename($photo) === substr($photo, strlen($folder))) {
+                Storage::disk('public')->delete($photo);
+            }
+        }
 
         ActivityLogger::log('tent_updated', 'Tenda diperbarui', 'Tenda '.$tent->name.' diperbarui oleh '.auth()->user()->name);
 

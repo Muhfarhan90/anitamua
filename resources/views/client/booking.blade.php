@@ -115,7 +115,9 @@
                             <p class="font-semibold text-gray-700 text-sm">Seret & Letakkan File di Sini</p>
                             <p class="text-xs text-gray-400 mt-1">atau klik untuk memilih file (JPG, PNG)</p>
                             <div id="uploadPreview" class="hidden mt-3">
-                                <img id="previewImage" src="" alt="Preview" class="max-h-40 mx-auto rounded-lg shadow-sm">
+                                <button type="button" onclick="openProof(event, this.querySelector('img').src)" aria-label="Perbesar foto bukti pembayaran" class="mx-auto block cursor-zoom-in">
+                                    <img id="previewImage" src="" alt="Preview" class="max-h-40 mx-auto rounded-lg shadow-sm cursor-zoom-in">
+                                </button>
                                 <p id="fileName" class="text-xs text-gray-500 mt-2"></p>
                             </div>
                         </div>
@@ -205,7 +207,9 @@
                     @php $vendor = $bookingVendor->vendor; @endphp
                     <div class="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
                         @if($vendor?->logo)
-                            <img src="{{ asset('storage/'.$vendor->logo) }}" alt="Logo {{ $vendor->name }}" class="h-9 w-9 shrink-0 rounded-full border border-brand-100 bg-white object-cover">
+                            <a href="{{ asset('storage/'.$vendor->logo) }}" onclick="openProof(event, this.href)" aria-label="Perbesar logo {{ $vendor->name }}" class="shrink-0 cursor-zoom-in">
+                                <img src="{{ asset('storage/'.$vendor->logo) }}" alt="Logo {{ $vendor->name }}" class="h-9 w-9 rounded-full border border-brand-100 bg-white object-cover">
+                            </a>
                         @else
                             <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand">
                                 <i class="fas fa-store text-sm"></i>

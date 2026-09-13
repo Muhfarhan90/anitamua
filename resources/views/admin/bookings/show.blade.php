@@ -333,7 +333,9 @@
                 <div class="border-b border-gray-100 py-4 first:pt-0 last:border-0 last:pb-0">
                     <div class="flex items-center gap-3">
                         @if($vendor?->logo)
-                            <img src="{{ asset('storage/'.$vendor->logo) }}" alt="Logo {{ $vendor->name }}" class="h-10 w-10 shrink-0 rounded-full border border-brand-100 bg-white object-cover">
+                            <a href="{{ asset('storage/'.$vendor->logo) }}" onclick="openProof(event, this.href)" aria-label="Perbesar logo {{ $vendor->name }}" class="shrink-0 cursor-zoom-in">
+                                <img src="{{ asset('storage/'.$vendor->logo) }}" alt="Logo {{ $vendor->name }}" class="h-10 w-10 rounded-full border border-brand-100 bg-white object-cover">
+                            </a>
                         @else
                             <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand">
                                 <i class="fas fa-store"></i>
@@ -405,8 +407,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Bukti Transfer</span>
                     @php $dp1Payment = $booking->payments->sortBy('id')->first(); @endphp
                     @if($dp1Payment?->proof)
-                        <img src="{{ asset('storage/' . $dp1Payment->proof) }}" alt="Bukti DP"
-                             class="mt-2 w-full max-h-64 object-contain rounded-xl border border-brand-100 bg-brand-50/40">
+                        <a href="{{ asset('storage/' . $dp1Payment->proof) }}" onclick="openProof(event, this.href)" aria-label="Perbesar bukti DP" class="mt-2 block cursor-zoom-in">
+                            <img src="{{ asset('storage/' . $dp1Payment->proof) }}" alt="Bukti DP"
+                                 class="w-full max-h-64 object-contain rounded-xl border border-brand-100 bg-brand-50/40">
+                        </a>
                     @else
                         <p class="mt-2 text-sm text-yellow-700 bg-yellow-50 rounded-xl px-4 py-2.5 border border-yellow-200">
                             <i class="fas fa-circle-info mr-1"></i> Tidak ada bukti transfer diupload oleh client.
@@ -456,8 +460,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         <div>
                             <span class="text-xs font-semibold uppercase tracking-wide text-gray-400">Bukti Transfer</span>
                             @if($payment->proof)
-                                <img src="{{ asset('storage/' . $payment->proof) }}" alt="Bukti Transfer"
-                                     class="mt-2 w-full max-h-64 object-contain rounded-xl border border-brand-100 bg-brand-50/40">
+                                <a href="{{ asset('storage/' . $payment->proof) }}" onclick="openProof(event, this.href)" aria-label="Perbesar bukti transfer" class="mt-2 block cursor-zoom-in">
+                                    <img src="{{ asset('storage/' . $payment->proof) }}" alt="Bukti Transfer"
+                                         class="w-full max-h-64 object-contain rounded-xl border border-brand-100 bg-brand-50/40">
+                                </a>
                             @else
                                 <p class="mt-2 text-sm text-yellow-700 bg-yellow-50 rounded-xl px-4 py-2.5 border border-yellow-200">
                                     <i class="fas fa-circle-info mr-1"></i> Tidak ada bukti transfer diupload untuk tahap ini.

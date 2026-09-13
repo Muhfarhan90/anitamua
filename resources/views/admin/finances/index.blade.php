@@ -48,8 +48,8 @@
     </x-card>
 </div>
 
-<x-card class="mt-5">
-    <div class="-mx-2 overflow-x-auto px-2">
+<x-card class="mt-5" padding="p-0">
+    <div class="overflow-x-auto">
         <table class="min-w-full text-left text-sm" data-booking-profit-table>
             <thead class="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
                 <tr>
@@ -80,6 +80,11 @@
             </tbody>
         </table>
     </div>
+    @if($bookingProfits->total() > 0)
+        <div class="border-t border-gray-100 px-5 py-4">
+            {{ $bookingProfits->onEachSide(1)->withQueryString()->links() }}
+        </div>
+    @endif
 </x-card>
 @endsection
 

@@ -47,9 +47,6 @@
                 <div class="rounded-xl bg-brand-50/50 p-3">
                     <span class="text-xs text-gray-400">Jenis Pelaminan</span>
                     <p class="mt-1 font-semibold text-gray-800">{{ $survey->weddingStage?->name ?? '-' }}</p>
-                    @if($survey->weddingStage?->photo_path)
-                        <img src="{{ asset('storage/'.$survey->weddingStage->photo_path) }}" alt="{{ $survey->weddingStage->name }}" class="mt-3 h-32 w-full rounded-lg object-contain bg-white">
-                    @endif
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div><span class="text-xs text-gray-400">Warna Bunga</span><p class="mt-1 font-medium text-gray-700">{{ $survey->flower_color ?: '-' }}</p></div>
@@ -59,6 +56,29 @@
                     <div><span class="text-xs text-gray-400">Panggung</span><p class="mt-1 font-medium text-gray-700">{{ $choice('stage_option', 'stage_option_other') }}</p></div>
                     <div><span class="text-xs text-gray-400">Model Tenda</span><p class="mt-1 font-medium text-gray-700">{{ $survey->tent?->name ?? $choice('tent_shape', 'tent_shape_other') }}</p></div>
                 </div>
+            </div>
+            @php
+                $masterPhotoGroups = [
+                    ['label' => 'Pelaminan', 'item' => $survey->weddingStage],
+                    ['label' => 'Tenda', 'item' => $survey->tent],
+                    ['label' => 'Gapura', 'item' => $survey->entranceGate],
+                ];
+            @endphp
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                @foreach($masterPhotoGroups as $photoGroup)
+                    @if($photoGroup['item']?->photo_urls)
+                        <div class="rounded-xl bg-gray-50/70 p-3">
+                            <p class="text-xs font-medium text-gray-500">{{ $photoGroup['label'] }} — {{ $photoGroup['item']->name }}</p>
+                            <div class="mt-2 grid grid-cols-3 gap-2">
+                                @foreach($photoGroup['item']->photo_urls as $photoUrl)
+                                    <a href="{{ $photoUrl }}" onclick="openProof(event, this.href)" aria-label="Perbesar foto {{ $photoGroup['label'] }} {{ $loop->iteration }}" class="cursor-zoom-in">
+                                        <img src="{{ $photoUrl }}" alt="{{ $photoGroup['label'] }} - {{ $photoGroup['item']->name }} - foto {{ $loop->iteration }}" class="h-20 w-full rounded-lg object-cover">
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
+                @endforeach
             </div>
         </section>
 

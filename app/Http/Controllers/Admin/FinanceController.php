@@ -10,6 +10,7 @@ use App\Models\Payment;
 use App\Services\ActivityLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 class FinanceController extends Controller
@@ -54,7 +55,7 @@ class FinanceController extends Controller
         $bookingProfits = Booking::with(['client', 'addons', 'payments', 'bookingVendors'])
             ->whereYear('event_date', $year)
             ->where('status', '!=', Booking::STATUS_CANCELLED)
-            ->orderBy('event_date')
+            ->orderByDesc('event_date')
             ->orderBy('id')
             ->get()
             ->filter(fn (Booking $booking) =>
@@ -77,6 +78,16 @@ class FinanceController extends Controller
                 ];
             })
             ->values();
+
+        $perPage = 10;
+        $page = LengthAwarePaginator::resolveCurrentPage();
+        $bookingProfits = new LengthAwarePaginator(
+            $bookingProfits->forPage($page, $perPage)->values(),
+            $bookingProfits->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()],
+        );
 
         $years = $allTransactions
             ->pluck('date')
