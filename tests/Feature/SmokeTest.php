@@ -172,6 +172,29 @@ it('client can login with email or whatsapp number', function () {
     $this->assertAuthenticatedAs($client);
 });
 
+it('allows owner to activate a client from the edit form', function () {
+    $owner = User::where('role', User::ROLE_OWNER)->firstOrFail();
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $client->update(['is_active' => false]);
+
+    $this->actingAs($owner)
+        ->get(route('admin.users.edit', $client))
+        ->assertOk()
+        ->assertSee('name="is_active" value="1"', false);
+
+    $this->actingAs($owner)
+        ->patch(route('admin.users.update', $client), [
+            'name' => $client->name,
+            'email' => $client->email,
+            'phone' => $client->phone,
+            'is_active' => '1',
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    expect($client->fresh()->is_active)->toBeTrue();
+});
+
 it('client can change password from profile', function () {
     $client = User::where('email', 'client@anitamua.com')->first();
 

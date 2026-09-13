@@ -39,7 +39,7 @@
 
             <label class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2.5 cursor-pointer">
                 <span class="text-sm font-medium text-gray-600">Akun Aktif</span>
-                <input type="checkbox" name="is_active" class="w-4 h-4 accent-[#d4739a]" @checked($user->is_active)>
+                <input type="checkbox" name="is_active" value="1" class="w-4 h-4 accent-[#d4739a]" @checked($user->is_active)>
             </label>
 
             <div class="flex gap-3 pt-2">

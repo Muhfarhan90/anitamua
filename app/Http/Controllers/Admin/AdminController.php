@@ -113,7 +113,7 @@ class AdminController extends Controller
             'email' => $data['email'],
             'phone' => $data['phone'] ?? null,
             'role' => $data['role'] ?? $user->role,
-            'is_active' => $request->has('is_active'),
+            'is_active' => $request->boolean('is_active'),
         ]);
 
         if (! empty($data['password'])) {
