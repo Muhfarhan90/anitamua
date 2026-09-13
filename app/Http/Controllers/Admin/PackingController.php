@@ -12,8 +12,7 @@ class PackingController extends Controller
 {
     public function show(Booking $booking)
     {
-        $this->ensureBookingAccess($booking);
-
+        // $this->ensureBookingAccess($booking);
         $booking->load('package');
         $fitting = Fitting::where('booking_id', $booking->id)->first();
 
@@ -22,8 +21,7 @@ class PackingController extends Controller
 
     public function update(Booking $booking, Request $request)
     {
-        $this->ensureBookingAccess($booking);
-
+        // $this->ensureBookingAccess($booking);
         $data = $request->validate([
             'items' => ['required', 'array'],
             'items.*.packed' => ['nullable', 'boolean'],
@@ -67,10 +65,11 @@ class PackingController extends Controller
             ->with('success', 'Checklist packing berhasil disimpan.');
     }
 
-    private function ensureBookingAccess(Booking $booking): void
-    {
-        abort_unless($booking->isAssignedTo(auth()->user()), 403, 'Anda tidak memiliki akses ke tugas booking ini.');
-    }
+    // Pemeriksaan PIC lama disimpan sebagai komentar; aktifkan kembali jika pembatasan ditetapkan lagi.
+    // private function ensureBookingAccess(Booking $booking): void
+    // {
+    //     abort_unless($booking->isAssignedTo(auth()->user()), 403, 'Anda tidak memiliki akses ke tugas booking ini.');
+    // }
 
     private function checklistUrl(Booking $booking): string
     {

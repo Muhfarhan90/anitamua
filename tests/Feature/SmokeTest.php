@@ -2452,7 +2452,7 @@ it('keeps the separate packing checklist synced with every filled fitting item',
         ->and($fitting->fresh()->packingChecklistState()['conditions']['cpw_busana_akad'])->toBe('sewing');
 });
 
-it('limits team schedules and fieldwork to bookings assigned to that team member', function () {
+it('allows team members to access all fieldwork regardless of schedule PIC', function () {
     $team = User::where('email', 'team@anitamua.com')->firstOrFail();
     $booking = Booking::firstOrFail();
     $unassignedBooking = $booking->replicate();
@@ -2469,13 +2469,13 @@ it('limits team schedules and fieldwork to bookings assigned to that team member
     $this->actingAs($team)
         ->get('/dashboard')
         ->assertOk()
-        ->assertDontSee('Tugas Tim Lain');
+        ->assertSee('Tugas Tim Lain');
 
     $this->actingAs($team)
         ->get('/admin/calendar?month='.now()->month.'&year='.now()->year)
         ->assertOk()
         ->assertSee('Buka Tugas')
-        ->assertDontSee('Tugas Tim Lain');
+        ->assertSee('Tugas Tim Lain');
 
     $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
     $this->actingAs($owner)
@@ -2487,17 +2487,18 @@ it('limits team schedules and fieldwork to bookings assigned to that team member
         ->get(route('admin.fieldwork.index'))
         ->assertOk()
         ->assertSee('Checklist')
-        ->assertDontSee('Tugas Tim Lain');
+        ->assertSee('Tugas Tim Lain');
 
     $this->actingAs($team)
         ->get(route('admin.fieldwork.booking', $unassignedBooking))
-        ->assertForbidden();
+        ->assertOk();
     $this->actingAs($team)
         ->get(route('admin.bookings.packing', $unassignedBooking))
-        ->assertForbidden();
+        ->assertOk();
     $this->actingAs($team)
         ->post(route('admin.schedules.status', $unassignedSchedule), ['status' => 'finished'])
-        ->assertForbidden();
+        ->assertRedirect();
+    expect($unassignedSchedule->fresh()->status)->toBe(Schedule::STATUS_FINISHED);
     $this->actingAs($team)
         ->get('/admin/bookings')
         ->assertForbidden();

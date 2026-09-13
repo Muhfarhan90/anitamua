@@ -47,6 +47,7 @@ class Schedule extends Model
         return $this->belongsTo(User::class, 'pic_user_id');
     }
 
+    /* Disabled for now: field-team access is no longer filtered by PIC.
     public function scopeAssignedTo($query, User $user)
     {
         if ($user->role === User::ROLE_TEAM) {
@@ -60,6 +61,7 @@ class Schedule extends Model
     {
         return $user->role !== User::ROLE_TEAM || $this->pic_user_id === $user->id;
     }
+    */
 
     public static function typeLabel(string $type): string
     {

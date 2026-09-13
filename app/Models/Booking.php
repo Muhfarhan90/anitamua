@@ -104,6 +104,7 @@ class Booking extends Model
         return $this->hasMany(Fitting::class);
     }
 
+    /* Disabled for now: field-team access is no longer filtered by PIC.
     public function isAssignedTo(User $user): bool
     {
         return $user->role !== User::ROLE_TEAM || $this->schedules()
@@ -111,6 +112,7 @@ class Booking extends Model
             ->where('status', '!=', Schedule::STATUS_CANCELLED)
             ->exists();
     }
+    */
 
     public function reminders(): HasMany
     {

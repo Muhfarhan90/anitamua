@@ -78,7 +78,7 @@ class DashboardController extends Controller
     {
         $today = Carbon::today();
         $tasks = Schedule::with('booking.package')
-            ->assignedTo(auth()->user())
+            // ->assignedTo(auth()->user()) // Filter PIC dinonaktifkan untuk Tim Lapangan.
             ->where('status', '!=', Schedule::STATUS_CANCELLED)
             ->whereHas('booking', fn ($query) => $query->where('status', '!=', Booking::STATUS_CANCELLED))
             ->where(function ($q) use ($today) {

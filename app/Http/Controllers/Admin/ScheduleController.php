@@ -29,7 +29,7 @@ class ScheduleController extends Controller
         $date = Carbon::create($year, $month, 1);
 
         $monthSchedules = Schedule::with('booking')
-            ->assignedTo($user)
+            // ->assignedTo($user) // Filter PIC dinonaktifkan untuk Tim Lapangan.
             ->whereHas('booking', fn ($query) => $query->whereNotIn('status', [
                 Booking::STATUS_CANCELLED,
                 Booking::STATUS_COMPLETED,
@@ -110,8 +110,7 @@ class ScheduleController extends Controller
         ClientAccountService $clientAccounts,
         InvoiceService $invoiceService,
     ) {
-        abort_unless($schedule->isAssignedTo(auth()->user()), 403, 'Anda tidak memiliki akses ke jadwal ini.');
-
+        // abort_unless($schedule->isAssignedTo(auth()->user()), 403, 'Anda tidak memiliki akses ke jadwal ini.');
         $data = $request->validate([
             'status' => ['required', 'in:scheduled,on_going,finished,cancelled'],
             'notes' => ['nullable', 'string'],

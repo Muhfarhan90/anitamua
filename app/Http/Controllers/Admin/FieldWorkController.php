@@ -24,11 +24,12 @@ class FieldWorkController extends Controller
             ->where('status', '!=', Booking::STATUS_CANCELLED)
             ->orderByDesc('event_date');
 
-        if (auth()->user()->role === User::ROLE_TEAM) {
-            $query->whereHas('schedules', fn ($schedules) => $schedules
-                ->assignedTo(auth()->user())
-                ->where('status', '!=', 'cancelled'));
-        }
+        // Filter PIC dinonaktifkan agar semua akun Tim Lapangan melihat seluruh booking.
+        // if (auth()->user()->role === User::ROLE_TEAM) {
+        //     $query->whereHas('schedules', fn ($schedules) => $schedules
+        //         ->assignedTo(auth()->user())
+        //         ->where('status', '!=', 'cancelled'));
+        // }
 
         $bookings = $query->get();
 
@@ -37,8 +38,7 @@ class FieldWorkController extends Controller
 
     public function fieldwork(Booking $booking)
     {
-        $this->ensureBookingAccess($booking);
-
+        // $this->ensureBookingAccess($booking);
         $booking->load(['survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings', 'package', 'schedules']);
 
         $currentDecorationId = $booking->survey?->wedding_stage_id;
@@ -135,8 +135,7 @@ class FieldWorkController extends Controller
             'videos.*' => ['max:51200'],
         ]);
 
-        $this->ensureBookingAccess(Booking::findOrFail($data['booking_id']));
-
+        // $this->ensureBookingAccess(Booking::findOrFail($data['booking_id']));
         $existing = Survey::where('booking_id', $data['booking_id'])->first();
         $weddingStage = ! empty($data['wedding_stage_id'])
             ? WeddingStage::findOrFail($data['wedding_stage_id'])
@@ -196,8 +195,7 @@ class FieldWorkController extends Controller
             'photos.*' => ['image', 'max:5120'],
         ]);
 
-        $this->ensureBookingAccess(Booking::findOrFail($data['booking_id']));
-
+        // $this->ensureBookingAccess(Booking::findOrFail($data['booking_id']));
         // Simpan file baru, lalu gabungkan dengan foto yang sudah ada
         $existing = Fitting::where('booking_id', $data['booking_id'])->first();
         $data['photos'] = array_merge($existing?->photos ?? [], $this->storeFiles($request, 'photos'));
@@ -246,10 +244,11 @@ class FieldWorkController extends Controller
         return back()->with('success', 'Data fitting berhasil disimpan.');
     }
 
-    private function ensureBookingAccess(Booking $booking): void
-    {
-        abort_unless($booking->isAssignedTo(auth()->user()), 403, 'Anda tidak memiliki akses ke tugas booking ini.');
-    }
+    // Pemeriksaan PIC lama disimpan sebagai komentar; aktifkan kembali jika pembatasan ditetapkan lagi.
+    // private function ensureBookingAccess(Booking $booking): void
+    // {
+    //     abort_unless($booking->isAssignedTo(auth()->user()), 403, 'Anda tidak memiliki akses ke tugas booking ini.');
+    // }
 
     private function storeFiles(Request $request, string $key, bool $isImage = true): array
     {
