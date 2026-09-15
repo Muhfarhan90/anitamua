@@ -261,8 +261,6 @@ it('team can save survey and fitting data', function () {
         'tent_additions' => ['4X4'],
         'tent_addition_quantities' => ['4X4' => 1],
         'gallery_booth' => 'Ya',
-        'location' => 'The Glass House',
-        'maps_url' => 'https://maps.app.goo.gl/abc',
         'pic' => 'Pak Budi',
         'notes' => 'Panggung di tengah',
         'photos' => [UploadedFile::fake()->image('survey.jpg')],
@@ -270,7 +268,6 @@ it('team can save survey and fitting data', function () {
 
     $survey = $booking->survey()->first();
     expect($survey)->not->toBeNull();
-    expect($survey->location)->toBe('The Glass House');
     expect($survey->wedding_stage_id)->toBe($weddingStage->id);
     expect($survey->wedding_stage_photo_path)->toBe('uploads/stages/garden-2.jpg');
     expect($survey->tent_id)->toBe($tent->id);
@@ -285,6 +282,13 @@ it('team can save survey and fitting data', function () {
     expect(count($photos))->toBeGreaterThanOrEqual(1);
     expect($photos[0])->toStartWith('uploads/photos/');
     Storage::disk('public')->assertExists(end($photos));
+
+    $this->actingAs($team)->get(route('admin.fieldwork.booking', $booking))
+        ->assertOk()
+        ->assertDontSee('Lokasi Acara')
+        ->assertDontSee('Link Maps')
+        ->assertDontSee('<span class="text-gray-500">PIC</span>', false)
+        ->assertDontSee('<span class="text-gray-500">Pelaminan</span>', false);
 
     $admin = User::where('email', 'admin@anitamua.com')->first();
     $surveyDate = now()->addDays(3)->toDateString();
@@ -915,7 +919,8 @@ it('admin booking form saves survey and fitting details', function () {
         'survey_tent_photo_path' => 'uploads/tents/sisir-1.jpg',
         'survey_entrance_gate_id' => $gate->id,
         'survey_entrance_gate_photo_path' => 'uploads/gates/lorong-1.jpg',
-        'survey_location' => 'Gedung Serbaguna',
+        'location' => 'Gedung Serbaguna',
+        'maps_url' => 'https://maps.app.goo.gl/gedung-serbaguna',
         'survey_flower_color' => 'Putih',
         'survey_tent_sizes' => ['4X6', '5X5'],
         'survey_tent_size_quantities' => ['4X6' => 2, '5X5' => 1],
@@ -933,6 +938,8 @@ it('admin booking form saves survey and fitting details', function () {
     ])->assertRedirect();
 
     $booking = Booking::where('client_id', $client->id)->latest('id')->firstOrFail();
+    expect($booking->location)->toBe('Gedung Serbaguna');
+    expect($booking->maps_url)->toBe('https://maps.app.goo.gl/gedung-serbaguna');
     expect($booking->survey->wedding_stage_id)->toBe($stage->id);
     expect($booking->survey->wedding_stage_photo_path)->toBe('uploads/stages/classic-1.jpg');
     expect($booking->survey->tent_id)->toBe($tent->id);
@@ -1709,6 +1716,21 @@ it('shows all booking activities in one scrollable history ordered newest first'
         ->assertDontSee('data-older-activities', false);
 });
 
+it('shows the booking location and maps link in booking information', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $booking->update([
+        'location' => 'Gedung Serbaguna ANITA',
+        'maps_url' => 'https://maps.google.com/?q=Gedung+Serbaguna+ANITA',
+    ]);
+
+    $this->actingAs($admin)->get(route('admin.bookings.show', $booking))
+        ->assertOk()
+        ->assertSee('grid-cols-2 md:grid-cols-4', false)
+        ->assertSee('Link Maps')
+        ->assertSee('Gedung Serbaguna ANITA');
+});
+
 it('renders scoped reset and hide controls for survey and fitting forms', function () {
     $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
     $team = User::where('email', 'team@anitamua.com')->firstOrFail();
@@ -1718,10 +1740,13 @@ it('renders scoped reset and hide controls for survey and fitting forms', functi
     $editHtml = $this->actingAs($admin)->get(route('admin.bookings.edit', $booking))->assertOk()->getContent();
     $fieldworkHtml = $this->actingAs($team)->get(route('admin.fieldwork.booking', $booking))->assertOk()->getContent();
 
-    foreach ([$createHtml, $editHtml, $fieldworkHtml] as $html) {
+    foreach ([$createHtml, $fieldworkHtml] as $html) {
         expect(substr_count($html, '<button type="button" data-fieldwork-reset'))->toBe(2)
             ->and(substr_count($html, '<button type="button" data-fieldwork-toggle'))->toBe(2);
     }
+
+    expect(substr_count($editHtml, '<button type="button" data-fieldwork-reset'))->toBe(3)
+        ->and(substr_count($editHtml, '<button type="button" data-fieldwork-toggle'))->toBe(3);
 });
 
 it('client can add a new payment stage with custom label and nominal', function () {

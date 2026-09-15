@@ -166,6 +166,7 @@ class BookingManagementController extends Controller
             'survey_date' => ['nullable', 'date'],
             'fitting_date' => ['nullable', 'date'],
             'location' => ['nullable', 'string'],
+            'maps_url' => ['nullable', 'url', 'max:500'],
             'notes' => ['nullable', 'string'],
             'proof' => ['nullable', 'image', 'max:3072'], // bukti opsional — tanpa bukti pun tetap verified
             'dp1_amount' => ['required', 'numeric', 'min:0'],
@@ -273,6 +274,7 @@ class BookingManagementController extends Controller
             'survey_date' => ['nullable', 'date'],
             'fitting_date' => ['nullable', 'date'],
             'location' => ['nullable', 'string', 'max:255'],
+            'maps_url' => ['nullable', 'url', 'max:500'],
             'notes' => ['nullable', 'string'],
             'addons' => ['nullable', 'array'],
             'addons.*.name' => ['required', 'string', 'max:255'],
@@ -932,8 +934,6 @@ class BookingManagementController extends Controller
             'survey_blower_other' => ['nullable', 'string', 'max:255'],
             'survey_welcome_sign_other' => ['nullable', 'string', 'max:255'],
             'survey_center_point_other' => ['nullable', 'string', 'max:255'],
-            'survey_location' => ['nullable', 'string', 'max:255'],
-            'survey_maps_url' => ['nullable', 'url', 'max:500'],
             'survey_pic' => ['nullable', 'string', 'max:255'],
             'survey_notes' => ['nullable', 'string'],
             'survey_photos' => ['nullable', 'array'],
@@ -964,7 +964,7 @@ class BookingManagementController extends Controller
     private function saveBookingFieldwork(Request $request, Booking $booking): void
     {
         $surveyFields = [
-            'location', 'maps_url', 'pic', 'notes', 'wedding_stage_id', 'wedding_stage_photo_path',
+            'pic', 'notes', 'wedding_stage_id', 'wedding_stage_photo_path',
             'tent_id', 'tent_photo_path', 'entrance_gate_id', 'entrance_gate_photo_path', 'flower_color',
             'stage_size', 'stage_size_other', 'chair_option', 'chair_option_other',
             'stage_option', 'stage_option_other', 'fabric_color', 'tent_sizes',

@@ -41,11 +41,9 @@
         <x-empty-state icon="fa-map-location-dot" title="Belum ada data survey" />
     @else
         <section class="space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-4 text-sm">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-4 text-sm">
                 <div><span class="text-xs text-gray-400">Tanggal Survey</span><p class="mt-1 font-semibold text-gray-800">{{ $booking->survey_date?->format('d M Y') ?? '-' }}</p></div>
-                <div><span class="text-xs text-gray-400">Lokasi</span><p class="mt-1 font-semibold text-gray-800">{{ $survey->location ?: '-' }}</p></div>
                 <div><span class="text-xs text-gray-400">PIC</span><p class="mt-1 font-semibold text-gray-800">{{ $survey->pic ?: '-' }}</p></div>
-                <div><span class="text-xs text-gray-400">Link Maps</span><p class="mt-1">@if($survey->maps_url)<a href="{{ $survey->maps_url }}" target="_blank" class="font-semibold text-brand hover:underline">Buka Maps</a>@else<span class="font-semibold text-gray-800">-</span>@endif</p></div>
             </div>
         </section>
 

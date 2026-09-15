@@ -11,6 +11,8 @@
     $percentage = $totalPrice > 0 ? min(100, round(($totalPaid / $totalPrice) * 100)) : 0;
     $circumference = 2 * M_PI * 42;
     $offset = $circumference - ($percentage / 100 * $circumference);
+    $eventLocation = $booking->location;
+    $mapsUrl = $booking->maps_url;
 @endphp
 
 <x-page-header :title="'Detail Booking — '.($booking->client->name ?? $booking->name)">
@@ -38,7 +40,7 @@
     <div class="lg:col-span-2 space-y-5">
 
         <x-card title="Informasi Booking" title-icon="fa-file-invoice">
-            <div class="grid grid-cols-2 md:grid-cols-6 gap-4 text-sm">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                     <span class="text-gray-500">Kode</span>
                     <p class="font-semibold text-gray-800"><x-badge>{{ $booking->code }}</x-badge></p>
@@ -49,7 +51,17 @@
                 </div>
                 <div>
                     <span class="text-gray-500">Lokasi</span>
-                    <p class="font-semibold text-gray-800">{{ $booking->location ?? '-' }}</p>
+                    <p class="font-semibold text-gray-800">{{ $eventLocation ?: '-' }}</p>
+                </div>
+                <div>
+                    <span class="text-gray-500">Link Maps</span>
+                    @if($mapsUrl)
+                        <a href="{{ $mapsUrl }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1 font-semibold text-brand hover:text-brand-700 hover:underline">
+                            Buka Maps <i class="fas fa-arrow-up-right-from-square text-xs"></i>
+                        </a>
+                    @else
+                        <p class="font-semibold text-gray-800">-</p>
+                    @endif
                 </div>
                 <div>
                     <span class="text-gray-500">Telepon</span>

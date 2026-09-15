@@ -83,7 +83,10 @@
                 <x-input name="event_time" id="event_time" label="Jam Acara" type="time" />
             </div>
 
-            <x-input name="location" label="Lokasi Acara" placeholder="Alamat lokasi acara" />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <x-input name="location" label="Lokasi Acara" placeholder="Alamat lokasi acara" />
+                <x-input name="maps_url" label="Link Maps" placeholder="https://maps.app.goo.gl/..." />
+            </div>
 
             <x-select name="referral_source" label="Tahu Anita dari mana?" required>
                 <option value="">— Pilih sumber informasi —</option>

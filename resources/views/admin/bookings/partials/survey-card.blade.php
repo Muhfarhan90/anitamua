@@ -42,12 +42,6 @@
     </x-slot:actions>
     <div data-fieldwork-content>
     @if($survey && !$embedded)
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
-        <div><span class="text-gray-500">Lokasi</span><p class="font-semibold text-gray-800">{{ $survey->location ?? '-' }}</p></div>
-        <div><span class="text-gray-500">Maps</span>@if($survey->maps_url)<a href="{{ $survey->maps_url }}" target="_blank" class="text-brand no-underline font-medium">Buka Maps</a>@else<p class="font-semibold text-gray-800">-</p>@endif</div>
-        <div><span class="text-gray-500">PIC</span><p class="font-semibold text-gray-800">{{ $survey->pic ?? '-' }}</p></div>
-        <div><span class="text-gray-500">Pelaminan</span><p class="font-semibold text-gray-800">{{ $survey->weddingStage?->name ?? '-' }}</p></div>
-    </div>
     @if($survey->photos)<div class="flex flex-wrap gap-2 mb-4">@foreach($survey->photos as $photo)<a href="{{ asset('storage/'.$photo) }}" onclick="openProof(event, this.href)" class="cursor-pointer"><img src="{{ asset('storage/'.$photo) }}" alt="Foto survey" class="w-16 h-16 object-cover rounded-xl border border-gray-100"></a>@endforeach</div>@endif
     @endif
 
@@ -59,13 +53,11 @@
     <div class="pt-5 space-y-6">
     @endif
         <section>
-            <div class="flex items-center gap-3 mb-4"><span class="w-7 h-7 rounded-lg bg-brand-50 text-brand flex items-center justify-center text-xs font-bold">01</span><div><h4 class="font-semibold text-gray-800">Informasi survey</h4><p class="text-xs text-gray-400">Lokasi, PIC, dan catatan lapangan.</p></div></div>
-            <div class="grid grid-cols-1 {{ ($embedded || $showScheduleDate) ? 'md:grid-cols-4' : 'md:grid-cols-3' }} gap-4">
+            <div class="flex items-center gap-3 mb-4"><span class="w-7 h-7 rounded-lg bg-brand-50 text-brand flex items-center justify-center text-xs font-bold">01</span><div><h4 class="font-semibold text-gray-800">Informasi survey</h4><p class="text-xs text-gray-400">PIC dan catatan lapangan.</p></div></div>
+            <div class="grid grid-cols-1 {{ $embedded ? 'md:grid-cols-2' : '' }} gap-4">
                 @if($embedded || $showScheduleDate)
                     <x-input name="survey_date" label="Tanggal Survey" type="date" :value="old('survey_date', $bookingContext?->survey_date?->format('Y-m-d') ?? '')" />
                 @endif
-                <x-input name="{{ $fieldName('location') }}" label="Lokasi" :value="$value('location')" placeholder="Alamat tempat acara" />
-                <x-input name="{{ $fieldName('maps_url') }}" label="Link Maps" :value="$value('maps_url')" placeholder="https://maps.app.goo.gl/..." />
                 <x-select name="{{ $fieldName('pic') }}" label="PIC (Tim Lapangan)"><option value="">— Pilih Tim Lapangan —</option>@foreach($teamMembers as $member)<option value="{{ $member->name }}" @selected($value('pic') === $member->name)>{{ $member->name }}</option>@endforeach</x-select>
             </div>
         </section>

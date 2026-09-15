@@ -199,6 +199,7 @@ class DatabaseSeeder extends Seeder
             'survey_date' => $eventDate->copy()->subDays(21)->toDateString(),
             'fitting_date' => $eventDate->copy()->subDays(14)->toDateString(),
             'location' => 'The Glass House, Jakarta Selatan',
+            'maps_url' => 'https://maps.google.com/?q=The+Glass+House+Jakarta',
             'notes' => 'Tema warna blush pink & gold, 200 undangan.',
             'status' => Booking::STATUS_BOOKED,
             'created_by' => $admin->id,
@@ -272,8 +273,6 @@ class DatabaseSeeder extends Seeder
 
         Survey::create([
             'booking_id' => $booking->id,
-            'location' => 'The Glass House, Jakarta Selatan',
-            'maps_url' => 'https://maps.google.com/?q=The+Glass+House+Jakarta',
             'pic' => $team->name,
             'notes' => 'Panggung di tengah, meja 20. Pencahayaan bagus.',
             'photos' => [],

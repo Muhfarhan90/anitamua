@@ -11,7 +11,7 @@ class Survey extends Model
     use HasFactory;
 
     protected $fillable = [
-        'booking_id', 'location', 'maps_url', 'pic',
+        'booking_id', 'pic',
         'notes', 'photos', 'videos', 'created_by',
         'wedding_stage_id', 'wedding_stage_photo_path', 'tent_id', 'tent_photo_path',
         'entrance_gate_id', 'entrance_gate_photo_path', 'flower_color', 'stage_size', 'stage_size_other',

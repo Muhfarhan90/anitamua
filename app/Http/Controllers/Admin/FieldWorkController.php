@@ -135,8 +135,6 @@ class FieldWorkController extends Controller
             'blower_other' => ['nullable', 'string', 'max:255'],
             'welcome_sign_other' => ['nullable', 'string', 'max:255'],
             'center_point_other' => ['nullable', 'string', 'max:255'],
-            'location' => ['nullable', 'string', 'max:255'],
-            'maps_url' => ['nullable', 'url', 'max:500'],
             'pic' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string'],
             'photos' => ['nullable', 'array'],

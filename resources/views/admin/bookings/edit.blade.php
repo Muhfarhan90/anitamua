@@ -214,7 +214,10 @@
                 <x-input name="event_time" id="event_time" label="Jam Acara" type="time" :value="$booking->event_time ? substr((string) $booking->event_time, 0, 5) : ''" />
             </div>
 
-            <x-input name="location" label="Lokasi Acara" placeholder="Alamat lokasi acara" :value="$booking->location" />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <x-input name="location" label="Lokasi Acara" placeholder="Alamat lokasi acara" :value="$booking->location" />
+                <x-input name="maps_url" label="Link Maps" placeholder="https://maps.app.goo.gl/..." :value="$booking->maps_url" />
+            </div>
 
             <x-select name="referral_source" label="Tahu Anita dari mana?" required>
                 <option value="">— Pilih sumber informasi —</option>
