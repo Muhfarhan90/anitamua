@@ -3,11 +3,22 @@
 @section('title', 'Edit Booking')
 
 @section('content')
-    <x-page-header :title="'Edit Booking - '.$booking->code" />
+    <x-page-header :title="'Edit Booking - '.$booking->code">
+        <x-slot:actions>
+            <a href="{{ route('admin.bookings.show', $booking) }}" class="text-sm font-semibold text-brand hover:text-brand-dark no-underline inline-flex items-center gap-1.5">
+                <i class="fas fa-arrow-left text-xs"></i> Kembali
+            </a>
+        </x-slot:actions>
+    </x-page-header>
 
-    <form action="{{ route('admin.bookings.update', $booking) }}" method="POST" enctype="multipart/form-data" class="max-w-6xl space-y-5">
-        <x-card title="Data Booking" title-icon="fa-calendar-check" padding="p-6">
-            <div class="space-y-5">
+    <div class="space-y-5">
+    <form action="{{ route('admin.bookings.update', $booking) }}" method="POST" enctype="multipart/form-data" class="space-y-5">
+        <x-card title="Data Booking" title-icon="fa-calendar-check" padding="p-5" data-fieldwork-card>
+            <x-slot:actions>
+                <button type="button" data-fieldwork-reset class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-500 hover:bg-gray-100 hover:text-gray-700"><i class="fas fa-rotate-left"></i> Reset</button>
+                <button type="button" data-fieldwork-toggle aria-expanded="true" class="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-brand hover:bg-brand-50"><i class="fas fa-eye-slash" data-fieldwork-toggle-icon></i> <span data-fieldwork-toggle-label>Hide</span></button>
+            </x-slot:actions>
+            <div class="space-y-5" data-fieldwork-content data-fieldwork-reset-scope>
             @csrf
             @method('PATCH')
 
@@ -213,11 +224,15 @@
             <x-textarea name="notes" label="Catatan" placeholder="Catatan tambahan untuk booking ini..." :value="$booking->notes" />
 
             </div>
+            <div class="border-t border-gray-100 pt-5 mt-5">
+                <x-button type="submit"><i class="fas fa-save"></i> Perbarui Booking</x-button>
+            </div>
         </x-card>
+    </form>
 
             @include('admin.bookings.partials.survey-card', [
-                'embedded' => true,
                 'booking' => $booking,
+                'showScheduleDate' => true,
                 'weddingStages' => $weddingStages,
                 'tents' => $tents,
                 'entranceGates' => $entranceGates,
@@ -225,16 +240,10 @@
             ])
 
             @include('admin.bookings.partials.fitting-card', [
-                'embedded' => true,
                 'booking' => $booking,
                 'teamMembers' => $teamMembers,
             ])
-
-            <div class="flex items-center gap-4 pt-5 border-t border-brand-100">
-                <x-button href="{{ route('admin.bookings.show', $booking) }}" color="ghost" class="flex-1 justify-center">Batal</x-button>
-                <x-button type="submit" class="flex-1 justify-center"><i class="fas fa-save"></i> Simpan Perubahan</x-button>
-            </div>
-    </form>
+    </div>
 
     @push('scripts')
         <script>

@@ -153,8 +153,13 @@
             </x-card>
             @endif
 
-            {{-- DATA FITTING (READ ONLY) --}}
-            @include('admin.bookings.partials.fitting-summary')
+            @if($booking->survey)
+                @include('admin.bookings.partials.survey-summary')
+            @endif
+
+            @if($booking->fittings->isNotEmpty())
+                @include('admin.bookings.partials.fitting-summary')
+            @endif
         </div>
 
         {{-- SIDEBAR --}}

@@ -286,6 +286,15 @@ it('team can save survey and fitting data', function () {
     expect($photos[0])->toStartWith('uploads/photos/');
     Storage::disk('public')->assertExists(end($photos));
 
+    $admin = User::where('email', 'admin@anitamua.com')->first();
+    $surveyDate = now()->addDays(3)->toDateString();
+    $this->actingAs($admin)->post('/admin/fieldwork/survey', [
+        'booking_id' => $booking->id,
+        'survey_date' => $surveyDate,
+    ])->assertRedirect();
+    $booking->refresh();
+    expect($booking->survey_date->toDateString())->toBe($surveyDate);
+
     $this->actingAs($team)->post('/admin/fieldwork/fitting', [
         'booking_id' => $booking->id,
         'date' => now()->addDays(5)->toDateString(),
@@ -299,6 +308,21 @@ it('team can save survey and fitting data', function () {
     $booking->refresh();
     expect($booking->fitting_date->toDateString())->toBe(now()->addDays(5)->toDateString());
     expect($booking->fittings()->first()->cpw_busana_akad_notes)->toBeNull();
+});
+
+it('admin edit page separates booking, survey, and fitting saves', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+
+    $this->actingAs($admin)->get(route('admin.bookings.edit', $booking))
+        ->assertOk()
+        ->assertSee('Perbarui Booking')
+        ->assertSee('Perbarui Survey')
+        ->assertSee('Perbarui Fitting')
+        ->assertSee('data-fieldwork-reset', false)
+        ->assertSee('data-fieldwork-toggle', false)
+        ->assertSee('action="'.route('admin.fieldwork.survey').'"', false)
+        ->assertSee('action="'.route('admin.fieldwork.fitting').'"', false);
 });
 
 it('admin can manage wedding stages', function () {
@@ -1629,10 +1653,32 @@ it('lets client view their booking detail', function () {
     $response->assertSee('id="paymentType"', false)
         ->assertSee('id="paymentAmount"', false)
         ->assertSee('data-pending-payment', false)
+        ->assertSee('Data Survey')
         ->assertSee('Data Fitting')
         ->assertSee('max-h-48 overflow-y-auto overscroll-contain pr-2', false)
         ->assertSee('&middot;', false)
         ->assertDontSee('id="paymentSelect"', false);
+});
+
+it('hides survey and fitting summaries from clients when they have no data', function () {
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $reference = $client->bookings()->firstOrFail();
+    $booking = Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $client->id,
+        'package_id' => $reference->package_id,
+        'package_price' => $reference->package_price,
+        'name' => 'Booking Tanpa Data Lapangan',
+        'phone' => $client->phone,
+        'email' => $client->email,
+        'event_date' => now()->addMonth()->toDateString(),
+        'status' => Booking::STATUS_PENDING,
+    ]);
+
+    $this->actingAs($client)->get(route('client.booking', $booking))
+        ->assertOk()
+        ->assertDontSee('Data Survey')
+        ->assertDontSee('Data Fitting');
 });
 
 it('shows all booking activities in one scrollable history ordered newest first', function () {

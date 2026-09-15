@@ -78,6 +78,7 @@ class FieldWorkController extends Controller
     {
         $data = $request->validate([
             'booking_id' => ['required', 'exists:bookings,id'],
+            'survey_date' => ['nullable', 'date'],
             'wedding_stage_id' => ['nullable', 'exists:wedding_stages,id'],
             'wedding_stage_photo_path' => ['nullable', 'string', 'max:2048'],
             'tent_id' => ['nullable', 'exists:tents,id'],
@@ -178,7 +179,10 @@ class FieldWorkController extends Controller
             'entrance_gate_photo_path',
         );
 
-        $survey = DB::transaction(function () use ($request, $data, $existing) {
+        $surveyDate = $data['survey_date'] ?? null;
+        unset($data['survey_date']);
+
+        $survey = DB::transaction(function () use ($request, $data, $existing, $surveyDate) {
             $data['tent_sizes'] = array_values($data['tent_sizes'] ?? []);
             $data['tent_additions'] = array_values($data['tent_additions'] ?? []);
             $data['tent_size_quantities'] = collect($data['tent_size_quantities'] ?? [])
@@ -191,7 +195,13 @@ class FieldWorkController extends Controller
             $data['videos'] = array_merge($existing?->videos ?? [], $this->storeFiles($request, 'videos', false));
             $data['created_by'] = auth()->id();
 
-            return Survey::updateOrCreate(['booking_id' => $data['booking_id']], $data);
+            $survey = Survey::updateOrCreate(['booking_id' => $data['booking_id']], $data);
+
+            if ($request->has('survey_date') && auth()->user()->canManageBackOffice()) {
+                $survey->booking()->update(['survey_date' => $surveyDate]);
+            }
+
+            return $survey;
         });
 
         ActivityLogger::log('survey_saved', 'Survey disimpan', 'Data survey untuk '.$survey->booking->name.' disimpan oleh '.auth()->user()->name, $data['booking_id']);

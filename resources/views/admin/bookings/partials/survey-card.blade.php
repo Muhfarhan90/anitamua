@@ -1,5 +1,6 @@
 @php
     $embedded = $embedded ?? false;
+    $showScheduleDate = $showScheduleDate ?? false;
     $bookingContext = $booking ?? null;
     $survey = $bookingContext?->survey;
     $fieldName = fn (string $key) => ($embedded ? 'survey_' : '').$key;
@@ -59,8 +60,8 @@
     @endif
         <section>
             <div class="flex items-center gap-3 mb-4"><span class="w-7 h-7 rounded-lg bg-brand-50 text-brand flex items-center justify-center text-xs font-bold">01</span><div><h4 class="font-semibold text-gray-800">Informasi survey</h4><p class="text-xs text-gray-400">Lokasi, PIC, dan catatan lapangan.</p></div></div>
-            <div class="grid grid-cols-1 {{ $embedded ? 'md:grid-cols-4' : 'md:grid-cols-3' }} gap-4">
-                @if($embedded)
+            <div class="grid grid-cols-1 {{ ($embedded || $showScheduleDate) ? 'md:grid-cols-4' : 'md:grid-cols-3' }} gap-4">
+                @if($embedded || $showScheduleDate)
                     <x-input name="survey_date" label="Tanggal Survey" type="date" :value="old('survey_date', $bookingContext?->survey_date?->format('Y-m-d') ?? '')" />
                 @endif
                 <x-input name="{{ $fieldName('location') }}" label="Lokasi" :value="$value('location')" placeholder="Alamat tempat acara" />

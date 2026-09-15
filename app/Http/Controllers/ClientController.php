@@ -17,7 +17,7 @@ class ClientController extends Controller
 
         $booking->load([
             'package.benefits', 'addons', 'payments', 'bookingVendors.vendor.category',
-            'schedules.picUser', 'survey', 'fittings', 'activityLogs.user',
+            'schedules.picUser', 'survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings', 'activityLogs.user',
             'packageChangeRequests.newPackage',
         ]);
 
