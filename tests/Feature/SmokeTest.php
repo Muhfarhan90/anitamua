@@ -1855,6 +1855,7 @@ it('creates one invoice per booked booking and updates it from verified payments
 });
 
 it('applies multiple booking discounts to totals and invoices', function () {
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
     $client = User::where('email', 'client@anitamua.com')->firstOrFail();
     $package = Package::firstOrFail();
 
@@ -1866,6 +1867,9 @@ it('applies multiple booking discounts to totals and invoices', function () {
         'discounts' => [
             ['amount' => 100000, 'note' => 'Promo awal tahun'],
             ['amount' => 250000, 'note' => 'Potongan vendor'],
+        ],
+        'bonuses' => [
+            ['amount' => 200000, 'note' => 'Free touch up'],
         ],
         'name' => 'Diskon Persen',
         'phone' => '081234567890',
@@ -1888,6 +1892,14 @@ it('applies multiple booking discounts to totals and invoices', function () {
             'Diskon — Promo awal tahun',
             'Diskon — Potongan vendor',
         ]);
+
+    $this->actingAs($admin)->get(route('admin.invoices.show', $invoice))
+        ->assertOk()
+        ->assertSee('class="invoice-line--discount"', false)
+        ->assertSee('Promo awal tahun')
+        ->assertSee('>Bonus</div>', false)
+        ->assertSee('Free touch up')
+        ->assertDontSee('invoice-discount-marker', false);
 
     $booking->update(['discounts' => null, 'discount_type' => 'fixed', 'discount_value' => 100000]);
     expect($booking->refresh()->discount_amount)->toBe(100000.0)

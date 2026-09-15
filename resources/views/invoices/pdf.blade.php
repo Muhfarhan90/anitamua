@@ -3,10 +3,10 @@
 <head>
     <meta charset="utf-8">
     <style>
-        @page { margin: 20px; }
+        @page { margin: 16px; }
         * { box-sizing: border-box; }
         body { margin: 0; background: #f8f1f5; color: #302a2d; font-family: DejaVu Sans, sans-serif; font-size: 9px; line-height: 1.4; }
-        .paper { position: relative; padding: 20px 22px; border: 1px solid #ead4df; background: #fffaf6; }
+        .paper { position: relative; padding: 16px; border: 1px solid #ead4df; background: #fffaf6; }
         .paper:before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 7px; background: #8e2d63; }
         .table { display: table; width: 100%; }
         .cell { display: table-cell; vertical-align: top; }
@@ -43,9 +43,16 @@
         .items th:last-child { border-radius: 0 5px 5px 0; }
         .items td { padding: 7px 5px; border-bottom: 1px solid #f1e7ec; color: #50474c; }
         .items tr:last-child td { border-bottom: 0; }
+        .items tr.invoice-line--discount td { background: #fff0f6; color: #9d315f; font-weight: bold; }
+        .items tr.invoice-line--discount td:last-child { color: #b4235d !important; }
+        .bonus-box { margin-bottom: 8px; padding: 9px; border: 1px solid #ead6e1; border-radius: 7px; background: #fff; }
+        .bonus-title { padding: 3px 0 7px; border-bottom: 2px solid #d4b896; color: #302a2d; font-size: 8px; font-weight: bold; }
+        .bonus-list { margin-top: 8px; }
+        .bonus-item { padding: 3px 0; color: #8b7d84; font-size: 7px; }
+        .bonus-item .cell:last-child { color: #302a2d; font-weight: bold; text-align: right; }
         .summary-wrap { margin-top: 10px; }
-        .summary-note { width: 57%; padding: 8px 0; color: #8b7d84; font-size: 7.5px; vertical-align: bottom; }
-        .summary-box { width: 43%; padding: 9px; border: 1px solid #ead6e1; border-radius: 7px; background: #fff; }
+        .summary-note { width: 60%; padding: 8px 0; color: #8b7d84; font-size: 7.5px; vertical-align: bottom; }
+        .summary-box { width: 40%; padding: 9px; border: 1px solid #ead6e1; border-radius: 7px; background: #fff; }
         .summary-row { padding: 3px 0; color: #8b7d84; }
         .summary-row.total td { padding-bottom: 7px; border-bottom: 2px solid #d4b896; color: #302a2d; font-weight: bold; }
         .summary-row td:last-child { color: #302a2d; font-weight: bold; text-align: right; }
@@ -68,6 +75,7 @@
     $logoSrc = $logoSrc ?? null;
     $payments = $booking->payments->sortBy('created_at');
     $verifiedPayments = $payments->where('status', 'verified');
+    $bonuses = collect($booking->bonuses ?? [])->filter(fn (array $bonus) => filled($bonus['note'] ?? null));
     $invoiceGreeting = $settings['invoice_greeting'] ?? 'Terima kasih telah mempercayakan momen spesial Anda kepada ANITA. Invoice ini mengikuti status pembayaran yang sudah diverifikasi.';
 @endphp
 <div class="paper">
@@ -118,14 +126,35 @@
     <div class="service">
         <div class="service-title">Rincian layanan</div>
         <table class="items"><thead><tr><th>Layanan</th><th style="width:42px;text-align:center;">Qty</th><th style="width:100px;text-align:right;">Harga</th><th style="width:100px;text-align:right;">Total</th></tr></thead><tbody>
-            @foreach($invoice->items ?? [] as $item)@php $itemPrice = (float) ($item['price'] ?? 0); $itemTotal = (float) ($item['total'] ?? 0); @endphp<tr><td>{{ $item['name'] }}</td><td style="text-align:center;">{{ $item['quantity'] ?? 1 }}</td><td style="text-align:right;">{{ $itemPrice < 0 ? '-Rp ' : 'Rp ' }}{{ number_format(abs($itemPrice), 0, ',', '.') }}</td><td style="text-align:right;font-weight:bold;color:#8e2d63;">{{ $itemTotal < 0 ? '-Rp ' : 'Rp ' }}{{ number_format(abs($itemTotal), 0, ',', '.') }}</td></tr>@endforeach
+            @foreach($invoice->items ?? [] as $item)
+            @php
+                $itemPrice = (float) ($item['price'] ?? 0);
+                $itemTotal = (float) ($item['total'] ?? 0);
+                $itemName = $item['name'] ?? '';
+                $isDiscount = $itemTotal < 0 || str_starts_with($itemName, 'Diskon');
+                $displayName = $isDiscount ? preg_replace('/^Diskon\s*[—-]\s*/u', '', $itemName) : $itemName;
+            @endphp
+            <tr class="{{ $isDiscount ? 'invoice-line--discount' : '' }}"><td>{{ $displayName }}</td><td style="text-align:center;">{{ $item['quantity'] ?? 1 }}</td><td style="text-align:right;">{{ $itemPrice < 0 ? '-Rp ' : 'Rp ' }}{{ number_format(abs($itemPrice), 0, ',', '.') }}</td><td style="text-align:right;font-weight:bold;color:#8e2d63;">{{ $itemTotal < 0 ? '-Rp ' : 'Rp ' }}{{ number_format(abs($itemTotal), 0, ',', '.') }}</td></tr>
+            @endforeach
         </tbody></table>
     </div>
 
     <div class="summary-wrap table">
-        <div class="cell summary-note">{!! nl2br(e($invoiceGreeting)) !!}</div>
+        <div class="cell summary-note">
+            @if($bonuses->isNotEmpty())
+            <div class="bonus-box">
+                <div class="bonus-title">Bonus</div>
+                <div class="bonus-list">
+                    @foreach($bonuses as $bonus)
+                    <div class="bonus-item table"><div class="cell">{{ $bonus['note'] }}</div><div class="cell">Rp {{ number_format($bonus['amount'] ?? 0, 0, ',', '.') }}</div></div>
+                    @endforeach
+                </div>
+            </div>
+            @endif
+            {!! nl2br(e($invoiceGreeting)) !!}
+        </div>
         <div class="cell summary-box">
-            <table style="width:100%;border-collapse:collapse;"><tr class="summary-row total"><td>Jumlah Total</td><td>Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}</td></tr></table>
+            <table style="width:100%;border-collapse:collapse;"><tr class="summary-row total"><td>Jumlah total</td><td>Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}</td></tr></table>
             <div class="paid-list">
                 @forelse($verifiedPayments as $payment)
                 <div class="paid-item table"><div class="cell">{{ \App\Models\Payment::typeLabel($payment->type) }}</div><div class="cell">Rp {{ number_format($payment->amount, 0, ',', '.') }}</div></div>
@@ -133,7 +162,7 @@
                 <div class="paid-empty">Belum ada pembayaran terverifikasi.</div>
                 @endforelse
             </div>
-            <table style="width:100%;border-collapse:collapse;"><tr class="summary-row due"><td>Sisa Tagihan</td><td>Rp {{ number_format($invoice->remaining_amount, 0, ',', '.') }}</td></tr></table>
+            <table style="width:100%;border-collapse:collapse;"><tr class="summary-row due"><td>Sisa tagihan</td><td>Rp {{ number_format($invoice->remaining_amount, 0, ',', '.') }}</td></tr></table>
         </div>
     </div>
 

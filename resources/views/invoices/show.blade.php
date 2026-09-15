@@ -58,7 +58,15 @@
     .invoice-table .text-right { text-align: right; }
     .invoice-table .text-center { text-align: center; }
     .invoice-table td:last-child { color: var(--invoice-plum); font-weight: 800; }
-    .invoice-bottom { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 1rem; margin-top: 1rem; align-items: stretch; position: relative; z-index: 1; }
+    .invoice-table tr.invoice-line--discount td { background: #fff0f6; color: #9d315f; font-weight: 700; }
+    .invoice-table tr.invoice-line--discount td:last-child { color: #b4235d; }
+    .invoice-bottom-left { display: flex; min-width: 0; flex-direction: column; justify-content: flex-end; gap: .75rem; }
+    .invoice-bonus-box { padding: 1.1rem; border: 1px solid #ead6e1; border-radius: 1rem; background: #fff; }
+    .invoice-bonus-heading { padding: .35rem 0 .65rem; border-bottom: 2px solid #d4b896; color: var(--invoice-ink); font-size: .76rem; font-weight: 800; }
+    .invoice-bonus-list { margin-top: .75rem; }
+    .invoice-bonus-row { display: flex; justify-content: space-between; gap: .75rem; padding: .35rem 0; color: var(--invoice-muted); font-size: .76rem; }
+    .invoice-bonus-row strong { color: var(--invoice-ink); white-space: nowrap; }
+    .invoice-bottom { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 1rem; margin-top: 1rem; align-items: stretch; position: relative; z-index: 1; }
     .invoice-note { display: flex; align-items: flex-end; padding: .8rem .2rem; color: var(--invoice-muted); font-size: .72rem; line-height: 1.55; white-space: pre-line; }
     .invoice-totals { padding: 1.1rem; border-radius: 1rem; background: #fff; border: 1px solid #ead6e1; }
     .invoice-total-row { display: flex; justify-content: space-between; gap: 1rem; padding: .35rem 0; color: var(--invoice-muted); font-size: .76rem; }
@@ -102,7 +110,7 @@
     @media (max-width: 1023px) { .invoice-layout { grid-template-columns: 1fr; } }
     @media (max-width: 639px) { .invoice-sheet { padding: 1.1rem; border-radius: 1.15rem; } .invoice-masthead { flex-direction: column; } .invoice-heading { text-align: left; } .invoice-heading h2 { font-size: 1.65rem; } .invoice-meta-grid, .invoice-event-grid, .invoice-bottom, .invoice-finance-grid { grid-template-columns: 1fr; } .invoice-table { min-width: 510px; } .invoice-service-box { overflow-x: auto; } }
     @media print {
-        @page { size: A4; margin: 10mm; }
+        @page { size: A4; margin: 4mm; }
         body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         #sidebar, #sidebarOverlay, .invoice-screen-header, .invoice-cancel-alert,
         body > div.min-h-screen > header, body > div.min-h-screen > .fixed,
@@ -110,7 +118,7 @@
         body > div.min-h-screen { margin-left: 0 !important; min-height: 0 !important; }
         body > div.min-h-screen > main { padding: 0 !important; }
         .invoice-layout { display: block !important; }
-        .invoice-sheet { width: 100%; border-radius: 0 !important; box-shadow: none !important; }
+        .invoice-sheet { width: 100%; padding: 1rem; border-radius: 0 !important; box-shadow: none !important; }
         .invoice-sheet::after { display: none; }
         .invoice-due-date-editor { display: none !important; }
     }
@@ -124,6 +132,7 @@
     $invoiceGreeting = $settings['invoice_greeting'] ?? 'Terima kasih telah mempercayakan momen spesial Anda kepada ANITA. Invoice ini mengikuti status pembayaran yang sudah diverifikasi.';
     $payments = $booking->payments->sortBy('created_at');
     $verifiedPayments = $payments->where('status', 'verified');
+    $bonuses = collect($booking->bonuses ?? [])->filter(fn (array $bonus) => filled($bonus['note'] ?? null));
 @endphp
 
 <div class="invoice-screen-header">
@@ -216,8 +225,14 @@
                         <thead><tr><th>Layanan</th><th class="text-center">Qty</th><th class="text-right">Harga</th><th class="text-right">Total</th></tr></thead>
                         <tbody>
                             @foreach($invoice->items ?? [] as $item)
-                            @php $itemPrice = (float) ($item['price'] ?? 0); $itemTotal = (float) ($item['total'] ?? 0); @endphp
-                            <tr><td>{{ $item['name'] }}</td><td class="text-center">{{ $item['quantity'] ?? 1 }}</td><td class="text-right">{{ $itemPrice < 0 ? '-Rp ' : 'Rp ' }}{{ number_format(abs($itemPrice), 0, ',', '.') }}</td><td class="text-right">{{ $itemTotal < 0 ? '-Rp ' : 'Rp ' }}{{ number_format(abs($itemTotal), 0, ',', '.') }}</td></tr>
+                            @php
+                                $itemPrice = (float) ($item['price'] ?? 0);
+                                $itemTotal = (float) ($item['total'] ?? 0);
+                                $itemName = $item['name'] ?? '';
+                                $isDiscount = $itemTotal < 0 || str_starts_with($itemName, 'Diskon');
+                                $displayName = $isDiscount ? preg_replace('/^Diskon\s*[—-]\s*/u', '', $itemName) : $itemName;
+                            @endphp
+                            <tr @class(['invoice-line--discount' => $isDiscount])><td>{{ $displayName }}</td><td class="text-center">{{ $item['quantity'] ?? 1 }}</td><td class="text-right">{{ $itemPrice < 0 ? '-Rp ' : 'Rp ' }}{{ number_format(abs($itemPrice), 0, ',', '.') }}</td><td class="text-right">{{ $itemTotal < 0 ? '-Rp ' : 'Rp ' }}{{ number_format(abs($itemTotal), 0, ',', '.') }}</td></tr>
                             @endforeach
                         </tbody>
                     </table>
@@ -225,7 +240,19 @@
             </section>
 
             <div class="invoice-bottom">
+                <div class="invoice-bottom-left">
+                    @if($bonuses->isNotEmpty())
+                    <section class="invoice-bonus-box">
+                        <div class="invoice-bonus-heading">Bonus</div>
+                        <div class="invoice-bonus-list">
+                            @foreach($bonuses as $bonus)
+                            <div class="invoice-bonus-row"><span>{{ $bonus['note'] }}</span><strong>Rp {{ number_format($bonus['amount'] ?? 0, 0, ',', '.') }}</strong></div>
+                            @endforeach
+                        </div>
+                    </section>
+                    @endif
                     <div class="invoice-note">{{ $invoiceGreeting }}</div>
+                </div>
                 <section class="invoice-totals">
                     <div class="invoice-total-row invoice-total-row--grand"><span>Jumlah total</span><strong>Rp {{ number_format($invoice->total_amount, 0, ',', '.') }}</strong></div>
                     <div class="invoice-paid-list">
