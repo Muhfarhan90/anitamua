@@ -146,6 +146,7 @@ class FinanceController extends Controller
     {
         $payments = Payment::with('booking')
             ->where('status', Payment::STATUS_VERIFIED)
+            ->whereHas('booking', fn ($query) => $query->where('status', '!=', Booking::STATUS_CANCELLED))
             ->get()
             ->map(function (Payment $payment) {
                 $date = $payment->paid_at ?? $payment->verified_at ?? $payment->created_at;

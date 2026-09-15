@@ -2134,7 +2134,27 @@ it('calculates finance from verified payments and booking vendor prices', functi
     $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
     $booking = Booking::firstOrFail();
     $year = now()->year;
-    $expectedIncome = (float) Payment::where('status', Payment::STATUS_VERIFIED)->sum('amount');
+    $cancelled = Booking::create([
+        'code' => Booking::generateCode(),
+        'client_id' => $booking->client_id,
+        'package_id' => $booking->package_id,
+        'package_price' => $booking->package_price,
+        'name' => 'Booking Dibatalkan',
+        'phone' => '081200000001',
+        'email' => 'cancelled-finance@example.com',
+        'event_date' => now()->addMonth()->toDateString(),
+        'status' => Booking::STATUS_CANCELLED,
+    ]);
+    $cancelled->payments()->create([
+        'type' => 'DP1',
+        'amount' => 999999,
+        'method' => 'transfer',
+        'status' => Payment::STATUS_VERIFIED,
+        'paid_at' => now(),
+    ]);
+    $expectedIncome = (float) Payment::where('status', Payment::STATUS_VERIFIED)
+        ->whereHas('booking', fn ($query) => $query->where('status', '!=', Booking::STATUS_CANCELLED))
+        ->sum('amount');
     $expectedVendorExpense = (float) $booking->bookingVendors()
         ->where('status', '!=', 'cancelled')
         ->whereNotNull('price')
