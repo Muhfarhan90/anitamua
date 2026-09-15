@@ -79,8 +79,11 @@ class FieldWorkController extends Controller
         $data = $request->validate([
             'booking_id' => ['required', 'exists:bookings,id'],
             'wedding_stage_id' => ['nullable', 'exists:wedding_stages,id'],
+            'wedding_stage_photo_path' => ['nullable', 'string', 'max:2048'],
             'tent_id' => ['nullable', 'exists:tents,id'],
+            'tent_photo_path' => ['nullable', 'string', 'max:2048'],
             'entrance_gate_id' => ['nullable', 'exists:entrance_gates,id'],
+            'entrance_gate_photo_path' => ['nullable', 'string', 'max:2048'],
             'flower_color' => ['nullable', 'string', 'max:255'],
             'stage_size' => ['nullable', 'string', 'max:255'],
             'stage_size_other' => ['nullable', 'string', 'max:255'],
@@ -162,6 +165,18 @@ class FieldWorkController extends Controller
         if ($entranceGate && ! $entranceGate->is_active && $existing?->entrance_gate_id !== $entranceGate->id) {
             throw ValidationException::withMessages(['entrance_gate_id' => 'Gapura yang tidak aktif tidak dapat dipilih.']);
         }
+
+        $data['wedding_stage_photo_path'] = $this->selectedMasterPhotoPath(
+            $weddingStage,
+            $data['wedding_stage_photo_path'] ?? null,
+            'wedding_stage_photo_path',
+        );
+        $data['tent_photo_path'] = $this->selectedMasterPhotoPath($tent, $data['tent_photo_path'] ?? null, 'tent_photo_path');
+        $data['entrance_gate_photo_path'] = $this->selectedMasterPhotoPath(
+            $entranceGate,
+            $data['entrance_gate_photo_path'] ?? null,
+            'entrance_gate_photo_path',
+        );
 
         $survey = DB::transaction(function () use ($request, $data, $existing) {
             $data['tent_sizes'] = array_values($data['tent_sizes'] ?? []);
@@ -255,6 +270,25 @@ class FieldWorkController extends Controller
     // {
     //     abort_unless($booking->isAssignedTo(auth()->user()), 403, 'Anda tidak memiliki akses ke tugas booking ini.');
     // }
+
+    private function selectedMasterPhotoPath(mixed $master, ?string $photoPath, string $field): ?string
+    {
+        if (! filled($photoPath)) {
+            return null;
+        }
+
+        $photos = collect($master?->photos ?: array_filter([$master?->photo_path]))
+            ->filter()
+            ->values();
+
+        if (! $master || ! $photos->contains($photoPath)) {
+            throw ValidationException::withMessages([
+                $field => 'Foto pilihan harus berasal dari data master yang dipilih.',
+            ]);
+        }
+
+        return $photoPath;
+    }
 
     private function storeFiles(Request $request, string $key, bool $isImage = true): array
     {

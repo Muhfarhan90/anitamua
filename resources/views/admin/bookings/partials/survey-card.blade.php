@@ -13,6 +13,19 @@
     $selectedWeddingStage = $weddingStages->firstWhere('id', (int) $value('wedding_stage_id'));
     $selectedTent = $tents->firstWhere('id', (int) $value('tent_id'));
     $selectedEntranceGate = $entranceGates->firstWhere('id', (int) $value('entrance_gate_id'));
+    $masterPhotos = function ($master): array {
+        return collect($master?->photos ?: array_filter([$master?->photo_path]))
+            ->filter()
+            ->map(fn (string $path) => [
+                'path' => $path,
+                'url' => str_starts_with($path, 'http') ? $path : asset('storage/'.$path),
+            ])
+            ->values()
+            ->all();
+    };
+    $selectedWeddingStagePhotos = $masterPhotos($selectedWeddingStage);
+    $selectedTentPhotos = $masterPhotos($selectedTent);
+    $selectedEntranceGatePhotos = $masterPhotos($selectedEntranceGate);
     $equipmentFields = [
         'gallery_booth' => 'Galery booth', 'envelope_box' => 'Kotak amplop', 'fruit_shed' => 'Saung buah',
         'akad_table' => 'Meja akad', 'diesel_lights' => 'Diesel + lampu', 'photo_stand' => 'Stand photo',
@@ -58,24 +71,29 @@
         <section class="border-t border-gray-100 pt-4">
             <div class="flex items-center gap-3 mb-4"><span class="w-7 h-7 rounded-lg bg-brand-50 text-brand flex items-center justify-center text-xs font-bold">02</span><div><h4 class="font-semibold text-gray-800">Dekorasi utama</h4><p class="text-xs text-gray-400">Pilihan jenis dan detail pelaminan.</p></div></div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div data-master-photo-field>
+                <div data-master-photo-field data-master-photo-name="{{ $fieldName('wedding_stage_photo_path') }}" data-master-selected-photo="{{ $value('wedding_stage_photo_path') }}">
                     <x-select name="{{ $fieldName('wedding_stage_id') }}" label="Jenis Pelaminan" data-master-photo-select>
                         <option value="">— Pilih Jenis Pelaminan —</option>
                         @foreach($weddingStages as $weddingStage)
-                            <option value="{{ $weddingStage->id }}" data-photos="{{ base64_encode(json_encode($weddingStage->photo_urls)) }}" @selected((string) $value('wedding_stage_id') === (string) $weddingStage->id)>{{ $weddingStage->name }}{{ !$weddingStage->is_active ? ' (nonaktif)' : '' }}</option>
+                            <option value="{{ $weddingStage->id }}" data-photos="{{ base64_encode(json_encode($masterPhotos($weddingStage))) }}" @selected((string) $value('wedding_stage_id') === (string) $weddingStage->id)>{{ $weddingStage->name }}{{ !$weddingStage->is_active ? ' (nonaktif)' : '' }}</option>
                         @endforeach
                     </x-select>
-                    <div class="{{ $selectedWeddingStage?->photo_urls ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview>
+                    <div class="{{ $selectedWeddingStagePhotos ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-3" data-master-photo-preview>
                         <div class="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto" data-master-photo-preview-images>
-                            @foreach(array_slice($selectedWeddingStage?->photo_urls ?? [], 0, 1) as $photoUrl)
-                                <button type="button" onclick="openProof(event, this.dataset.photoUrl)" data-photo-url="{{ $photoUrl }}" aria-label="Perbesar foto pelaminan {{ $loop->iteration }}" class="block w-full cursor-zoom-in">
-                                    <img src="{{ $photoUrl }}" alt="Foto pelaminan {{ $loop->iteration }}" class="h-24 w-full rounded-lg border border-gray-100 object-cover">
-                                </button>
+                            @foreach($selectedWeddingStagePhotos as $photo)
+                                <label class="block cursor-pointer">
+                                    <input type="radio" name="{{ $fieldName('wedding_stage_photo_path') }}" value="{{ $photo['path'] }}" @checked($value('wedding_stage_photo_path') === $photo['path']) class="peer sr-only">
+                                    <span class="relative block overflow-hidden rounded-lg border-2 border-transparent bg-white p-1 transition peer-checked:border-brand peer-checked:ring-2 peer-checked:ring-brand-200">
+                                        <img src="{{ $photo['url'] }}" alt="Foto pelaminan {{ $loop->iteration }}" class="h-24 w-full rounded-md object-cover">
+                                        <span class="absolute right-2 top-2 hidden h-5 w-5 items-center justify-center rounded-full bg-brand text-xs text-white shadow peer-checked:flex"><i class="fas fa-check"></i></span>
+                                    </span>
+                                </label>
                             @endforeach
                         </div>
-                        <p class="mt-2 text-xs text-gray-500" data-master-photo-preview-count>{{ count($selectedWeddingStage?->photo_urls ?? []) }} foto pelaminan</p>
+                        <p class="mt-2 text-xs text-gray-500" data-master-photo-preview-count>Pilih satu dari {{ count($selectedWeddingStagePhotos) }} foto pelaminan.</p>
                     </div>
                     @error($fieldName('wedding_stage_id'))<p class="mt-1 text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
+                    @error($fieldName('wedding_stage_photo_path'))<p class="mt-1 text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
                 </div>
                 <x-input name="{{ $fieldName('flower_color') }}" label="Warna Bunga" :value="$value('flower_color')" placeholder="Contoh: putih dan sage" />
                 <x-input name="{{ $fieldName('fabric_color') }}" label="Warna Kain" :value="$value('fabric_color')" placeholder="Contoh: dusty pink" />
@@ -86,22 +104,27 @@
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
                 <div><p class="text-sm font-medium text-gray-600 mb-2">Panggung</p><div class="flex flex-wrap gap-2">@foreach(['Melamin', 'Karpet permadani', 'Karpet warna', 'Lainnya'] as $option)<label class="inline-flex items-center gap-2 text-sm text-gray-600"><input type="radio" name="{{ $fieldName('stage_option') }}" value="{{ $option }}" data-other-group="stage_option" @checked($value('stage_option') === $option) class="text-brand focus:ring-brand">{{ $option }}</label>@endforeach</div><div data-other-wrapper="stage_option" class="{{ $value('stage_option') === 'Lainnya' ? '' : 'hidden' }} mt-2"><input name="{{ $fieldName('stage_option_other') }}" value="{{ $value('stage_option_other') }}" {{ $value('stage_option') === 'Lainnya' ? '' : 'disabled' }} class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm" placeholder="Keterangan panggung lainnya"></div></div>
-                <div data-master-photo-field>
+                <div data-master-photo-field data-master-photo-name="{{ $fieldName('tent_photo_path') }}" data-master-selected-photo="{{ $value('tent_photo_path') }}">
                     <x-select name="{{ $fieldName('tent_id') }}" label="Model Tenda" data-master-photo-select>
                         <option value="">— Pilih Model Tenda —</option>
-                        @foreach($tents as $tent)<option value="{{ $tent->id }}" data-photos="{{ base64_encode(json_encode($tent->photo_urls)) }}" @selected((string) $value('tent_id') === (string) $tent->id)>{{ $tent->name }}{{ !$tent->is_active ? ' (nonaktif)' : '' }}</option>@endforeach
+                        @foreach($tents as $tent)<option value="{{ $tent->id }}" data-photos="{{ base64_encode(json_encode($masterPhotos($tent))) }}" @selected((string) $value('tent_id') === (string) $tent->id)>{{ $tent->name }}{{ !$tent->is_active ? ' (nonaktif)' : '' }}</option>@endforeach
                     </x-select>
-                    <div class="{{ $selectedTent?->photo_urls ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview>
+                    <div class="{{ $selectedTentPhotos ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-3" data-master-photo-preview>
                         <div class="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto" data-master-photo-preview-images>
-                            @foreach(array_slice($selectedTent?->photo_urls ?? [], 0, 1) as $photoUrl)
-                                <button type="button" onclick="openProof(event, this.dataset.photoUrl)" data-photo-url="{{ $photoUrl }}" aria-label="Perbesar foto tenda {{ $loop->iteration }}" class="block w-full cursor-zoom-in">
-                                    <img src="{{ $photoUrl }}" alt="Foto tenda {{ $loop->iteration }}" class="h-24 w-full rounded-lg border border-gray-100 object-cover">
-                                </button>
+                            @foreach($selectedTentPhotos as $photo)
+                                <label class="block cursor-pointer">
+                                    <input type="radio" name="{{ $fieldName('tent_photo_path') }}" value="{{ $photo['path'] }}" @checked($value('tent_photo_path') === $photo['path']) class="peer sr-only">
+                                    <span class="relative block overflow-hidden rounded-lg border-2 border-transparent bg-white p-1 transition peer-checked:border-brand peer-checked:ring-2 peer-checked:ring-brand-200">
+                                        <img src="{{ $photo['url'] }}" alt="Foto tenda {{ $loop->iteration }}" class="h-24 w-full rounded-md object-cover">
+                                        <span class="absolute right-2 top-2 hidden h-5 w-5 items-center justify-center rounded-full bg-brand text-xs text-white shadow peer-checked:flex"><i class="fas fa-check"></i></span>
+                                    </span>
+                                </label>
                             @endforeach
                         </div>
-                        <p class="mt-2 text-xs text-gray-500" data-master-photo-preview-count>{{ count($selectedTent?->photo_urls ?? []) }} foto tenda</p>
+                        <p class="mt-2 text-xs text-gray-500" data-master-photo-preview-count>Pilih satu dari {{ count($selectedTentPhotos) }} foto tenda.</p>
                     </div>
                     @error($fieldName('tent_id'))<p class="mt-1 text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
+                    @error($fieldName('tent_photo_path'))<p class="mt-1 text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
                 </div>
             </div>
         </section>
@@ -138,22 +161,27 @@
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-                <div data-master-photo-field>
+                <div data-master-photo-field data-master-photo-name="{{ $fieldName('entrance_gate_photo_path') }}" data-master-selected-photo="{{ $value('entrance_gate_photo_path') }}">
                     <x-select name="{{ $fieldName('entrance_gate_id') }}" label="Pintu Masuk" data-master-photo-select>
                         <option value="">— Pilih Model Gapura —</option>
-                        @foreach($entranceGates as $gate)<option value="{{ $gate->id }}" data-photos="{{ base64_encode(json_encode($gate->photo_urls)) }}" @selected((string) $value('entrance_gate_id') === (string) $gate->id)>{{ $gate->name }}{{ !$gate->is_active ? ' (nonaktif)' : '' }}</option>@endforeach
+                        @foreach($entranceGates as $gate)<option value="{{ $gate->id }}" data-photos="{{ base64_encode(json_encode($masterPhotos($gate))) }}" @selected((string) $value('entrance_gate_id') === (string) $gate->id)>{{ $gate->name }}{{ !$gate->is_active ? ' (nonaktif)' : '' }}</option>@endforeach
                     </x-select>
-                    <div class="{{ $selectedEntranceGate?->photo_urls ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview>
+                    <div class="{{ $selectedEntranceGatePhotos ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-3" data-master-photo-preview>
                         <div class="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto" data-master-photo-preview-images>
-                            @foreach(array_slice($selectedEntranceGate?->photo_urls ?? [], 0, 1) as $photoUrl)
-                                <button type="button" onclick="openProof(event, this.dataset.photoUrl)" data-photo-url="{{ $photoUrl }}" aria-label="Perbesar foto gapura {{ $loop->iteration }}" class="block w-full cursor-zoom-in">
-                                    <img src="{{ $photoUrl }}" alt="Foto gapura {{ $loop->iteration }}" class="h-24 w-full rounded-lg border border-gray-100 object-cover">
-                                </button>
+                            @foreach($selectedEntranceGatePhotos as $photo)
+                                <label class="block cursor-pointer">
+                                    <input type="radio" name="{{ $fieldName('entrance_gate_photo_path') }}" value="{{ $photo['path'] }}" @checked($value('entrance_gate_photo_path') === $photo['path']) class="peer sr-only">
+                                    <span class="relative block overflow-hidden rounded-lg border-2 border-transparent bg-white p-1 transition peer-checked:border-brand peer-checked:ring-2 peer-checked:ring-brand-200">
+                                        <img src="{{ $photo['url'] }}" alt="Foto gapura {{ $loop->iteration }}" class="h-24 w-full rounded-md object-cover">
+                                        <span class="absolute right-2 top-2 hidden h-5 w-5 items-center justify-center rounded-full bg-brand text-xs text-white shadow peer-checked:flex"><i class="fas fa-check"></i></span>
+                                    </span>
+                                </label>
                             @endforeach
                         </div>
-                        <p class="mt-2 text-xs text-gray-500" data-master-photo-preview-count>{{ count($selectedEntranceGate?->photo_urls ?? []) }} foto gapura</p>
+                        <p class="mt-2 text-xs text-gray-500" data-master-photo-preview-count>Pilih satu dari {{ count($selectedEntranceGatePhotos) }} foto gapura.</p>
                     </div>
                     @error($fieldName('entrance_gate_id'))<p class="mt-1 text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
+                    @error($fieldName('entrance_gate_photo_path'))<p class="mt-1 text-xs text-red-600"><i class="fas fa-circle-exclamation mr-1"></i>{{ $message }}</p>@enderror
                 </div>
                 @foreach(['buffet' => ['Prasmanan', ['Standar', 'Rolltop', 'Lainnya']], 'tableware' => ['Piring / Sendok / Garpu', ['Keramik', 'Rotan', 'Lainnya']]] as $field => [$label, $options])
                 <div><p class="text-sm font-medium text-gray-600 mb-2">{{ $label }}</p><div class="flex flex-wrap gap-2">@foreach($options as $option)<label class="inline-flex items-center gap-2 text-sm text-gray-600"><input type="radio" name="{{ $fieldName($field) }}" value="{{ $option }}" data-other-group="{{ $field }}" @checked($value($field) === $option) class="text-brand focus:ring-brand">{{ $option }}</label>@endforeach</div><div data-other-wrapper="{{ $field }}" class="{{ $value($field) === 'Lainnya' ? '' : 'hidden' }} mt-2"><input name="{{ $fieldName($field.'_other') }}" value="{{ $value($field.'_other') }}" {{ $value($field) === 'Lainnya' ? '' : 'disabled' }} class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm" placeholder="Keterangan lainnya"></div></div>
@@ -221,7 +249,7 @@
 
                     function syncMasterPreview() {
                         const option = select.selectedOptions[0];
-                        const label = option?.textContent.trim() || 'Preview pelaminan';
+                        const label = option?.textContent.trim() || 'foto master';
                         let photos = [];
 
                         try {
@@ -231,28 +259,48 @@
                         }
 
                         if (!Array.isArray(photos)) photos = [];
-                        photos = photos.slice(0, 1);
+                        photos = photos.filter(photo => photo && (typeof photo === 'string' || (photo.path && photo.url)));
 
                         images.replaceChildren(...photos.map(function (photo, index) {
-                            const button = document.createElement('button');
-                            button.type = 'button';
-                            button.className = 'block w-full cursor-zoom-in';
-                            button.setAttribute('aria-label', `Perbesar ${label}, foto ${index + 1}`);
-                            button.addEventListener('click', event => openProof(event, photo));
+                            const item = typeof photo === 'string' ? { path: photo, url: photo } : photo;
+                            const choice = document.createElement('label');
+                            choice.className = 'block cursor-pointer';
+
+                            const input = document.createElement('input');
+                            input.type = 'radio';
+                            input.name = field.dataset.masterPhotoName;
+                            input.value = item.path;
+                            input.checked = field.dataset.masterSelectedPhoto === item.path;
+                            input.className = 'peer sr-only';
+                            input.addEventListener('change', function () {
+                                field.dataset.masterSelectedPhoto = input.value;
+                            });
+
+                            const frame = document.createElement('span');
+                            frame.className = 'relative block overflow-hidden rounded-lg border-2 border-transparent bg-white p-1 transition peer-checked:border-brand peer-checked:ring-2 peer-checked:ring-brand-200';
 
                             const image = document.createElement('img');
-                            image.src = photo;
+                            image.src = item.url;
                             image.alt = `${label} - foto ${index + 1}`;
-                            image.className = 'h-24 w-full rounded-lg border border-gray-100 object-cover';
-                            button.append(image);
+                            image.className = 'h-24 w-full rounded-md object-cover';
 
-                            return button;
+                            const check = document.createElement('span');
+                            check.className = 'absolute right-2 top-2 hidden h-5 w-5 items-center justify-center rounded-full bg-brand text-xs text-white shadow peer-checked:flex';
+                            check.innerHTML = '<i class="fas fa-check"></i>';
+
+                            frame.append(image, check);
+                            choice.append(input, frame);
+
+                            return choice;
                         }));
                         preview.classList.toggle('hidden', photos.length === 0);
-                        if (count) count.textContent = photos.length ? 'Foto utama' : '';
+                        if (count) count.textContent = photos.length ? `Pilih satu dari ${photos.length} foto ${label}.` : '';
                     }
 
-                    select.addEventListener('change', syncMasterPreview);
+                    select.addEventListener('change', function () {
+                        field.dataset.masterSelectedPhoto = '';
+                        syncMasterPreview();
+                    });
                     syncMasterPreview();
                 });
 

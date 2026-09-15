@@ -854,12 +854,34 @@ class BookingManagementController extends Controller
             ->all();
     }
 
+    private function selectedMasterPhotoPath(mixed $master, ?string $photoPath, string $field): ?string
+    {
+        if (! filled($photoPath)) {
+            return null;
+        }
+
+        $photos = collect($master?->photos ?: array_filter([$master?->photo_path]))
+            ->filter()
+            ->values();
+
+        if (! $master || ! $photos->contains($photoPath)) {
+            throw ValidationException::withMessages([
+                $field => 'Foto pilihan harus berasal dari data master yang dipilih.',
+            ]);
+        }
+
+        return $photoPath;
+    }
+
     private function bookingSurveyRules(): array
     {
         $rules = [
             'survey_wedding_stage_id' => ['nullable', 'exists:wedding_stages,id'],
+            'survey_wedding_stage_photo_path' => ['nullable', 'string', 'max:2048'],
             'survey_tent_id' => ['nullable', 'exists:tents,id'],
+            'survey_tent_photo_path' => ['nullable', 'string', 'max:2048'],
             'survey_entrance_gate_id' => ['nullable', 'exists:entrance_gates,id'],
+            'survey_entrance_gate_photo_path' => ['nullable', 'string', 'max:2048'],
             'survey_flower_color' => ['nullable', 'string', 'max:255'],
             'survey_stage_size' => ['nullable', 'string', 'max:255'],
             'survey_stage_size_other' => ['nullable', 'string', 'max:255'],
@@ -942,7 +964,8 @@ class BookingManagementController extends Controller
     private function saveBookingFieldwork(Request $request, Booking $booking): void
     {
         $surveyFields = [
-            'location', 'maps_url', 'pic', 'notes', 'wedding_stage_id', 'tent_id', 'entrance_gate_id', 'flower_color',
+            'location', 'maps_url', 'pic', 'notes', 'wedding_stage_id', 'wedding_stage_photo_path',
+            'tent_id', 'tent_photo_path', 'entrance_gate_id', 'entrance_gate_photo_path', 'flower_color',
             'stage_size', 'stage_size_other', 'chair_option', 'chair_option_other',
             'stage_option', 'stage_option_other', 'fabric_color', 'tent_sizes',
             'tent_size_quantities', 'tent_sizes_other', 'tent_additions',
@@ -994,6 +1017,21 @@ class BookingManagementController extends Controller
                     $surveyData[$field] = $request->input('survey_'.$field);
                 }
             }
+            $surveyData['wedding_stage_photo_path'] = $this->selectedMasterPhotoPath(
+                $stage,
+                $surveyData['wedding_stage_photo_path'],
+                'survey_wedding_stage_photo_path',
+            );
+            $surveyData['tent_photo_path'] = $this->selectedMasterPhotoPath(
+                $tent,
+                $surveyData['tent_photo_path'],
+                'survey_tent_photo_path',
+            );
+            $surveyData['entrance_gate_photo_path'] = $this->selectedMasterPhotoPath(
+                $entranceGate,
+                $surveyData['entrance_gate_photo_path'],
+                'survey_entrance_gate_photo_path',
+            );
             $surveyData['photos'] = array_merge($existingSurvey?->photos ?? [], $this->storeBookingFiles($request, 'survey_photos'));
             $surveyData['videos'] = array_merge($existingSurvey?->videos ?? [], $this->storeBookingFiles($request, 'survey_videos', false));
             $surveyData['created_by'] = auth()->id();

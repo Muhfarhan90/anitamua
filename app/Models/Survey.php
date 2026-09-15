@@ -13,7 +13,8 @@ class Survey extends Model
     protected $fillable = [
         'booking_id', 'location', 'maps_url', 'pic',
         'notes', 'photos', 'videos', 'created_by',
-        'wedding_stage_id', 'tent_id', 'entrance_gate_id', 'flower_color', 'stage_size', 'stage_size_other',
+        'wedding_stage_id', 'wedding_stage_photo_path', 'tent_id', 'tent_photo_path',
+        'entrance_gate_id', 'entrance_gate_photo_path', 'flower_color', 'stage_size', 'stage_size_other',
         'chair_option', 'chair_option_other', 'stage_option', 'stage_option_other',
         'fabric_color', 'tent_sizes', 'tent_sizes_other', 'tent_additions',
         'tent_size_quantities', 'tent_addition_quantities', 'tent_additions_other', 'tent_shape', 'tent_shape_other', 'entrance',

@@ -27,6 +27,9 @@
 
         return $values ? implode(', ', $values) : '-';
     };
+    $masterPhotoUrl = fn (?string $path) => $path
+        ? (str_starts_with($path, 'http') ? $path : asset('storage/'.$path))
+        : null;
 @endphp
 
 <x-card title="Data Survey" title-icon="fa-map-location-dot" data-summary-collapse>
@@ -64,23 +67,19 @@
             </div>
             @php
                 $masterPhotoGroups = [
-                    ['label' => 'Pelaminan', 'item' => $survey->weddingStage],
-                    ['label' => 'Tenda', 'item' => $survey->tent],
-                    ['label' => 'Gapura', 'item' => $survey->entranceGate],
+                    ['label' => 'Pelaminan', 'item' => $survey->weddingStage, 'photo_path' => $survey->wedding_stage_photo_path],
+                    ['label' => 'Tenda', 'item' => $survey->tent, 'photo_path' => $survey->tent_photo_path],
+                    ['label' => 'Gapura', 'item' => $survey->entranceGate, 'photo_path' => $survey->entrance_gate_photo_path],
                 ];
             @endphp
             <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                 @foreach($masterPhotoGroups as $photoGroup)
-                    @if($photoGroup['item']?->photo_urls)
+                    @if($photoGroup['item'] && $photoGroup['photo_path'])
                         <div class="rounded-xl bg-gray-50/70 p-3">
-                            <p class="text-xs font-medium text-gray-500">{{ $photoGroup['label'] }} — {{ $photoGroup['item']->name }}</p>
-                            <div class="mt-2 grid grid-cols-3 gap-2">
-                                @foreach($photoGroup['item']->photo_urls as $photoUrl)
-                                    <a href="{{ $photoUrl }}" onclick="openProof(event, this.href)" aria-label="Perbesar foto {{ $photoGroup['label'] }} {{ $loop->iteration }}" class="cursor-zoom-in">
-                                        <img src="{{ $photoUrl }}" alt="{{ $photoGroup['label'] }} - {{ $photoGroup['item']->name }} - foto {{ $loop->iteration }}" class="h-20 w-full rounded-lg object-cover">
-                                    </a>
-                                @endforeach
-                            </div>
+                            <p class="text-xs font-medium text-gray-500">{{ $photoGroup['label'] }} pilihan — {{ $photoGroup['item']->name }}</p>
+                            <a href="{{ $masterPhotoUrl($photoGroup['photo_path']) }}" onclick="openProof(event, this.href)" aria-label="Perbesar foto {{ $photoGroup['label'] }} pilihan" class="mt-2 block cursor-zoom-in">
+                                <img src="{{ $masterPhotoUrl($photoGroup['photo_path']) }}" alt="{{ $photoGroup['label'] }} pilihan - {{ $photoGroup['item']->name }}" class="h-32 w-full rounded-lg object-cover">
+                            </a>
                         </div>
                     @endif
                 @endforeach

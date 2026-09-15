@@ -242,15 +242,18 @@ it('team can save survey and fitting data', function () {
     Storage::fake('public');
     $team = User::where('email', 'team@anitamua.com')->first();
     $booking = Booking::first();
-    $weddingStage = WeddingStage::create(['name' => 'Garden Modern', 'is_active' => true]);
-    $tent = Tent::create(['name' => 'Tenda Garden', 'is_active' => true]);
-    $entranceGate = EntranceGate::create(['name' => 'Gapura Garden', 'is_active' => true]);
+    $weddingStage = WeddingStage::create(['name' => 'Garden Modern', 'photos' => ['uploads/stages/garden-1.jpg', 'uploads/stages/garden-2.jpg'], 'is_active' => true]);
+    $tent = Tent::create(['name' => 'Tenda Garden', 'photos' => ['uploads/tents/garden-1.jpg'], 'is_active' => true]);
+    $entranceGate = EntranceGate::create(['name' => 'Gapura Garden', 'photos' => ['uploads/gates/garden-1.jpg'], 'is_active' => true]);
 
     $this->actingAs($team)->post('/admin/fieldwork/survey', [
         'booking_id' => $booking->id,
         'wedding_stage_id' => $weddingStage->id,
+        'wedding_stage_photo_path' => 'uploads/stages/garden-2.jpg',
         'tent_id' => $tent->id,
+        'tent_photo_path' => 'uploads/tents/garden-1.jpg',
         'entrance_gate_id' => $entranceGate->id,
+        'entrance_gate_photo_path' => 'uploads/gates/garden-1.jpg',
         'flower_color' => 'Putih dan sage',
         'stage_size' => '6m',
         'tent_sizes' => ['4X6', '5X5'],
@@ -269,8 +272,11 @@ it('team can save survey and fitting data', function () {
     expect($survey)->not->toBeNull();
     expect($survey->location)->toBe('The Glass House');
     expect($survey->wedding_stage_id)->toBe($weddingStage->id);
+    expect($survey->wedding_stage_photo_path)->toBe('uploads/stages/garden-2.jpg');
     expect($survey->tent_id)->toBe($tent->id);
+    expect($survey->tent_photo_path)->toBe('uploads/tents/garden-1.jpg');
     expect($survey->entrance_gate_id)->toBe($entranceGate->id);
+    expect($survey->entrance_gate_photo_path)->toBe('uploads/gates/garden-1.jpg');
     expect($survey->tent_sizes)->toBe(['4X6', '5X5']);
     expect($survey->tent_size_quantities)->toBe(['4X6' => 2, '5X5' => 1]);
     expect($survey->tent_addition_quantities)->toBe(['4X4' => 1]);
@@ -438,6 +444,22 @@ it('rejects selecting an inactive decoration for a new survey', function () {
         'booking_id' => $booking->id,
         'wedding_stage_id' => $weddingStage->id,
     ])->assertSessionHasErrors('wedding_stage_id');
+});
+
+it('rejects a survey photo that does not belong to the selected master', function () {
+    $team = User::where('email', 'team@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+    $weddingStage = WeddingStage::create([
+        'name' => 'Dekor Pilihan',
+        'photos' => ['uploads/wedding-stages/dekor-pilihan.jpg'],
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($team)->post('/admin/fieldwork/survey', [
+        'booking_id' => $booking->id,
+        'wedding_stage_id' => $weddingStage->id,
+        'wedding_stage_photo_path' => 'uploads/wedding-stages/foto-lain.jpg',
+    ])->assertSessionHasErrors('wedding_stage_photo_path');
 });
 
 it('rejects inactive tent and entrance gate for a new survey', function () {
@@ -852,9 +874,9 @@ it('admin booking form saves survey and fitting details', function () {
     $admin = User::where('email', 'admin@anitamua.com')->first();
     $client = User::where('email', 'client@anitamua.com')->first();
     $package = Package::first();
-    $stage = WeddingStage::create(['name' => 'Classic White', 'is_active' => true]);
-    $tent = Tent::create(['name' => 'Sisir Premium', 'is_active' => true]);
-    $gate = EntranceGate::create(['name' => 'Lorong Bunga', 'is_active' => true]);
+    $stage = WeddingStage::create(['name' => 'Classic White', 'photos' => ['uploads/stages/classic-1.jpg'], 'is_active' => true]);
+    $tent = Tent::create(['name' => 'Sisir Premium', 'photos' => ['uploads/tents/sisir-1.jpg'], 'is_active' => true]);
+    $gate = EntranceGate::create(['name' => 'Lorong Bunga', 'photos' => ['uploads/gates/lorong-1.jpg'], 'is_active' => true]);
 
     $this->actingAs($admin)->post('/admin/bookings', [
         'client_mode' => 'existing',
@@ -864,8 +886,11 @@ it('admin booking form saves survey and fitting details', function () {
         'event_date' => now()->addMonths(3)->toDateString(),
         'dp1_amount' => 1000000,
         'survey_wedding_stage_id' => $stage->id,
+        'survey_wedding_stage_photo_path' => 'uploads/stages/classic-1.jpg',
         'survey_tent_id' => $tent->id,
+        'survey_tent_photo_path' => 'uploads/tents/sisir-1.jpg',
         'survey_entrance_gate_id' => $gate->id,
+        'survey_entrance_gate_photo_path' => 'uploads/gates/lorong-1.jpg',
         'survey_location' => 'Gedung Serbaguna',
         'survey_flower_color' => 'Putih',
         'survey_tent_sizes' => ['4X6', '5X5'],
@@ -885,8 +910,11 @@ it('admin booking form saves survey and fitting details', function () {
 
     $booking = Booking::where('client_id', $client->id)->latest('id')->firstOrFail();
     expect($booking->survey->wedding_stage_id)->toBe($stage->id);
+    expect($booking->survey->wedding_stage_photo_path)->toBe('uploads/stages/classic-1.jpg');
     expect($booking->survey->tent_id)->toBe($tent->id);
+    expect($booking->survey->tent_photo_path)->toBe('uploads/tents/sisir-1.jpg');
     expect($booking->survey->entrance_gate_id)->toBe($gate->id);
+    expect($booking->survey->entrance_gate_photo_path)->toBe('uploads/gates/lorong-1.jpg');
     expect($booking->survey->tent_sizes)->toBe(['4X6', '5X5']);
     expect($booking->survey->tent_size_quantities)->toBe(['4X6' => 2, '5X5' => 1]);
     expect($booking->fittings->first()->cpp_busana_akad_notes)->toBe('Jas hitam');
