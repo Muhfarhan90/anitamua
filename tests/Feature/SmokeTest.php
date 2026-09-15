@@ -2143,7 +2143,9 @@ it('calculates finance from verified payments and booking vendor prices', functi
 
     $response->assertOk();
     expect((float) $response->viewData('incomes'))->toBe($expectedIncome)
-        ->and((float) $response->viewData('expenses'))->toBe($expectedVendorExpense);
+        ->and((float) $response->viewData('expenses'))->toBe($expectedVendorExpense)
+        ->and($response->viewData('monthly')->every(fn (array $month) => $month['profit'] === $month['income'] - $month['expense']))->toBeTrue();
+    $response->assertSee("label: 'Profit'", false);
 });
 
 it('lists completed or fully paid bookings with contract income and vendor expenses', function () {
