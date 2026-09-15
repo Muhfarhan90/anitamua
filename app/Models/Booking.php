@@ -31,7 +31,7 @@ class Booking extends Model
     }
 
     protected $fillable = [
-        'code', 'client_id', 'package_id', 'package_price', 'discount_type', 'discount_value', 'name', 'phone', 'email', 'instagram', 'referral_source',
+        'code', 'client_id', 'package_id', 'package_price', 'discount_type', 'discount_value', 'discount_note', 'discounts', 'bonuses', 'name', 'phone', 'email', 'instagram', 'referral_source',
         'event_date', 'event_time', 'event_type', 'number_of_guests',
         'survey_date', 'fitting_date', 'location', 'notes',
         'status', 'cancelled_reason', 'cancelled_at', 'created_by',
@@ -42,6 +42,8 @@ class Booking extends Model
         return [
             'package_price' => 'decimal:2',
             'discount_value' => 'decimal:2',
+            'discounts' => 'array',
+            'bonuses' => 'array',
             'event_date' => 'date',
             'survey_date' => 'date',
             'fitting_date' => 'date',
@@ -168,14 +170,7 @@ class Booking extends Model
 
     public function getDiscountAmountAttribute(): float
     {
-        $value = max(0, (float) ($this->discount_value ?? 0));
-        $discount = match ($this->discount_type) {
-            'percentage' => $this->subtotal_price * min(100, $value) / 100,
-            'fixed' => $value,
-            default => 0,
-        };
-
-        return round(min($this->subtotal_price, $discount), 2);
+        return round(min($this->subtotal_price, collect($this->discount_line_items)->sum('amount')), 2);
     }
 
     public function getDiscountValueLabelAttribute(): string
@@ -185,9 +180,49 @@ class Booking extends Model
 
     public function getDiscountLabelAttribute(): string
     {
-        return $this->discount_type === 'percentage'
-            ? 'Diskon ('.$this->discount_value_label.'%)'
-            : 'Diskon';
+        return collect($this->discount_line_items)->pluck('label')->implode(', ');
+    }
+
+    public function getDiscountLinesAttribute(): array
+    {
+        $lines = collect($this->discounts ?? [])
+            ->map(function ($discount) {
+                return [
+                    'amount' => max(0, (float) ($discount['amount'] ?? 0)),
+                    'note' => trim((string) ($discount['note'] ?? '')) ?: null,
+                ];
+            })
+            ->filter(fn (array $discount) => $discount['amount'] > 0)
+            ->values();
+
+        if ($lines->isNotEmpty()) {
+            return $lines->all();
+        }
+
+        $value = max(0, (float) ($this->discount_value ?? 0));
+        if (! in_array($this->discount_type, ['percentage', 'fixed'], true) || $value <= 0) {
+            return [];
+        }
+
+        return [[
+            'amount' => $this->discount_type === 'percentage'
+                ? $this->subtotal_price * min(100, $value) / 100
+                : $value,
+            'note' => $this->discount_note,
+        ]];
+    }
+
+    public function getDiscountLineItemsAttribute(): array
+    {
+        return collect($this->discount_lines)
+            ->map(function (array $discount) {
+                return [
+                    ...$discount,
+                    'amount' => round($discount['amount'], 2),
+                    'label' => $discount['note'] ? 'Diskon — '.$discount['note'] : 'Diskon',
+                ];
+            })
+            ->all();
     }
 
     public function getIsBookedAttribute(): bool

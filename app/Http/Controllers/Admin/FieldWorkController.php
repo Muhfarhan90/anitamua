@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\EntranceGate;
 use App\Models\Fitting;
+use App\Models\Schedule;
 use App\Models\Survey;
 use App\Models\Tent;
 use App\Models\User;
@@ -18,10 +19,15 @@ use Illuminate\Validation\ValidationException;
 
 class FieldWorkController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $data = $request->validate(['date' => ['nullable', 'date']]);
         $query = Booking::with('package')
             ->where('status', '!=', Booking::STATUS_CANCELLED)
+            ->when($data['date'] ?? null, fn ($query, $date) => $query->whereHas('schedules', fn ($schedules) => $schedules
+                ->whereDate('date', $date)
+                ->whereIn('type', [Schedule::TYPE_SURVEY, Schedule::TYPE_FITTING, Schedule::TYPE_HARI_H])
+                ->where('status', '!=', Schedule::STATUS_CANCELLED)))
             ->orderByDesc('event_date');
 
         // Filter PIC dinonaktifkan agar semua akun Tim Lapangan melihat seluruh booking.

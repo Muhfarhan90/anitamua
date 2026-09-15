@@ -5,12 +5,14 @@ namespace Database\Seeders;
 use App\Models\Benefit;
 use App\Models\BenefitCategory;
 use App\Models\Package;
+use App\Models\PackageType;
 use Illuminate\Database\Seeder;
 
 class MakeupPackageSeeder extends Seeder
 {
     public function run(): void
     {
+        $packageTypeId = PackageType::firstOrCreate(['name' => 'Make Up & Attire'])->id;
         $benefitCategories = [
             'Makeup & Attire' => [
                 'Makeup Wedding (Tanpa retouch)',
@@ -117,6 +119,7 @@ class MakeupPackageSeeder extends Seeder
             $package = Package::create([
                 'name' => $data['name'],
                 'type' => 'makeup',
+                'package_type_id' => $packageTypeId,
                 'sub_type' => $data['sub_type'],
                 'price' => $data['price'],
                 'description' => 'Paket '.$data['name'].' dari ANITA Make Up Artist.',

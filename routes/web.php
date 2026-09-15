@@ -34,6 +34,7 @@ Route::get('/tentang', [LandingController::class, 'about'])->name('about');
 Route::get('/paket', [LandingController::class, 'packages'])->name('packages');
 Route::get('/galeri', [LandingController::class, 'gallery'])->name('gallery');
 Route::get('/dekor-tenda', [LandingController::class, 'decorTents'])->name('decor-tents');
+Route::get('/wardrobe', [LandingController::class, 'wardrobe'])->name('wardrobe');
 Route::get('/testimoni', [LandingController::class, 'testimonials'])->name('testimonials');
 Route::get('/faq', [LandingController::class, 'faq'])->name('faq');
 Route::get('/kontak', [LandingController::class, 'contact'])->name('contact');
@@ -84,6 +85,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/admin/survey', [FieldWorkController::class, 'surveyStore'])->name('admin.survey.store');
         Route::post('/admin/fitting', [FieldWorkController::class, 'fittingStore'])->name('admin.fitting.store');
         Route::get('/admin/inventory', [InventoryController::class, 'index'])->name('admin.inventory.index');
+        Route::patch('/admin/inventory/{item}/status', [InventoryController::class, 'updateStatus'])->name('admin.inventory.status.update');
 
         // Checklist Packing H-1 dari data fitting (Owner, Admin, Tim Lapangan)
         Route::get('/admin/bookings/{booking}/packing', [PackingController::class, 'show'])->name('admin.bookings.packing');
@@ -118,6 +120,12 @@ Route::middleware('auth')->group(function () {
             Route::patch('/invoices/{invoice}/due-date', [InvoiceController::class, 'updateDueDate'])->name('invoices.due-date.update');
             Route::get('/invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
             Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'downloadPdf'])->name('invoices.pdf');
+
+            // Jenis paket dikelola dari area Paket agar tidak menambah menu sidebar.
+            Route::get('/packages/types', [PackageController::class, 'types'])->name('packages.types');
+            Route::post('/packages/types', [PackageController::class, 'storeType'])->name('packages.types.store');
+            Route::put('/packages/types/{packageType}', [PackageController::class, 'updateType'])->name('packages.types.update');
+            Route::delete('/packages/types/{packageType}', [PackageController::class, 'destroyType'])->name('packages.types.destroy');
 
             // Packages (dibutuhkan form booking & pricelist)
             Route::resource('/packages', PackageController::class)->names('packages')->except('show');

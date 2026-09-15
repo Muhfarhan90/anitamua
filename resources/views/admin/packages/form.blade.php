@@ -13,11 +13,13 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
             <x-input name="name" label="Nama Paket" required :value="$package->name ?? ''" />
             <div>
-                <label for="type" class="block text-sm font-medium text-gray-600 mb-1">Jenis Paket <span class="text-red-500">*</span></label>
-                <select name="type" id="type" required
+                <label for="package_type_id" class="block text-sm font-medium text-gray-600 mb-1">Jenis Paket <span class="text-red-500">*</span></label>
+                <select name="package_type_id" id="package_type_id" required
                         class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200 border-gray-200">
-                    <option value="makeup" @selected(old('type', $package->type ?? '') === 'makeup')>Make Up & Attire</option>
-                    <option value="full" @selected(old('type', $package->type ?? '') === 'full')>Full WO Package</option>
+                    <option value="">— Pilih jenis —</option>
+                    @foreach($packageTypes as $packageType)
+                        <option value="{{ $packageType->id }}" @selected((int) old('package_type_id', $package->package_type_id ?? 0) === $packageType->id)>{{ $packageType->name }}</option>
+                    @endforeach
                 </select>
             </div>
             <x-input name="price" label="Harga" currency :value="$package->price ?? 0" min="0" step="1000" required />

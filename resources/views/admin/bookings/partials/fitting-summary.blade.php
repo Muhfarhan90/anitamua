@@ -1,9 +1,14 @@
 @php
     $fitting = $booking->fittings->first();
     $statusLabel = ['scheduled' => 'Scheduled', 'on_going' => 'On Going', 'finished' => 'Finished'];
+    $canToggleSummary = request()->routeIs('admin.bookings.show');
 @endphp
 
-<x-card title="Data Fitting" title-icon="fa-shirt">
+<x-card title="Data Fitting" title-icon="fa-shirt" data-summary-collapse>
+    @if($canToggleSummary)
+        <x-slot:actions><button type="button" data-summary-toggle aria-expanded="true" class="text-xs font-semibold text-brand hover:text-brand-dark"><i class="fas fa-eye-slash mr-1"></i><span>Hide</span></button></x-slot:actions>
+    @endif
+    <div data-summary-content>
     @if(!$fitting)
         <x-empty-state icon="fa-shirt" title="Belum ada data fitting" />
     @else
@@ -24,7 +29,9 @@
                                 $notes = $fitting->{$itemKey.'_notes'};
                                 $photo = $fitting->{$itemKey.'_photo_path'};
                                 $size = $fitting->item_sizes[$itemKey] ?? null;
-                                $allowsPhoto = str_contains($itemKey, 'busana_') || str_starts_with($itemKey, 'among_');
+                                $isHeadAccessory = str_starts_with($itemKey, 'cpw_aksesori_kepala_');
+                                $allowsPhoto = str_contains($itemKey, 'busana_') || str_starts_with($itemKey, 'among_') || $isHeadAccessory;
+                                $allowsSize = $allowsPhoto && ! $isHeadAccessory;
                             @endphp
                             <article class="min-w-0 bg-gray-50/70 p-3">
                                 <p class="text-sm font-semibold leading-5 text-gray-700">{{ $label }}</p>
@@ -32,7 +39,7 @@
                                     <a href="{{ asset('storage/'.$photo) }}" onclick="openProof(event, this.href)" class="mt-2 block"><img src="{{ asset('storage/'.$photo) }}" alt="{{ $label }}" class="h-28 w-full rounded-lg object-contain bg-white"></a>
                                 @endif
                                 <p class="mt-2 whitespace-pre-line text-sm text-gray-600"><span class="text-xs text-gray-400">Keterangan:</span> {{ $notes ?: '-' }}</p>
-                                @if($allowsPhoto)<p class="mt-1 text-sm text-gray-600"><span class="text-xs text-gray-400">Ukuran:</span> {{ $size ?: '-' }}</p>@endif
+                                @if($allowsSize)<p class="mt-1 text-sm text-gray-600"><span class="text-xs text-gray-400">Ukuran:</span> {{ $size ?: '-' }}</p>@endif
                             </article>
                         @endforeach
                     </div>
@@ -45,4 +52,5 @@
             <p class="mt-1 whitespace-pre-line text-sm text-gray-700">{{ $fitting->notes ?: '-' }}</p>
         </section>
     @endif
+    </div>
 </x-card>

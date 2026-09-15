@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Benefit;
 use App\Models\BenefitCategory;
 use App\Models\Package;
+use App\Models\PackageType;
 use App\Models\Vendor;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ class PackageController extends Controller
 {
     public function index()
     {
-        $packages = Package::with('benefits')->orderBy('price')->paginate(15);
+        $packages = Package::with(['benefits', 'packageType'])->orderBy('price')->paginate(15);
 
         return view('admin.packages.index', compact('packages'));
     }
@@ -25,7 +26,9 @@ class PackageController extends Controller
         $benefitCategories = BenefitCategory::withCount('benefits')->orderBy('sort_order')->get();
         $vendors = Vendor::with('category')->orderBy('vendor_category_id')->orderBy('name')->get();
 
-        return view('admin.packages.form', ['package' => null, 'benefits' => $benefits, 'benefitCategories' => $benefitCategories, 'vendors' => $vendors]);
+        $packageTypes = PackageType::orderBy('name')->get();
+
+        return view('admin.packages.form', ['package' => null, 'benefits' => $benefits, 'benefitCategories' => $benefitCategories, 'vendors' => $vendors, 'packageTypes' => $packageTypes]);
     }
 
     public function store(Request $request)
@@ -34,7 +37,7 @@ class PackageController extends Controller
 
         $package = Package::create([
             'name' => $data['name'],
-            'type' => $data['type'],
+            'package_type_id' => $data['package_type_id'],
             'price' => $data['price'],
             'original_price' => $data['original_price'] ?? null,
             'description' => $data['description'],
@@ -57,7 +60,9 @@ class PackageController extends Controller
         $benefitCategories = BenefitCategory::withCount('benefits')->orderBy('sort_order')->get();
         $vendors = Vendor::with('category')->orderBy('vendor_category_id')->orderBy('name')->get();
 
-        return view('admin.packages.form', compact('package', 'benefits', 'benefitCategories', 'vendors'));
+        $packageTypes = PackageType::orderBy('name')->get();
+
+        return view('admin.packages.form', compact('package', 'benefits', 'benefitCategories', 'vendors', 'packageTypes'));
     }
 
     public function update(Request $request, Package $package)
@@ -66,7 +71,7 @@ class PackageController extends Controller
 
         $package->update([
             'name' => $data['name'],
-            'type' => $data['type'],
+            'package_type_id' => $data['package_type_id'],
             'price' => $data['price'],
             'original_price' => $data['original_price'] ?? null,
             'description' => $data['description'],
@@ -93,11 +98,51 @@ class PackageController extends Controller
         return redirect()->route('admin.packages.index')->with('success', 'Paket dihapus.');
     }
 
+    public function types()
+    {
+        $packageTypes = PackageType::withCount('packages')->orderBy('name')->get();
+
+        return view('admin.packages.types', compact('packageTypes'));
+    }
+
+    public function storeType(Request $request)
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:100', 'unique:package_types,name']]);
+        $type = PackageType::create(['name' => trim($data['name'])]);
+
+        ActivityLogger::log('package_type_created', 'Jenis paket dibuat', 'Jenis paket '.$type->name.' dibuat oleh '.auth()->user()->name);
+
+        return back()->with('success', 'Jenis paket berhasil ditambahkan.');
+    }
+
+    public function updateType(Request $request, PackageType $packageType)
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:100', 'unique:package_types,name,'.$packageType->id]]);
+        $packageType->update(['name' => trim($data['name'])]);
+
+        ActivityLogger::log('package_type_updated', 'Jenis paket diperbarui', 'Jenis paket diperbarui oleh '.auth()->user()->name);
+
+        return back()->with('success', 'Jenis paket berhasil diperbarui.');
+    }
+
+    public function destroyType(PackageType $packageType)
+    {
+        if ($packageType->packages()->exists()) {
+            return back()->with('error', 'Jenis paket tidak dapat dihapus karena masih dipakai paket.');
+        }
+
+        $name = $packageType->name;
+        $packageType->delete();
+        ActivityLogger::log('package_type_deleted', 'Jenis paket dihapus', 'Jenis paket '.$name.' dihapus oleh '.auth()->user()->name);
+
+        return back()->with('success', 'Jenis paket berhasil dihapus.');
+    }
+
     private function validateData(Request $request): array
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'type' => ['required', 'in:makeup,full'],
+            'package_type_id' => ['required', 'exists:package_types,id'],
             'price' => ['required', 'numeric', 'min:0'],
             'original_price' => ['nullable', 'numeric', 'min:0', 'gte:price'],
             'description' => ['nullable', 'string'],

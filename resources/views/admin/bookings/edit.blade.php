@@ -22,14 +22,15 @@
                 <select id="package_type"
                     class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200 border-gray-200">
                     <option value="">- Pilih Jenis -</option>
-                    <option value="makeup">Make Up & Attire</option>
-                    <option value="full">Full WO Package</option>
+                    @foreach($packageTypes as $packageType)
+                        <option value="{{ $packageType->id }}">{{ $packageType->name }}</option>
+                    @endforeach
                 </select>
             </div>
 
             <x-select name="package_id" id="package_id" label="Pilih Paket" required placeholder="- Pilih Jenis Paket dahulu -" data-initial-package-id="{{ $booking->package_id }}">
                 @foreach ($packages ?? [] as $package)
-                    <option value="{{ $package->id }}" data-type="{{ $package->type }}" data-price="{{ $package->price }}" @selected(old('package_id', $booking->package_id) == $package->id)>
+                    <option value="{{ $package->id }}" data-type="{{ $package->package_type_id }}" data-price="{{ $package->price }}" @selected(old('package_id', $booking->package_id) == $package->id)>
                         {{ $package->name }}@if ($package->sub_type)
                             ({{ $subTypeLabels[$package->sub_type] ?? $package->sub_type }})
                         @endif - Rp {{ number_format($package->price, 0, ',', '.') }}
@@ -134,7 +135,25 @@
                             </div>
                             <div class="min-w-[220px] flex-1">
                                 <label for="additional_vendor_id" class="mb-1 block text-xs font-medium text-gray-600">Vendor</label>
-                                <select id="additional_vendor_id" required disabled class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200">
+                                <div class="relative" data-vendor-picker>
+                                    <button type="button" id="additional_vendor_picker_button" disabled aria-haspopup="listbox" aria-expanded="false" class="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-left text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200 disabled:cursor-not-allowed disabled:text-gray-400">
+                                        <span data-vendor-picker-label>Pilih kategori dahulu</span>
+                                        <i class="fas fa-chevron-down text-xs text-gray-400"></i>
+                                    </button>
+                                    <div id="additional_vendor_picker_menu" data-vendor-picker-menu role="listbox" class="absolute z-30 mt-1 hidden max-h-64 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
+                                        @foreach($vendors->where('status', 'active')->filter(fn ($vendor) => $vendor->vendor_category_id) as $vendorOption)
+                                            <button type="button" role="option" data-vendor-picker-option data-vendor-id="{{ $vendorOption->id }}" data-category="{{ $vendorOption->vendor_category_id }}" class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-40">
+                                                @if($vendorOption->logo)
+                                                    <img src="{{ asset('storage/'.$vendorOption->logo) }}" alt="" class="h-8 w-8 rounded-lg object-cover">
+                                                @else
+                                                    <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand"><i class="fas fa-store text-xs"></i></span>
+                                                @endif
+                                                <span class="min-w-0"><span class="block truncate text-sm font-semibold text-gray-700">{{ $vendorOption->name }}</span><span class="block truncate text-xs text-gray-400">{{ $vendorOption->category?->name ?? 'Vendor acara' }}</span></span>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                </div>
+                                <select id="additional_vendor_id" required disabled class="sr-only">
                                     <option value="">Pilih kategori dahulu</option>
                                     @foreach($vendors->where('status', 'active')->filter(fn ($vendor) => $vendor->vendor_category_id) as $vendorOption)
                                         <option value="{{ $vendorOption->id }}" data-category="{{ $vendorOption->vendor_category_id }}" data-name="{{ $vendorOption->name }}" data-role="{{ $vendorOption->category?->name ?? 'Vendor acara' }}" data-price="{{ $vendorOption->price }}">{{ $vendorOption->name }}</option>
@@ -175,20 +194,9 @@
             @endphp
             @include('admin.bookings.partials.addons-fields', ['addonRows' => $addonRows])
 
-            <div class="rounded-xl border border-brand-100 bg-brand-50/30 p-4">
-                <div class="mb-3">
-                    <p class="text-sm font-semibold text-gray-700">Diskon Booking</p>
-                    <p class="mt-0.5 text-xs text-gray-400">Opsional. Diskon akan mengurangi total tagihan booking.</p>
-                </div>
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <x-select name="discount_type" label="Jenis Diskon">
-                        <option value="">Tanpa diskon</option>
-                        <option value="percentage" @selected(old('discount_type', $booking->discount_type) === 'percentage')>Persentase (%)</option>
-                        <option value="fixed" @selected(old('discount_type', $booking->discount_type) === 'fixed')>Nominal (Rp)</option>
-                    </x-select>
-                    <x-input name="discount_value" label="Nilai Diskon" type="number" min="0" step="0.01" :value="old('discount_value', $booking->discount_type ? $booking->discount_value_label : '')" placeholder="Contoh: 10 atau 500000" />
-                </div>
-            </div>
+            @include('admin.bookings.partials.discounts-fields', ['discountRows' => old('discounts', $booking->discount_lines)])
+
+            @include('admin.bookings.partials.bonuses-fields', ['bonusRows' => old('bonuses', $booking->bonuses ?? [])])
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <x-input name="event_date" id="event_date" label="Tanggal Acara" type="date" required :value="$booking->event_date?->format('Y-m-d')" />
@@ -234,20 +242,7 @@
                 const selectJenis = document.getElementById('package_type');
                 const selectPaket = document.getElementById('package_id');
                 const paketOptions = Array.from(selectPaket.options).slice(1);
-                const discountType = document.getElementById('discount_type');
-                const discountValue = document.getElementById('discount_value');
                 const packageVendorWarning = document.querySelector('[data-package-vendor-warning]');
-
-                function syncDiscountField(reset = false) {
-                    if (reset) discountValue.value = '';
-                    discountValue.disabled = !discountType.value;
-                    discountValue.step = discountType.value === 'fixed' ? '1' : '0.01';
-                    discountValue.placeholder = discountType.value === 'fixed' ? 'Contoh: 500000' : 'Contoh: 10';
-                }
-
-                discountType.addEventListener('change', () => syncDiscountField(true));
-                syncDiscountField();
-
                 function applyFilter() {
                     const jenis = selectJenis.value;
                     paketOptions.forEach(opt => {
@@ -413,6 +408,47 @@
                 if (additionalVendorCategory && additionalVendor && addPendingVendor && pendingVendorTemplate) {
                     const vendorOptions = Array.from(additionalVendor.options).slice(1);
                     const categoryOptions = Array.from(additionalVendorCategory.options).slice(1);
+                    const additionalVendorPicker = document.querySelector('[data-vendor-picker]');
+                    const additionalVendorPickerButton = document.getElementById('additional_vendor_picker_button');
+                    const additionalVendorPickerMenu = document.getElementById('additional_vendor_picker_menu');
+                    const additionalVendorPickerLabel = document.querySelector('[data-vendor-picker-label]');
+                    const additionalVendorPickerOptions = Array.from(document.querySelectorAll('[data-vendor-picker-option]'));
+
+                    function closeVendorPicker() {
+                        additionalVendorPickerMenu?.classList.add('hidden');
+                        additionalVendorPickerButton?.setAttribute('aria-expanded', 'false');
+                    }
+
+                    function syncVendorPicker() {
+                        const selected = additionalVendor.selectedOptions[0];
+                        if (additionalVendorPickerLabel) {
+                            additionalVendorPickerLabel.textContent = selected?.value ? selected.dataset.name : additionalVendor.options[0].textContent;
+                        }
+                        if (additionalVendorPickerButton) additionalVendorPickerButton.disabled = additionalVendor.disabled;
+                        additionalVendorPickerOptions.forEach(pickerOption => {
+                            const option = vendorOptions.find(item => item.value === pickerOption.dataset.vendorId);
+                            const visible = !!option && !option.hidden;
+                            pickerOption.classList.toggle('hidden', !visible);
+                            pickerOption.disabled = !visible || option.disabled;
+                            pickerOption.setAttribute('aria-selected', String(option?.value === additionalVendor.value));
+                        });
+                        closeVendorPicker();
+                    }
+
+                    additionalVendorPickerButton?.addEventListener('click', () => {
+                        if (additionalVendorPickerButton.disabled) return;
+                        const isClosed = additionalVendorPickerMenu.classList.toggle('hidden');
+                        additionalVendorPickerButton.setAttribute('aria-expanded', String(!isClosed));
+                    });
+                    additionalVendorPickerMenu?.addEventListener('click', event => {
+                        const pickerOption = event.target.closest('[data-vendor-picker-option]');
+                        if (!pickerOption || pickerOption.disabled) return;
+                        additionalVendor.value = pickerOption.dataset.vendorId;
+                        additionalVendor.dispatchEvent(new Event('change'));
+                    });
+                    document.addEventListener('click', event => {
+                        if (additionalVendorPicker && !additionalVendorPicker.contains(event.target)) closeVendorPicker();
+                    });
 
                     function usedVendorIds() {
                         return new Set(Array.from(document.querySelectorAll('[data-vendor-card][data-vendor-id]'))
@@ -443,11 +479,13 @@
                         addPendingVendor.disabled = !additionalVendor.value;
                         additionalVendorSection?.classList.remove('hidden');
                         additionalVendorFeedback?.classList.add('hidden');
+                        syncVendorPicker();
                     }
 
                     additionalVendorCategory.addEventListener('change', syncAdditionalVendorOptions);
                     additionalVendor.addEventListener('change', () => {
                         addPendingVendor.disabled = !additionalVendor.value;
+                        syncVendorPicker();
                     });
 
                     addPendingVendor.addEventListener('click', function() {

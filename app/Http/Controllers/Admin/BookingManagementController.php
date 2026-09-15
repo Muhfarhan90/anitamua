@@ -8,6 +8,7 @@ use App\Models\BookingVendor;
 use App\Models\EntranceGate;
 use App\Models\Fitting;
 use App\Models\Package;
+use App\Models\PackageType;
 use App\Models\Payment;
 use App\Models\Schedule;
 use App\Models\SiteSetting;
@@ -31,8 +32,9 @@ class BookingManagementController extends Controller
     public function index(Request $request)
     {
         $today = Carbon::today()->toDateString();
-        $query = Booking::with(['client', 'package', 'payments'])
-            ->whereDate('event_date', '>=', $today)
+        $hasArchiveFilter = $request->filled('status') || $request->filled('start_date') || $request->filled('end_date') || $request->filled('q');
+        $query = Booking::with(['client', 'package.packageType', 'payments'])
+            ->when(! $hasArchiveFilter, fn ($query) => $query->whereDate('event_date', '>=', $today))
             ->when($request->status, fn ($q, $s) => $q->where('status', $s))
             ->when($request->start_date, fn ($q, $date) => $q->whereDate('event_date', '>=', $date))
             ->when($request->end_date, fn ($q, $date) => $q->whereDate('event_date', '<=', $date))
@@ -52,7 +54,7 @@ class BookingManagementController extends Controller
     public function show(Booking $booking, InvoiceService $invoiceService)
     {
         $booking->load([
-            'client', 'package', 'payments', 'invoice', 'bookingVendors.vendor.category',
+            'client', 'package.packageType', 'payments', 'invoice', 'bookingVendors.vendor.category',
             'addons',
             'schedules.picUser', 'survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings',
             'activityLogs' => fn ($query) => $query->latest(),
@@ -62,7 +64,7 @@ class BookingManagementController extends Controller
             $invoiceService->sync($booking);
             $booking->load('invoice');
         }
-        $packages = Package::where('status', 'active')->get();
+        $packages = Package::with('packageType')->where('status', 'active')->get();
         $staff = User::whereIn('role', [User::ROLE_OWNER, User::ROLE_ADMIN, User::ROLE_TEAM])->get();
         $teamMembers = User::where('role', User::ROLE_TEAM)->where('is_active', true)->orderBy('name')->get();
         $currentDecorationId = $booking->survey?->wedding_stage_id;
@@ -81,7 +83,8 @@ class BookingManagementController extends Controller
 
     public function create()
     {
-        $packages = Package::where('status', 'active')->get();
+        $packages = Package::with('packageType')->where('status', 'active')->get();
+        $packageTypes = PackageType::orderBy('name')->get();
         $clients = User::where('role', User::ROLE_CLIENT)->get();
         $weddingStages = WeddingStage::where('is_active', true)->orderBy('name')->get();
         $tents = Tent::where('is_active', true)->orderBy('name')->get();
@@ -97,12 +100,12 @@ class BookingManagementController extends Controller
             'gedung' => 'Gedung',
         ];
 
-        return view('admin.bookings.create', compact('packages', 'clients', 'subTypeLabels', 'weddingStages', 'tents', 'entranceGates', 'teamMembers', 'referralSources'));
+        return view('admin.bookings.create', compact('packages', 'packageTypes', 'clients', 'subTypeLabels', 'weddingStages', 'tents', 'entranceGates', 'teamMembers', 'referralSources'));
     }
 
     public function edit(Booking $booking)
     {
-        $booking->load(['package', 'addons', 'bookingVendors.vendor.category', 'survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings']);
+        $booking->load(['package.packageType', 'addons', 'bookingVendors.vendor.category', 'survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings']);
         $vendors = Vendor::with('category')
             ->where(function ($query) use ($booking) {
                 $query->where('status', 'active')
@@ -110,7 +113,8 @@ class BookingManagementController extends Controller
             })
             ->orderBy('name')
             ->get();
-        $packages = Package::where('status', 'active')->get();
+        $packages = Package::with('packageType')->where('status', 'active')->get();
+        $packageTypes = PackageType::orderBy('name')->get();
         $teamMembers = User::where('role', User::ROLE_TEAM)->where('is_active', true)->orderBy('name')->get();
         $currentDecorationId = $booking->survey?->wedding_stage_id;
         $weddingStages = WeddingStage::query()
@@ -133,7 +137,7 @@ class BookingManagementController extends Controller
             'gedung' => 'Gedung',
         ];
 
-        return view('admin.bookings.edit', compact('booking', 'vendors', 'packages', 'subTypeLabels', 'weddingStages', 'tents', 'entranceGates', 'teamMembers', 'referralSources'));
+        return view('admin.bookings.edit', compact('booking', 'vendors', 'packages', 'packageTypes', 'subTypeLabels', 'weddingStages', 'tents', 'entranceGates', 'teamMembers', 'referralSources'));
     }
 
     public function store(Request $request, InvoiceService $invoiceService)
@@ -151,11 +155,12 @@ class BookingManagementController extends Controller
             'new_client_instagram' => ['nullable', 'string', 'max:100', 'regex:/^@?[A-Za-z0-9._]+$/'],
             'referral_source' => ['required', Rule::in(SiteSetting::bookingReferralSources())],
             'package_id' => ['required', 'exists:packages,id'],
-            'discount_type' => ['nullable', 'in:percentage,fixed', 'required_with:discount_value'],
-            'discount_value' => [
-                'nullable', 'numeric', 'min:0', 'required_with:discount_type',
-                Rule::when($request->input('discount_type') === 'fixed', ['integer']),
-            ],
+            'discounts' => ['nullable', 'array'],
+            'discounts.*.note' => ['required', 'string', 'max:255'],
+            'discounts.*.amount' => ['required', 'integer', 'gt:0'],
+            'bonuses' => ['nullable', 'array'],
+            'bonuses.*.note' => ['required', 'string', 'max:255'],
+            'bonuses.*.amount' => ['required', 'integer', 'gt:0'],
             'event_date' => ['required', 'date'],
             'event_time' => ['nullable', 'date_format:H:i'],
             'survey_date' => ['nullable', 'date'],
@@ -174,12 +179,13 @@ class BookingManagementController extends Controller
         unset($data['addons'], $data['dp1_amount']);
 
         $package = Package::findOrFail($data['package_id']);
-        [$data['discount_type'], $data['discount_value']] = $this->normalizeDiscount(
-            $data['discount_type'] ?? null,
-            $data['discount_value'] ?? null,
+        $discounts = $this->normalizeDiscounts(
+            $data['discounts'] ?? [],
             (float) $package->price + (float) collect($addons)->sum('price'),
             (float) $dp1Amount,
         );
+        $data = [...$data, ...$this->discountColumns($discounts)];
+        $data['bonuses'] = $this->normalizeBonuses($data['bonuses'] ?? []);
 
         $clientWasCreated = $data['client_mode'] === 'new';
         [$booking, $client] = DB::transaction(function () use ($request, $invoiceService, $addons, $dp1Amount, $clientWasCreated, $data, $package) {
@@ -256,11 +262,12 @@ class BookingManagementController extends Controller
             'phone' => ['required', 'string', 'max:30'],
             'email' => ['required', 'email'],
             'referral_source' => ['required', Rule::in($this->referralSourcesFor($booking))],
-            'discount_type' => ['nullable', 'in:percentage,fixed', 'required_with:discount_value'],
-            'discount_value' => [
-                'nullable', 'numeric', 'min:0', 'required_with:discount_type',
-                Rule::when($request->input('discount_type') === 'fixed', ['integer']),
-            ],
+            'discounts' => ['nullable', 'array'],
+            'discounts.*.note' => ['required', 'string', 'max:255'],
+            'discounts.*.amount' => ['required', 'integer', 'gt:0'],
+            'bonuses' => ['nullable', 'array'],
+            'bonuses.*.note' => ['required', 'string', 'max:255'],
+            'bonuses.*.amount' => ['required', 'integer', 'gt:0'],
             'event_date' => ['required', 'date'],
             'event_time' => ['nullable', 'date_format:H:i'],
             'survey_date' => ['nullable', 'date'],
@@ -305,12 +312,13 @@ class BookingManagementController extends Controller
         $packagePrice = $packageChanged
             ? (float) Package::findOrFail($data['package_id'])->price
             : (float) ($booking->package_price ?? $booking->package?->price ?? 0);
-        [$data['discount_type'], $data['discount_value']] = $this->normalizeDiscount(
-            $data['discount_type'] ?? null,
-            $data['discount_value'] ?? null,
+        $discounts = $this->normalizeDiscounts(
+            $data['discounts'] ?? [],
             $packagePrice + (float) collect($addons)->sum('price'),
             (float) $booking->payments()->where('status', Payment::STATUS_VERIFIED)->sum('amount'),
         );
+        $data = [...$data, ...$this->discountColumns($discounts)];
+        $data['bonuses'] = $this->normalizeBonuses($data['bonuses'] ?? []);
         if ($packageChanged) {
             $data['package_price'] = $packagePrice;
         }
@@ -615,9 +623,8 @@ class BookingManagementController extends Controller
         $old = $booking->package;
         $new = Package::findOrFail($data['package_id']);
 
-        [$discountType, $discountValue] = $this->normalizeDiscount(
-            $booking->discount_type,
-            $booking->discount_value,
+        $discounts = $this->normalizeDiscounts(
+            $booking->discount_lines,
             (float) $new->price + (float) $booking->addons()->sum('price'),
             (float) $booking->payments()->where('status', Payment::STATUS_VERIFIED)->sum('amount'),
         );
@@ -625,8 +632,7 @@ class BookingManagementController extends Controller
         $booking->update([
             'package_id' => $new->id,
             'package_price' => $new->price,
-            'discount_type' => $discountType,
-            'discount_value' => $discountValue,
+            ...$this->discountColumns($discounts),
         ]);
 
         $this->syncVendorsFromPackage($booking);
@@ -656,9 +662,8 @@ class BookingManagementController extends Controller
             $old = $booking->package;
             $new = $changeRequest->newPackage;
 
-            [$discountType, $discountValue] = $this->normalizeDiscount(
-                $booking->discount_type,
-                $booking->discount_value,
+            $discounts = $this->normalizeDiscounts(
+                $booking->discount_lines,
                 (float) $new->price + (float) $booking->addons()->sum('price'),
                 (float) $booking->payments()->where('status', Payment::STATUS_VERIFIED)->sum('amount'),
             );
@@ -672,8 +677,7 @@ class BookingManagementController extends Controller
             $booking->update([
                 'package_id' => $new->id,
                 'package_price' => $new->price,
-                'discount_type' => $discountType,
-                'discount_value' => $discountValue,
+                ...$this->discountColumns($discounts),
             ]);
             $this->syncVendorsFromPackage($booking);
             $invoiceService->sync($booking->fresh());
@@ -790,34 +794,64 @@ class BookingManagementController extends Controller
         return back()->with('success', 'Vendor disinkronkan dari Master Vendor paket '.$booking->package->name.'.');
     }
 
-    private function normalizeDiscount(?string $type, mixed $value, float $subtotal, float $paidAmount = 0): array
+    private function normalizeDiscounts(array $discounts, float $subtotal, float $paidAmount = 0): array
     {
-        $value = max(0, (float) ($value ?? 0));
+        $normalized = [];
+        $discountAmount = 0;
 
-        if (! $type || $value <= 0) {
-            return [null, 0];
+        foreach ($discounts as $index => $discount) {
+            $amount = max(0, (float) ($discount['amount'] ?? 0));
+            $note = trim((string) ($discount['note'] ?? ''));
+
+            if (! $note) {
+                throw ValidationException::withMessages([
+                    "discounts.{$index}.note" => 'Keterangan potongan wajib diisi.',
+                ]);
+            }
+
+            $discountAmount += $amount;
+            $normalized[] = [
+                'amount' => round($amount, 2),
+                'note' => $note,
+            ];
         }
 
-        if ($type === 'percentage' && $value > 100) {
+        if ($discountAmount > $subtotal) {
             throw ValidationException::withMessages([
-                'discount_value' => 'Diskon persentase tidak boleh lebih dari 100%.',
+                'discounts' => 'Total diskon tidak boleh lebih besar dari subtotal booking.',
             ]);
         }
 
-        if ($type === 'fixed' && $value > $subtotal) {
-            throw ValidationException::withMessages([
-                'discount_value' => 'Diskon nominal tidak boleh lebih besar dari subtotal booking.',
-            ]);
-        }
-
-        $discountAmount = $type === 'percentage' ? round($subtotal * $value / 100, 2) : $value;
         if ($paidAmount > $subtotal - $discountAmount) {
             throw ValidationException::withMessages([
-                'discount_value' => 'Diskon membuat total tagihan lebih kecil dari pembayaran yang sudah diterima.',
+                'discounts' => 'Diskon membuat total tagihan lebih kecil dari pembayaran yang sudah diterima.',
             ]);
         }
 
-        return [$type, round($value, 2)];
+        return $normalized;
+    }
+
+    private function discountColumns(array $discounts): array
+    {
+        $first = $discounts[0] ?? null;
+
+        return [
+            'discounts' => $discounts,
+            'discount_type' => $first ? 'fixed' : null,
+            'discount_value' => $first['amount'] ?? 0,
+            'discount_note' => $first['note'] ?? null,
+        ];
+    }
+
+    private function normalizeBonuses(array $bonuses): array
+    {
+        return collect($bonuses)
+            ->map(fn (array $bonus) => [
+                'amount' => (int) $bonus['amount'],
+                'note' => trim($bonus['note']),
+            ])
+            ->values()
+            ->all();
     }
 
     private function bookingSurveyRules(): array

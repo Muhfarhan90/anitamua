@@ -67,7 +67,7 @@
                     </x-select>
                     <div class="{{ $selectedWeddingStage?->photo_urls ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview>
                         <div class="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto" data-master-photo-preview-images>
-                            @foreach($selectedWeddingStage?->photo_urls ?? [] as $photoUrl)
+                            @foreach(array_slice($selectedWeddingStage?->photo_urls ?? [], 0, 1) as $photoUrl)
                                 <button type="button" onclick="openProof(event, this.dataset.photoUrl)" data-photo-url="{{ $photoUrl }}" aria-label="Perbesar foto pelaminan {{ $loop->iteration }}" class="block w-full cursor-zoom-in">
                                     <img src="{{ $photoUrl }}" alt="Foto pelaminan {{ $loop->iteration }}" class="h-24 w-full rounded-lg border border-gray-100 object-cover">
                                 </button>
@@ -93,7 +93,7 @@
                     </x-select>
                     <div class="{{ $selectedTent?->photo_urls ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview>
                         <div class="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto" data-master-photo-preview-images>
-                            @foreach($selectedTent?->photo_urls ?? [] as $photoUrl)
+                            @foreach(array_slice($selectedTent?->photo_urls ?? [], 0, 1) as $photoUrl)
                                 <button type="button" onclick="openProof(event, this.dataset.photoUrl)" data-photo-url="{{ $photoUrl }}" aria-label="Perbesar foto tenda {{ $loop->iteration }}" class="block w-full cursor-zoom-in">
                                     <img src="{{ $photoUrl }}" alt="Foto tenda {{ $loop->iteration }}" class="h-24 w-full rounded-lg border border-gray-100 object-cover">
                                 </button>
@@ -145,7 +145,7 @@
                     </x-select>
                     <div class="{{ $selectedEntranceGate?->photo_urls ? '' : 'hidden' }} mt-3 rounded-xl border border-gray-100 bg-gray-50 p-2" data-master-photo-preview>
                         <div class="grid max-h-56 grid-cols-3 gap-2 overflow-y-auto" data-master-photo-preview-images>
-                            @foreach($selectedEntranceGate?->photo_urls ?? [] as $photoUrl)
+                            @foreach(array_slice($selectedEntranceGate?->photo_urls ?? [], 0, 1) as $photoUrl)
                                 <button type="button" onclick="openProof(event, this.dataset.photoUrl)" data-photo-url="{{ $photoUrl }}" aria-label="Perbesar foto gapura {{ $loop->iteration }}" class="block w-full cursor-zoom-in">
                                     <img src="{{ $photoUrl }}" alt="Foto gapura {{ $loop->iteration }}" class="h-24 w-full rounded-lg border border-gray-100 object-cover">
                                 </button>
@@ -231,6 +231,7 @@
                         }
 
                         if (!Array.isArray(photos)) photos = [];
+                        photos = photos.slice(0, 1);
 
                         images.replaceChildren(...photos.map(function (photo, index) {
                             const button = document.createElement('button');
@@ -248,7 +249,7 @@
                             return button;
                         }));
                         preview.classList.toggle('hidden', photos.length === 0);
-                        if (count) count.textContent = photos.length ? `${photos.length} foto` : '';
+                        if (count) count.textContent = photos.length ? 'Foto utama' : '';
                     }
 
                     select.addEventListener('change', syncMasterPreview);

@@ -24,6 +24,7 @@
                         <a href="{{ route('packages') }}">Paket</a>
                         <a href="{{ route('gallery') }}">Galeri</a>
                         <a href="{{ route('decor-tents') }}">Dekor & Tenda</a>
+                        <a href="{{ route('wardrobe') }}">Wardrobe</a>
                     </div>
                     <div class="flex flex-col gap-2">
                         <a href="{{ route('testimonials') }}">Testimoni</a>

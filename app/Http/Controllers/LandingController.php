@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Faq;
 use App\Models\EntranceGate;
 use App\Models\Gallery;
+use App\Models\InventoryCategory;
 use App\Models\Package;
 use App\Models\Tent;
 use App\Models\Testimonial;
@@ -14,7 +15,7 @@ class LandingController extends Controller
 {
     public function index()
     {
-        $packages = Package::with(['benefits'])->where('status', 'active')->get();
+        $packages = Package::with(['benefits', 'packageType'])->where('status', 'active')->get();
         $testimonials = Testimonial::where('status', 'published')->get();
         $galleries = Gallery::orderBy('id', 'desc')->limit(8)->get();
         $faqs = Faq::where('status', 'published')->orderBy('sort_order')->get();
@@ -32,7 +33,7 @@ class LandingController extends Controller
 
     public function packages()
     {
-        $packages = Package::with(['benefits'])->where('status', 'active')->get();
+        $packages = Package::with(['benefits', 'packageType'])->where('status', 'active')->get();
 
         return view('landing.packages', compact('packages'));
     }
@@ -51,6 +52,17 @@ class LandingController extends Controller
         $tents = Tent::where('is_active', true)->orderBy('name')->get();
 
         return view('landing.decor-tents', compact('weddingStages', 'entranceGates', 'tents'));
+    }
+
+    public function wardrobe()
+    {
+        $categories = InventoryCategory::query()
+            ->whereHas('items')
+            ->with(['items' => fn ($query) => $query->orderBy('name')])
+            ->orderBy('name')
+            ->get();
+
+        return view('landing.wardrobe', compact('categories'));
     }
 
     public function testimonials()

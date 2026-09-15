@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Package;
+use App\Models\PackageType;
 use App\Models\Payment;
 use App\Models\SiteSetting;
 use App\Services\ActivityLogger;
@@ -17,7 +18,8 @@ class BookingController extends Controller
 {
     public function create()
     {
-        $packages = Package::with(['benefits', 'vendors.category'])->where('status', 'active')->get();
+        $packages = Package::with(['benefits', 'vendors.category', 'packageType'])->where('status', 'active')->get();
+        $packageTypes = PackageType::whereHas('packages', fn ($query) => $query->where('status', 'active'))->orderBy('name')->get();
         $client = auth()->user()?->isClient() ? auth()->user() : null;
         $referralSources = SiteSetting::bookingReferralSources();
 
@@ -29,7 +31,7 @@ class BookingController extends Controller
             'gedung' => 'Gedung',
         ];
 
-        return view('landing.booking', compact('packages', 'subTypeLabels', 'client', 'referralSources'));
+        return view('landing.booking', compact('packages', 'packageTypes', 'subTypeLabels', 'client', 'referralSources'));
     }
 
     public function store(Request $request)

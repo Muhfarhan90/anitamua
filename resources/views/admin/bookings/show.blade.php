@@ -255,10 +255,12 @@
                     <span class="font-bold text-gray-800">Rp {{ number_format($booking->subtotal_price, 0, ',', '.') }}</span>
                 </div>
                 @if($booking->discount_amount > 0)
-                <div class="flex justify-between">
-                    <span class="text-gray-500">{{ $booking->discount_label }}</span>
-                    <span class="font-bold text-red-500">-Rp {{ number_format($booking->discount_amount, 0, ',', '.') }}</span>
+                @foreach($booking->discount_line_items as $discount)
+                <div class="flex justify-between gap-4">
+                    <span class="text-gray-500">{{ $discount['label'] }}</span>
+                    <span class="whitespace-nowrap font-bold text-red-500">-Rp {{ number_format($discount['amount'], 0, ',', '.') }}</span>
                 </div>
+                @endforeach
                 <div class="flex justify-between">
                     <span class="text-gray-500">Total Setelah Diskon</span>
                     <span class="font-bold text-gray-800">Rp {{ number_format($totalPrice, 0, ',', '.') }}</span>
@@ -367,6 +369,20 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    document.querySelectorAll('[data-summary-collapse]').forEach(card => {
+        const button = card.querySelector('[data-summary-toggle]');
+        const content = card.querySelector('[data-summary-content]');
+        if (!button || !content) return;
+
+        button.addEventListener('click', () => {
+            const hidden = content.classList.toggle('hidden');
+            button.setAttribute('aria-expanded', String(!hidden));
+            button.querySelector('span').textContent = hidden ? 'Show' : 'Hide';
+            button.querySelector('i').classList.toggle('fa-eye', hidden);
+            button.querySelector('i').classList.toggle('fa-eye-slash', !hidden);
+        });
+    });
+
     const toggle = document.getElementById('toggleAdminPaymentForm');
     const panel = document.getElementById('adminPaymentPanel');
     const form = document.getElementById('adminPaymentForm');

@@ -5,6 +5,7 @@
 @section('content')
 @php
     $canManageInventory = in_array(auth()->user()->role, [App\Models\User::ROLE_OWNER, App\Models\User::ROLE_ADMIN], true);
+    $canUpdateInventoryStatus = in_array(auth()->user()->role, [App\Models\User::ROLE_OWNER, App\Models\User::ROLE_ADMIN, App\Models\User::ROLE_TEAM], true);
 @endphp
 
 <x-page-header title="Inventory Wardrobe" :subtitle="$canManageInventory ? 'Kelola seluruh gaun, aksesoris, dan perlengkapan makeup' : 'Lihat daftar gaun, aksesoris, dan perlengkapan makeup'">
@@ -67,7 +68,7 @@
                     <th class="px-5 py-2.5 font-medium">Detail</th>
                     <th class="px-5 py-2.5 font-medium">Kondisi</th>
                     <th class="px-5 py-2.5 font-medium">Status</th>
-                    @if($canManageInventory)<th class="px-5 py-2.5 font-medium text-center">Aksi</th>@endif
+                    @if($canUpdateInventoryStatus)<th class="px-5 py-2.5 font-medium text-center">Aksi</th>@endif
                 </tr>
             </thead>
             <tbody>
@@ -75,11 +76,11 @@
                 <tr class="border-b border-gray-50 hover:bg-brand-50/30 transition-colors">
                     <td class="px-5 py-3">
                         @if($item->photo)
-                            <a href="{{ asset('storage/'.$item->photo) }}" onclick="openProof(event, this.href)" class="block w-12 h-12 cursor-pointer" title="Klik untuk perbesar">
-                                <img src="{{ asset('storage/'.$item->photo) }}" alt="{{ $item->name }}" class="w-12 h-12 object-cover rounded-xl border border-gray-100">
+                            <a href="{{ asset('storage/'.$item->photo) }}" onclick="openProof(event, this.href)" class="block h-20 w-20 cursor-pointer" title="Klik untuk perbesar">
+                                <img src="{{ asset('storage/'.$item->photo) }}" alt="{{ $item->name }}" class="h-20 w-20 rounded-xl border border-gray-100 object-cover">
                             </a>
                         @else
-                            <div class="w-12 h-12 rounded-xl bg-brand-50 text-brand flex items-center justify-center">
+                            <div class="flex h-20 w-20 items-center justify-center rounded-xl bg-brand-50 text-brand">
                                 <i class="fas fa-image"></i>
                             </div>
                         @endif
@@ -126,11 +127,23 @@
                             </form>
                         </div>
                     </td>
+                    @elseif($canUpdateInventoryStatus)
+                    <td class="px-5 py-3">
+                        <form method="POST" action="{{ route('admin.inventory.status.update', $item) }}" class="flex items-center justify-center gap-2">
+                            @csrf @method('PATCH')
+                            <select name="status" class="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-200">
+                                @foreach(['available' => 'Tersedia', 'in_use' => 'Sedang Dipakai', 'damaged' => 'Rusak', 'lost' => 'Hilang'] as $value => $label)
+                                    <option value="{{ $value }}" @selected($item->status === $value)>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <x-button size="sm" type="submit"><i class="fas fa-save"></i></x-button>
+                        </form>
+                    </td>
                     @endif
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="{{ $canManageInventory ? 8 : 7 }}"><x-empty-state icon="fa-box" title="Belum ada barang inventory" /></td>
+                    <td colspan="{{ $canUpdateInventoryStatus ? 8 : 7 }}"><x-empty-state icon="fa-box" title="Belum ada barang inventory" /></td>
                 </tr>
                 @endforelse
             </tbody>

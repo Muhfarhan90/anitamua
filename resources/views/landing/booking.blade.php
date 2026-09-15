@@ -303,8 +303,9 @@
                                     <i class="fa-solid fa-layer-group input-icon"></i>
                                     <select id="package_type" class="form-select" required>
                                         <option value="">— Pilih Jenis —</option>
-                                        <option value="makeup">Make Up & Attire</option>
-                                        <option value="full">Full WO Package</option>
+                                        @foreach($packageTypes as $packageType)
+                                            <option value="{{ $packageType->id }}">{{ $packageType->name }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
                             </div>
@@ -317,7 +318,7 @@
                                     <select name="package_id" id="package_id" class="form-select" required disabled>
                                         <option value="">— Pilih Jenis Paket dahulu —</option>
                                         @foreach($packages as $package)
-                                            <option value="{{ $package->id }}" data-type="{{ $package->type }}"
+                                            <option value="{{ $package->id }}" data-type="{{ $package->package_type_id }}"
                                                 @selected(old('package_id', request('package')) == $package->id)>
                                                 {{ $package->name }}@if($package->sub_type) ({{ $subTypeLabels[$package->sub_type] ?? $package->sub_type }})@endif — Rp {{ number_format($package->price, 0, ',', '.') }}
                                             </option>

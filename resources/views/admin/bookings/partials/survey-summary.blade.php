@@ -1,5 +1,6 @@
 @php
     $survey = $booking->survey;
+    $canToggleSummary = request()->routeIs('admin.bookings.show');
     $equipmentFields = [
         'gallery_booth' => 'Galery booth', 'envelope_box' => 'Kotak amplop', 'fruit_shed' => 'Saung buah',
         'akad_table' => 'Meja akad', 'diesel_lights' => 'Diesel + lampu', 'photo_stand' => 'Stand photo',
@@ -28,7 +29,11 @@
     };
 @endphp
 
-<x-card title="Data Survey" title-icon="fa-map-location-dot">
+<x-card title="Data Survey" title-icon="fa-map-location-dot" data-summary-collapse>
+    @if($canToggleSummary)
+        <x-slot:actions><button type="button" data-summary-toggle aria-expanded="true" class="text-xs font-semibold text-brand hover:text-brand-dark"><i class="fas fa-eye-slash mr-1"></i><span>Hide</span></button></x-slot:actions>
+    @endif
+    <div data-summary-content>
     @if(!$survey)
         <x-empty-state icon="fa-map-location-dot" title="Belum ada data survey" />
     @else
@@ -126,4 +131,5 @@
             <p class="mt-1 whitespace-pre-line text-sm text-gray-700">{{ $survey->notes ?: '-' }}</p>
         </section>
     @endif
+    </div>
 </x-card>

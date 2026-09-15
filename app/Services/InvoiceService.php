@@ -37,12 +37,12 @@ class InvoiceService
             ];
         }
 
-        if ($booking->discount_amount > 0) {
+        foreach ($booking->discount_line_items as $discount) {
             $items[] = [
-                'name' => $booking->discount_label,
+                'name' => $discount['label'],
                 'quantity' => 1,
-                'price' => -$booking->discount_amount,
-                'total' => -$booking->discount_amount,
+                'price' => -$discount['amount'],
+                'total' => -$discount['amount'],
             ];
         }
 

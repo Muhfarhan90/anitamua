@@ -13,11 +13,16 @@ class Fitting extends Model
     public const CHECKLIST = [
         'cpw' => [
             'cpw_busana_akad' => 'Busana akad / Pemberkatan',
+            'cpw_aksesori_kepala_akad' => 'Aksesori kepala akad',
             'cpw_stylist_akad' => 'Stylist / Hijab akad',
             'cpw_busana_resepsi_1' => 'Busana resepsi 1',
+            'cpw_aksesori_kepala_resepsi_1' => 'Aksesori kepala resepsi 1',
             'cpw_stylist_resepsi_1' => 'Stylist / Hijab resepsi 1',
             'cpw_busana_resepsi_2' => 'Busana resepsi 2',
+            'cpw_aksesori_kepala_resepsi_2' => 'Aksesori kepala resepsi 2',
             'cpw_stylist_resepsi_2' => 'Stylist / Hijab resepsi 2',
+            'cpw_busana_resepsi_3' => 'Busana resepsi 3',
+            'cpw_aksesori_kepala_resepsi_3' => 'Aksesori kepala resepsi 3',
             'cpw_heels_selop' => 'Ukuran flatshoes / heels / selop',
         ],
         'cpp' => [

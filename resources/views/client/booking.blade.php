@@ -246,10 +246,12 @@
                         <span class="text-gray-500">Subtotal Booking</span>
                         <span class="font-bold text-gray-800">Rp {{ number_format($booking->subtotal_price, 0, ',', '.') }}</span>
                     </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-500">{{ $booking->discount_label }}</span>
-                        <span class="font-bold text-red-500">-Rp {{ number_format($booking->discount_amount, 0, ',', '.') }}</span>
+                    @foreach($booking->discount_line_items as $discount)
+                    <div class="flex justify-between gap-4">
+                        <span class="text-gray-500">{{ $discount['label'] }}</span>
+                        <span class="whitespace-nowrap font-bold text-red-500">-Rp {{ number_format($discount['amount'], 0, ',', '.') }}</span>
                     </div>
+                    @endforeach
                     @endif
                     <div class="flex justify-between">
                         <span class="text-gray-500">Total Tagihan</span>

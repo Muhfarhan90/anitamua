@@ -83,6 +83,25 @@ class InventoryController extends Controller
         return back()->with('success', 'Barang berhasil diperbarui.');
     }
 
+    public function updateStatus(Request $request, InventoryItem $item)
+    {
+        $data = $request->validate([
+            'status' => ['required', 'in:available,in_use,damaged,lost'],
+        ]);
+
+        if ($item->status !== $data['status']) {
+            $oldStatus = $item->status;
+            $item->update(['status' => $data['status']]);
+            ActivityLogger::log(
+                'inventory_status_updated',
+                'Status barang diperbarui',
+                'Status '.$item->name.' ('.$item->code.') diubah dari '.$oldStatus.' menjadi '.$data['status'].' oleh '.auth()->user()->name,
+            );
+        }
+
+        return back()->with('success', 'Status barang berhasil diperbarui.');
+    }
+
     public function destroy(InventoryItem $item)
     {
         $name = $item->name;

@@ -11,6 +11,7 @@ use App\Models\Gallery;
 use App\Models\InventoryItem;
 use App\Models\Invoice;
 use App\Models\Package;
+use App\Models\PackageType;
 use App\Models\Payment;
 use App\Models\Reminder;
 use App\Models\Schedule;
@@ -45,6 +46,7 @@ it('renders landing pages', function () {
     $this->get('/paket')->assertOk();
     $this->get('/galeri')->assertOk()->assertDontSee('Menampilkan', false)->assertDontSee('2 foto</div>', false);
     $this->get('/dekor-tenda')->assertOk();
+    $this->get('/wardrobe')->assertOk()->assertSee('Gaun Pengantin Amina');
     $this->get('/testimoni')->assertOk()->assertDontSee('Menampilkan', false);
     $this->get('/faq')->assertOk();
     $this->get('/kontak')->assertOk();
@@ -68,7 +70,7 @@ it('shows only active decorations, gates, and tents in the public catalog', func
     $this->get('/dekor-tenda')
         ->assertOk()
         ->assertSee('Dekor Publik')
-        ->assertSee('2 foto')
+        ->assertDontSee('2 foto')
         ->assertSee('Gapura Publik')
         ->assertSee('Tenda Publik')
         ->assertDontSee('Dekor Disembunyikan')
@@ -1778,7 +1780,7 @@ it('creates one invoice per booked booking and updates it from verified payments
         ->assertHeader('content-disposition', 'inline; filename="Invoice-'.$paid->invoice_number.'.pdf"');
 });
 
-it('applies percentage and nominal booking discounts to totals and invoices', function () {
+it('applies multiple booking discounts to totals and invoices', function () {
     $client = User::where('email', 'client@anitamua.com')->firstOrFail();
     $package = Package::firstOrFail();
 
@@ -1787,8 +1789,10 @@ it('applies percentage and nominal booking discounts to totals and invoices', fu
         'client_id' => $client->id,
         'package_id' => $package->id,
         'package_price' => $package->price,
-        'discount_type' => 'percentage',
-        'discount_value' => 10,
+        'discounts' => [
+            ['amount' => 100000, 'note' => 'Promo awal tahun'],
+            ['amount' => 250000, 'note' => 'Potongan vendor'],
+        ],
         'name' => 'Diskon Persen',
         'phone' => '081234567890',
         'email' => $client->email,
@@ -1798,19 +1802,24 @@ it('applies percentage and nominal booking discounts to totals and invoices', fu
     $booking->addons()->create(['name' => 'Tambahan', 'price' => 250000]);
 
     $subtotal = (float) $package->price + 250000;
-    expect($booking->refresh()->discount_amount)->toBe(round($subtotal * .1, 2))
-        ->and($booking->discount_label)->toBe('Diskon (10%)')
-        ->and($booking->total_price)->toBe(round($subtotal * .9, 2));
+    $discountTotal = 350000.0;
+    expect($booking->refresh()->discount_amount)->toBe($discountTotal)
+        ->and($booking->discount_label)->toBe('Diskon — Promo awal tahun, Diskon — Potongan vendor')
+        ->and($booking->total_price)->toBe($subtotal - $discountTotal);
 
     $invoice = app(InvoiceService::class)->sync($booking->fresh());
-    expect((float) $invoice->total_amount)->toBe((float) round($subtotal * .9, 2))
-        ->and((float) collect($invoice->items)->last()['total'])->toBe((float) -round($subtotal * .1, 2));
+    expect((float) $invoice->total_amount)->toBe((float) ($subtotal - $discountTotal))
+        ->and((float) collect($invoice->items)->slice(-2)->sum('total'))->toBe((float) -$discountTotal)
+        ->and(collect($invoice->items)->slice(-2)->pluck('name')->all())->toBe([
+            'Diskon — Promo awal tahun',
+            'Diskon — Potongan vendor',
+        ]);
 
-    $booking->update(['discount_type' => 'fixed', 'discount_value' => 100000]);
+    $booking->update(['discounts' => null, 'discount_type' => 'fixed', 'discount_value' => 100000]);
     expect($booking->refresh()->discount_amount)->toBe(100000.0)
         ->and($booking->total_price)->toBe($subtotal - 100000.0);
 
-    $booking->update(['discount_type' => 'percentage', 'discount_value' => 100]);
+    $booking->update(['discounts' => null, 'discount_type' => 'percentage', 'discount_value' => 100]);
     $booking->payments()->create([
         'type' => 'DP1',
         'amount' => 0,
@@ -1836,6 +1845,7 @@ it('validates discount changes against type, rupiah precision, and received paym
         'package_price' => $package->price,
         'discount_type' => 'percentage',
         'discount_value' => 10,
+        'discount_note' => 'Promo lama',
         'name' => 'Validasi Diskon',
         'phone' => '081234567890',
         'email' => $client->email,
@@ -1853,18 +1863,37 @@ it('validates discount changes against type, rupiah precision, and received paym
     ], $discount);
 
     $this->actingAs($admin)
-        ->patch(route('admin.bookings.update', $booking), $payload(['discount_type' => '']))
+        ->patch(route('admin.bookings.update', $booking), $payload(['discounts' => []]))
         ->assertRedirect()
         ->assertSessionDoesntHaveErrors();
     expect($booking->refresh()->discount_type)->toBeNull()
-        ->and((float) $booking->discount_value)->toBe(0.0);
+        ->and((float) $booking->discount_value)->toBe(0.0)
+        ->and($booking->discount_note)->toBeNull();
+    $subtotal = $booking->subtotal_price;
+
+    $this->actingAs($admin)
+        ->patch(route('admin.bookings.update', $booking), $payload(['discounts' => [
+            ['amount' => 100000, 'note' => 'Promo awal tahun'],
+            ['amount' => 250000, 'note' => 'Potongan vendor'],
+        ], 'bonuses' => [
+            ['amount' => 500000, 'note' => 'Tambahan touch up'],
+        ]]))
+        ->assertRedirect()
+        ->assertSessionDoesntHaveErrors();
+    expect($booking->refresh()->discounts)->toBe([
+        ['amount' => 100000, 'note' => 'Promo awal tahun'],
+        ['amount' => 250000, 'note' => 'Potongan vendor'],
+    ])->and($booking->bonuses)->toBe([
+        ['amount' => 500000, 'note' => 'Tambahan touch up'],
+    ])->and($booking->total_price)->toBe($subtotal - 350000.0);
 
     $this->actingAs($admin)
         ->patch(route('admin.bookings.update', $booking), $payload([
-            'discount_type' => 'fixed',
-            'discount_value' => 100000.50,
+            'discounts' => [
+                ['amount' => 100000.50, 'note' => 'Potongan tidak valid'],
+            ],
         ]))
-        ->assertSessionHasErrors('discount_value');
+        ->assertSessionHasErrors('discounts.0.amount');
 
     $booking->payments()->create([
         'type' => 'DP1',
@@ -1875,11 +1904,12 @@ it('validates discount changes against type, rupiah precision, and received paym
     ]);
     $this->actingAs($admin)
         ->patch(route('admin.bookings.update', $booking), $payload([
-            'discount_type' => 'percentage',
-            'discount_value' => 10,
+            'discounts' => [
+                ['amount' => 100000, 'note' => 'Potongan baru'],
+            ],
         ]))
-        ->assertSessionHasErrors('discount_value');
-    expect($booking->refresh()->discount_type)->toBeNull();
+        ->assertSessionHasErrors('discounts');
+    expect($booking->refresh()->discounts)->toHaveCount(2);
 });
 
 it('admin can update the invoice greeting from site settings', function () {
@@ -2503,4 +2533,95 @@ it('allows team members to access all fieldwork regardless of schedule PIC', fun
     $this->actingAs($team)
         ->get('/admin/bookings')
         ->assertForbidden();
+});
+
+it('filters fieldwork by its schedule date and lets team update only inventory status', function () {
+    $team = User::where('email', 'team@anitamua.com')->firstOrFail();
+    $source = Booking::firstOrFail();
+    $date = now()->addMonths(5)->toDateString();
+
+    $matching = $source->replicate();
+    $matching->code = Booking::generateCode();
+    $matching->name = 'Tugas Tanggal Cocok';
+    $matching->event_date = $date;
+    $matching->save();
+    $matching->schedules()->create(['type' => Schedule::TYPE_SURVEY, 'title' => 'Survey cocok', 'date' => $date, 'status' => Schedule::STATUS_SCHEDULED]);
+
+    $other = $source->replicate();
+    $other->code = Booking::generateCode();
+    $other->name = 'Tugas Tanggal Lain';
+    $other->event_date = now()->addMonths(6)->toDateString();
+    $other->save();
+    $other->schedules()->create(['type' => Schedule::TYPE_FITTING, 'title' => 'Fitting lain', 'date' => now()->addMonths(6)->toDateString(), 'status' => Schedule::STATUS_SCHEDULED]);
+
+    $this->actingAs($team)->get(route('admin.fieldwork.index', ['date' => $date]))
+        ->assertOk()->assertSee('Tugas Tanggal Cocok')->assertDontSee('Tugas Tanggal Lain');
+
+    $item = InventoryItem::firstOrFail();
+    $this->actingAs($team)->patch(route('admin.inventory.status.update', $item), ['status' => 'lost'])->assertRedirect();
+    expect($item->fresh()->status)->toBe('lost')
+        ->and(ActivityLog::where('action', 'inventory_status_updated')->exists())->toBeTrue();
+
+    $this->actingAs($team)->put(route('admin.inventory.update', $item), [])->assertForbidden();
+});
+
+it('uses dynamic package types across package management and public packages', function () {
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+
+    $this->actingAs($owner)->post(route('admin.packages.types.store'), ['name' => 'Engagement'])->assertRedirect();
+    $type = PackageType::where('name', 'Engagement')->firstOrFail();
+    $package = Package::create([
+        'name' => 'Paket Engagement', 'type' => 'makeup', 'package_type_id' => $type->id,
+        'price' => 2000000, 'status' => 'active', 'color' => '#d4739a',
+    ]);
+
+    $this->actingAs($owner)->get(route('admin.packages.create'))->assertOk()->assertSee('Engagement');
+    $this->get('/paket')->assertOk()->assertSee('Engagement')->assertSee($package->name);
+    $this->actingAs($owner)->delete(route('admin.packages.types.destroy', $type))->assertRedirect();
+    expect(PackageType::find($type->id))->not->toBeNull();
+});
+
+it('stores CPW reception three and head accessories as fitting and packing items', function () {
+    Storage::fake('public');
+    $team = User::where('email', 'team@anitamua.com')->firstOrFail();
+    $booking = Booking::firstOrFail();
+
+    expect(array_keys(Fitting::CHECKLIST['cpw']))->toContain('cpw_busana_resepsi_3', 'cpw_aksesori_kepala_resepsi_3')
+        ->and(array_keys(Fitting::CHECKLIST['cpp']))->not->toContain('cpw_busana_resepsi_3');
+
+    $this->actingAs($team)->post(route('admin.fieldwork.fitting'), [
+        'booking_id' => $booking->id,
+        'date' => now()->addWeek()->toDateString(),
+        'status' => 'scheduled',
+        'items' => [
+            'cpw_busana_resepsi_3' => ['notes' => 'Busana resepsi ketiga', 'size' => 'L', 'photo' => UploadedFile::fake()->image('resepsi-3.jpg')],
+            'cpw_aksesori_kepala_resepsi_3' => ['notes' => 'Mahkota perak', 'photo' => UploadedFile::fake()->image('mahkota.jpg')],
+        ],
+    ])->assertRedirect();
+
+    $fitting = $booking->fittings()->firstOrFail();
+    expect($fitting->cpw_busana_resepsi_3_notes)->toBe('Busana resepsi ketiga')
+        ->and($fitting->cpw_aksesori_kepala_resepsi_3_notes)->toBe('Mahkota perak')
+        ->and($fitting->item_sizes['cpw_busana_resepsi_3'])->toBe('L')
+        ->and($fitting->item_sizes['cpw_aksesori_kepala_resepsi_3'] ?? null)->toBeNull()
+        ->and(collect($fitting->packingSourceItems())->pluck('key'))->toContain('cpw_busana_resepsi_3', 'cpw_aksesori_kepala_resepsi_3');
+});
+
+it('shows past completed and cancelled bookings when booking filters are used', function () {
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $source = Booking::firstOrFail();
+
+    foreach ([Booking::STATUS_COMPLETED => 'Arsip Selesai', Booking::STATUS_CANCELLED => 'Arsip Batal'] as $status => $name) {
+        $booking = $source->replicate();
+        $booking->code = Booking::generateCode();
+        $booking->name = $name;
+        $booking->event_date = now()->subMonth()->toDateString();
+        $booking->status = $status;
+        $booking->save();
+    }
+
+    $this->actingAs($owner)->get(route('admin.bookings.index', ['status' => Booking::STATUS_COMPLETED]))
+        ->assertOk()->assertSee('Arsip Selesai')->assertDontSee('Arsip Batal');
+    $this->actingAs($owner)->get(route('admin.bookings.index', ['start_date' => now()->subMonths(2)->toDateString(), 'end_date' => now()->subDay()->toDateString()]))
+        ->assertOk()->assertSee('Arsip Selesai')->assertSee('Arsip Batal');
 });

@@ -5,6 +5,7 @@
 @section('content')
 <x-page-header title="Manajemen Paket">
     <x-slot:actions>
+        <x-button href="{{ route('admin.packages.types') }}" color="outline"><i class="fas fa-tags"></i> Jenis Paket</x-button>
         <x-button href="{{ route('admin.packages.create') }}" color="primary"><i class="fas fa-plus"></i> Buat Paket</x-button>
     </x-slot:actions>
 </x-page-header>
@@ -18,7 +19,7 @@
                 <span class="font-display text-lg">{{ $package->name }}</span>
             </span>
             <span class="flex items-center gap-2">
-                <x-badge color="info">{{ \App\Models\Package::typeLabel($package->type) }}</x-badge>
+                <x-badge color="info">{{ $package->packageType?->name ?? \App\Models\Package::typeLabel($package->type) }}</x-badge>
                 <x-badge :color="$package->status === 'active' ? 'success' : 'gray'">{{ $package->status }}</x-badge>
             </span>
         </div>

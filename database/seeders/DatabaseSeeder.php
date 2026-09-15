@@ -10,6 +10,7 @@ use App\Models\Fitting;
 use App\Models\InventoryCategory;
 use App\Models\InventoryItem;
 use App\Models\Package;
+use App\Models\PackageType;
 use App\Models\Payment;
 use App\Models\Reminder;
 use App\Models\Schedule;
@@ -107,10 +108,12 @@ class DatabaseSeeder extends Seeder
             ]],
         ];
 
+        $fullPackageTypeId = PackageType::firstOrCreate(['name' => 'Full WO Package'])->id;
         foreach ($packageData as $name => $data) {
             $package = Package::create([
                 'name' => $name,
                 'type' => $data['type'],
+                'package_type_id' => $fullPackageTypeId,
                 'sub_type' => $data['sub_type'] ?? null,
                 'price' => $data['price'],
                 'description' => "Paket {$name} dari ANITA Make Up Artist — solusi lengkap untuk hari spesial Anda.",

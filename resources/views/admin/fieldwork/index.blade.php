@@ -5,6 +5,17 @@
 @section('content')
 <x-page-header title="Tugas Lapangan" subtitle="Pilih booking untuk mengisi survey, fitting, dan checklist packing H-1" />
 
+<form method="GET" action="{{ route('admin.fieldwork.index') }}" class="mb-4 flex flex-wrap items-end gap-3">
+    <div>
+        <label for="schedule_date" class="mb-1 block text-sm font-medium text-gray-600">Tanggal Jadwal</label>
+        <input id="schedule_date" type="date" name="date" value="{{ request('date') }}" class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
+    </div>
+    <x-button type="submit" color="primary"><i class="fas fa-filter"></i> Filter</x-button>
+    @if(request()->filled('date'))
+        <x-button href="{{ route('admin.fieldwork.index') }}" color="outline">Reset</x-button>
+    @endif
+</form>
+
 <x-card padding="p-0">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">
