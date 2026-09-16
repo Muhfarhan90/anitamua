@@ -213,6 +213,14 @@
         <div class="grid gap-4 md:grid-cols-3">
             @foreach($testimonials->take(3) as $t)
                 <div class="card-mua h-full p-4 flex flex-col">
+                        @php
+                            $photos = $t->photo_urls;
+                        @endphp
+                        @if($photos)
+                            <div class="mb-4">
+                                <x-gallery-slider :photos="$photos" :title="'Foto '.$t->client_name" height="180px" />
+                            </div>
+                        @endif
                         <div class="text-rose mb-3" style="font-size:1.05rem;">
                             @for($i = 0; $i < $t->rating; $i++)<i class="fas fa-star"></i>@endfor
                         </div>

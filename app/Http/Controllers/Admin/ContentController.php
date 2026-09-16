@@ -30,11 +30,16 @@ class ContentController extends Controller
             'client_name' => ['required', 'string', 'max:255'],
             'rating' => ['required', 'integer', 'between:1,5'],
             'content' => ['required', 'string'],
+            'photos' => ['nullable', 'array'],
+            'photos.*' => ['image', 'max:3072'],
             'status' => ['required', 'in:published,hidden'],
         ]);
 
-        if ($request->hasFile('photo')) {
-            $data['photo'] = $request->file('photo')->store('uploads/testimonials', 'public');
+        if ($request->hasFile('photos')) {
+            $data['photos'] = collect($request->file('photos'))
+                ->map(fn ($photo) => $photo->store('uploads/testimonials', 'public'))
+                ->all();
+            $data['photo'] = $data['photos'][0];
         }
 
         $testimonial = Testimonial::create($data);
@@ -44,8 +49,50 @@ class ContentController extends Controller
         return back()->with('success', 'Testimoni berhasil ditambahkan.');
     }
 
+    public function updateTestimonial(Request $request, Testimonial $testimonial)
+    {
+        $data = $request->validate([
+            'client_name' => ['required', 'string', 'max:255'],
+            'rating' => ['required', 'integer', 'between:1,5'],
+            'content' => ['required', 'string'],
+            'photos' => ['nullable', 'array'],
+            'photos.*' => ['image', 'max:3072'],
+            'remove_photos' => ['nullable', 'array'],
+            'remove_photos.*' => ['string', 'max:2048'],
+            'status' => ['required', 'in:published,hidden'],
+        ]);
+
+        $currentPhotos = array_values(array_filter($testimonial->photos ?: [$testimonial->photo]));
+        $removedPhotos = array_values(array_intersect($data['remove_photos'] ?? [], $currentPhotos));
+        $remainingPhotos = array_values(array_diff($currentPhotos, $removedPhotos));
+        unset($data['remove_photos']);
+
+        $newPhotos = $request->hasFile('photos')
+            ? collect($request->file('photos'))
+                ->map(fn ($photo) => $photo->store('uploads/testimonials', 'public'))
+                ->all()
+            : [];
+
+        if ($removedPhotos || $newPhotos) {
+            $data['photos'] = array_values([...$remainingPhotos, ...$newPhotos]);
+            $data['photo'] = $data['photos'][0] ?? null;
+        }
+
+        $testimonial->update($data);
+        collect($removedPhotos)->each(fn (string $photo) => Storage::disk('public')->delete($photo));
+
+        ActivityLogger::log('testimonial_updated', 'Testimoni diperbarui', 'Testimoni dari '.$testimonial->client_name.' diperbarui oleh '.auth()->user()->name);
+
+        return back()->with('success', 'Testimoni berhasil diperbarui.');
+    }
+
     public function destroyTestimonial(Testimonial $testimonial)
     {
+        collect([$testimonial->photo, ...($testimonial->photos ?? [])])
+            ->filter()
+            ->unique()
+            ->each(fn (string $photo) => Storage::disk('public')->delete($photo));
+
         $testimonial->delete();
 
         ActivityLogger::log('testimonial_deleted', 'Testimoni dihapus', 'Testimoni dari '.$testimonial->client_name.' dihapus oleh '.auth()->user()->name);
@@ -83,6 +130,46 @@ class ContentController extends Controller
         ActivityLogger::log('gallery_created', 'Galeri ditambahkan', 'Galeri "'.($data['title'] ?? 'Tanpa judul').'" dengan '.count($data['photos']).' foto ditambahkan oleh '.auth()->user()->name);
 
         return back()->with('success', 'Galeri berhasil ditambahkan.');
+    }
+
+    public function updateGallery(Request $request, Gallery $gallery)
+    {
+        $data = $request->validate([
+            'title' => ['nullable', 'string', 'max:255'],
+            'category' => ['nullable', 'string', 'max:100'],
+            'photos' => ['nullable', 'array'],
+            'photos.*' => ['image', 'max:8192'],
+            'remove_photos' => ['nullable', 'array'],
+            'remove_photos.*' => ['string', 'max:2048'],
+        ]);
+
+        $currentPhotos = array_values(array_filter($gallery->photos ?: [$gallery->photo]));
+        $removedPhotos = array_values(array_intersect($data['remove_photos'] ?? [], $currentPhotos));
+        $remainingPhotos = array_values(array_diff($currentPhotos, $removedPhotos));
+        $newFiles = $request->file('photos', []);
+
+        if (($removedPhotos || $newFiles) && count($remainingPhotos) + count($newFiles) < 3) {
+            throw ValidationException::withMessages([
+                'photos' => 'Galeri harus memiliki minimal tiga foto.',
+            ]);
+        }
+
+        unset($data['remove_photos']);
+
+        if ($removedPhotos || $newFiles) {
+            $newPhotos = collect($newFiles)
+                ->map(fn ($photo) => $photo->store('uploads/gallery', 'public'))
+                ->all();
+            $data['photos'] = array_values([...$remainingPhotos, ...$newPhotos]);
+            $data['photo'] = $data['photos'][0];
+        }
+
+        $gallery->update($data);
+        collect($removedPhotos)->each(fn (string $photo) => Storage::disk('public')->delete($photo));
+
+        ActivityLogger::log('gallery_updated', 'Galeri diperbarui', 'Galeri "'.($gallery->title ?? 'Tanpa judul').'" diperbarui oleh '.auth()->user()->name);
+
+        return back()->with('success', 'Galeri berhasil diperbarui.');
     }
 
     public function destroyGallery(Gallery $gallery)

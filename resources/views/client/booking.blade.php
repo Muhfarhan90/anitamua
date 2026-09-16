@@ -135,24 +135,6 @@
                 </form>
             </x-card>
 
-            {{-- RIWAYAT --}}
-            @if($booking->activityLogs && $booking->activityLogs->count() > 0)
-            <x-card title="Riwayat Pembayaran" title-icon="fa-clock-rotate-left">
-                <div class="max-h-48 overflow-y-auto overscroll-contain pr-2">
-                  <div class="relative pl-6 border-l-2 border-brand-100 space-y-5">
-                    @foreach($booking->activityLogs->sortByDesc('created_at') as $log)
-                    <div class="relative">
-                        <div class="absolute -left-[31px] top-1 w-3 h-3 rounded-full border-2 border-white shadow
-                                    {{ str_contains($log->description ?? '', 'verifikasi') ? 'bg-emerald-500' : (str_contains($log->description ?? '', 'upload') || str_contains($log->description ?? '', 'bukti') ? 'bg-brand' : 'bg-gray-300') }}"></div>
-                        <p class="text-xs text-gray-400">{{ \Carbon\Carbon::parse($log->created_at)->format('d M Y H:i') }} WIB @if($log->user)&middot; <span class="font-semibold text-brand">{{ $log->user->name }}</span>@endif</p>
-                        <p class="text-sm text-gray-700">{{ $log->description }}</p>
-                    </div>
-                    @endforeach
-                  </div>
-                </div>
-            </x-card>
-            @endif
-
             @if($booking->survey)
                 @include('admin.bookings.partials.survey-summary')
             @endif
@@ -160,6 +142,7 @@
             @if($booking->fittings->isNotEmpty())
                 @include('admin.bookings.partials.fitting-summary')
             @endif
+
         </div>
 
         {{-- SIDEBAR --}}
@@ -310,6 +293,26 @@
             </div>
         </div>
     </div>
+
+    {{-- AKTIVITAS --}}
+    @if($booking->activityLogs && $booking->activityLogs->count() > 0)
+    <div class="mt-4">
+        <x-card title="Aktivitas" title-icon="fa-clock-rotate-left">
+            <div class="max-h-48 overflow-y-auto overscroll-contain pr-2">
+              <div class="relative pl-6 border-l-2 border-brand-100 space-y-5">
+                @foreach($booking->activityLogs->sortByDesc('created_at') as $log)
+                <div class="relative">
+                    <div class="absolute -left-[31px] top-1 w-3 h-3 rounded-full border-2 border-white shadow
+                                {{ str_contains($log->description ?? '', 'verifikasi') ? 'bg-emerald-500' : (str_contains($log->description ?? '', 'upload') || str_contains($log->description ?? '', 'bukti') ? 'bg-brand' : 'bg-gray-300') }}"></div>
+                    <p class="text-xs text-gray-400">{{ \Carbon\Carbon::parse($log->created_at)->format('d M Y H:i') }} WIB @if($log->user)&middot; <span class="font-semibold text-brand">{{ $log->user->name }}</span>@endif</p>
+                    <p class="text-sm text-gray-700">{{ $log->description }}</p>
+                </div>
+                @endforeach
+              </div>
+            </div>
+        </x-card>
+    </div>
+    @endif
 </div>
 
 @push('scripts')

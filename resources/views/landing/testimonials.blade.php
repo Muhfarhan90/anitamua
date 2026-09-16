@@ -17,6 +17,14 @@
             @forelse($testimonials as $t)
                 <div class="card-mua h-full">
                     <div class="p-4 flex flex-col h-full">
+                        @php
+                            $photos = $t->photo_urls;
+                        @endphp
+                        @if($photos)
+                            <div class="mb-4">
+                                <x-gallery-slider :photos="$photos" :title="'Foto '.$t->client_name" height="180px" />
+                            </div>
+                        @endif
                         <div class="text-rose mb-3" style="font-size:1.05rem;">
                             @for($i = 0; $i < $t->rating; $i++)<i class="fas fa-star"></i>@endfor
                         </div>
@@ -43,3 +51,7 @@
     </div>
 </section>
 @endsection
+
+@push('scripts')
+<x-gallery-lightbox />
+@endpush

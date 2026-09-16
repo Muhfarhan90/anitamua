@@ -6,6 +6,15 @@
 @php
     $canManageInventory = in_array(auth()->user()->role, [App\Models\User::ROLE_OWNER, App\Models\User::ROLE_ADMIN], true);
     $canUpdateInventoryStatus = in_array(auth()->user()->role, [App\Models\User::ROLE_OWNER, App\Models\User::ROLE_ADMIN, App\Models\User::ROLE_TEAM], true);
+    $inventoryStatuses = [
+        'available' => 'Tersedia',
+        'in_use' => 'Dipakai',
+        'rented' => 'Disewa',
+        'laundering' => 'Dilaundry',
+        'alteration' => 'Dipermak',
+        'damaged' => 'Rusak',
+        'lost' => 'Hilang',
+    ];
 @endphp
 
 <x-page-header title="Inventory Wardrobe" :subtitle="$canManageInventory ? 'Kelola seluruh gaun, aksesoris, dan perlengkapan makeup' : 'Lihat daftar gaun, aksesoris, dan perlengkapan makeup'">
@@ -20,7 +29,7 @@
 <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4 mb-5">
     <x-stat-card icon="fa-box" label="Total Barang" :value="$items->total()" color="brand" />
     <x-stat-card icon="fa-circle-check" label="Tersedia" :value="$statusCounts['available'] ?? 0" color="emerald" />
-    <x-stat-card icon="fa-spa" label="Sedang Dipakai" :value="$statusCounts['in_use'] ?? 0" color="rose" />
+    <x-stat-card icon="fa-spa" label="Dipakai" :value="$statusCounts['in_use'] ?? 0" color="rose" />
     <x-stat-card icon="fa-triangle-exclamation" label="Rusak" :value="$statusCounts['damaged'] ?? 0" color="amber" />
     <x-stat-card icon="fa-compass" label="Hilang" :value="$statusCounts['lost'] ?? 0" color="gray" />
 </div>
@@ -42,7 +51,7 @@
     <select name="status" onchange="this.form.submit()"
             class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
         <option value="">Semua Status</option>
-        @foreach(['available' => 'Tersedia', 'in_use' => 'Sedang Dipakai', 'damaged' => 'Rusak', 'lost' => 'Hilang'] as $val => $label)
+        @foreach($inventoryStatuses as $val => $label)
             <option value="{{ $val }}" @selected(request('status') == $val)>{{ $label }}</option>
         @endforeach
     </select>
@@ -112,10 +121,11 @@
                     <td class="px-5 py-3">
                         <x-badge :color="match($item->status) {
                             'available' => 'success',
-                            'in_use' => 'warning',
+                            'in_use', 'rented' => 'warning',
+                            'laundering', 'alteration' => 'info',
                             'lost', 'damaged' => 'danger',
                             default => 'gray',
-                        }">{{ str_replace('_', ' ', ucfirst($item->status)) }}</x-badge>
+                        }">{{ $inventoryStatuses[$item->status] ?? str_replace('_', ' ', ucfirst($item->status)) }}</x-badge>
                     </td>
                     @if($canManageInventory)
                     <td class="px-5 py-3">
@@ -132,7 +142,7 @@
                         <form method="POST" action="{{ route('admin.inventory.status.update', $item) }}" class="flex items-center justify-center gap-2">
                             @csrf @method('PATCH')
                             <select name="status" class="rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-brand-200">
-                                @foreach(['available' => 'Tersedia', 'in_use' => 'Sedang Dipakai', 'damaged' => 'Rusak', 'lost' => 'Hilang'] as $value => $label)
+                                @foreach($inventoryStatuses as $value => $label)
                                     <option value="{{ $value }}" @selected($item->status === $value)>{{ $label }}</option>
                                 @endforeach
                             </select>
@@ -198,7 +208,7 @@
                     <label for="add_status" class="block text-sm font-medium text-gray-600 mb-1">Status <span class="text-red-500">*</span></label>
                     <select name="status" id="add_status" required
                             class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200 border-gray-200">
-                        @foreach(['available' => 'Tersedia', 'in_use' => 'Sedang Dipakai', 'damaged' => 'Rusak', 'lost' => 'Hilang'] as $val => $label)
+                        @foreach($inventoryStatuses as $val => $label)
                             <option value="{{ $val }}">{{ $label }}</option>
                         @endforeach
                     </select>
@@ -266,7 +276,7 @@
                     <label for="edit_status_{{ $item->id }}" class="block text-sm font-medium text-gray-600 mb-1">Status <span class="text-red-500">*</span></label>
                     <select name="status" id="edit_status_{{ $item->id }}" required
                             class="w-full rounded-lg border bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200 border-gray-200">
-                        @foreach(['available' => 'Tersedia', 'in_use' => 'Sedang Dipakai', 'damaged' => 'Rusak', 'lost' => 'Hilang'] as $val => $label)
+                        @foreach($inventoryStatuses as $val => $label)
                             <option value="{{ $val }}" @selected($item->status == $val)>{{ $label }}</option>
                         @endforeach
                     </select>

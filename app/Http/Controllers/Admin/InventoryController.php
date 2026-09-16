@@ -39,7 +39,7 @@ class InventoryController extends Controller
             'brand' => ['nullable', 'string', 'max:100'],
             'storage_location' => ['nullable', 'string', 'max:255'],
             'condition' => ['required', 'in:good,fair,damaged'],
-            'status' => ['required', 'in:available,in_use,damaged,lost'],
+            'status' => ['required', 'in:available,in_use,rented,laundering,alteration,damaged,lost'],
             'notes' => ['nullable', 'string'],
             'photo' => ['nullable', 'image', 'max:5120'],
         ]);
@@ -67,7 +67,7 @@ class InventoryController extends Controller
             'brand' => ['nullable', 'string', 'max:100'],
             'storage_location' => ['nullable', 'string', 'max:255'],
             'condition' => ['required', 'in:good,fair,damaged'],
-            'status' => ['required', 'in:available,in_use,damaged,lost'],
+            'status' => ['required', 'in:available,in_use,rented,laundering,alteration,damaged,lost'],
             'notes' => ['nullable', 'string'],
             'photo' => ['nullable', 'image', 'max:5120'],
         ]);
@@ -86,7 +86,7 @@ class InventoryController extends Controller
     public function updateStatus(Request $request, InventoryItem $item)
     {
         $data = $request->validate([
-            'status' => ['required', 'in:available,in_use,damaged,lost'],
+            'status' => ['required', 'in:available,in_use,rented,laundering,alteration,damaged,lost'],
         ]);
 
         if ($item->status !== $data['status']) {

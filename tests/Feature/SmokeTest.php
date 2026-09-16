@@ -17,6 +17,7 @@ use App\Models\Reminder;
 use App\Models\Schedule;
 use App\Models\SiteSetting;
 use App\Models\Tent;
+use App\Models\Testimonial;
 use App\Models\User;
 use App\Models\Vendor;
 use App\Models\VendorCategory;
@@ -1630,6 +1631,10 @@ it('lets field team view inventory without management actions', function () {
         ->get(route('admin.inventory.index'))
         ->assertOk()
         ->assertSee('Inventory Wardrobe')
+        ->assertSee('Dipakai')
+        ->assertSee('Disewa')
+        ->assertSee('Dilaundry')
+        ->assertSee('Dipermak')
         ->assertDontSee('Tambah Barang')
         ->assertDontSee('openEdit(', false)
         ->assertDontSee('admin.inventory.destroy');
@@ -1672,6 +1677,7 @@ it('lets client view their booking detail', function () {
         ->assertSee('data-pending-payment', false)
         ->assertSee('Data Survey')
         ->assertSee('Data Fitting')
+        ->assertSeeInOrder(['Data Survey', 'Data Fitting', 'Aktivitas'])
         ->assertSee('max-h-48 overflow-y-auto overscroll-contain pr-2', false)
         ->assertSee('&middot;', false)
         ->assertDontSee('id="paymentSelect"', false);
@@ -2284,6 +2290,83 @@ it('filters clients by contact detail and account status', function () {
         ->assertDontSee('Nadia Aktif');
 });
 
+it('stores more than ten photos for a testimonial', function () {
+    Storage::fake('public');
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+
+    $this->actingAs($owner)->post('/admin/content/testimonials', [
+        'client_name' => 'Dinda & Rama',
+        'rating' => 5,
+        'content' => 'Tim ANITA sangat membantu dari awal hingga acara selesai.',
+        'status' => 'published',
+        'photos' => collect(range(1, 11))
+            ->map(fn (int $number) => UploadedFile::fake()->image("dinda-rama-{$number}.jpg"))
+            ->all(),
+    ])->assertRedirect();
+
+    $testimonial = Testimonial::where('client_name', 'Dinda & Rama')->firstOrFail();
+    expect($testimonial->photos)->toHaveCount(11)
+        ->and($testimonial->photo)->toBe($testimonial->photos[0])
+        ->and($testimonial->photo_urls)->toHaveCount(11);
+    Storage::disk('public')->assertExists($testimonial->photos[0]);
+    Storage::disk('public')->assertExists($testimonial->photos[10]);
+
+    $removedPhoto = $testimonial->photos[0];
+    $this->actingAs($owner)->put('/admin/content/testimonials/'.$testimonial->id, [
+        'client_name' => 'Dinda & Rama Diperbarui',
+        'rating' => 4,
+        'content' => 'Testimoni ini sudah diperbarui.',
+        'status' => 'hidden',
+        'remove_photos' => [$removedPhoto],
+        'photos' => [UploadedFile::fake()->image('dinda-rama-baru.jpg')],
+    ])->assertRedirect();
+
+    $testimonial->refresh();
+    expect($testimonial->client_name)->toBe('Dinda & Rama Diperbarui')
+        ->and($testimonial->rating)->toBe(4)
+        ->and($testimonial->status)->toBe('hidden')
+        ->and($testimonial->photos)->toHaveCount(11)
+        ->and($testimonial->photos)->not->toContain($removedPhoto);
+    Storage::disk('public')->assertMissing($removedPhoto);
+
+    $this->actingAs($owner)->get('/admin/content/testimonials')
+        ->assertOk()
+        ->assertSee('Dinda &amp; Rama Diperbarui', false)
+        ->assertSee('data-gallery-lightbox', false);
+
+    $this->actingAs($owner)->delete('/admin/content/testimonials/'.$testimonial->id)->assertRedirect();
+    Storage::disk('public')->assertMissing($testimonial->photos[0]);
+    Storage::disk('public')->assertMissing($testimonial->photos[10]);
+});
+
+it('shows testimonial photos on the landing page', function () {
+    Testimonial::create([
+        'client_name' => 'Dinda & Rama',
+        'rating' => 5,
+        'content' => 'Kami sangat puas dengan hasil riasannya.',
+        'photo' => 'uploads/testimonials/dinda-rama-1.jpg',
+        'photos' => ['uploads/testimonials/dinda-rama-1.jpg', 'uploads/testimonials/dinda-rama-2.jpg'],
+        'status' => 'published',
+    ]);
+
+    $this->get('/testimoni')
+        ->assertOk()
+        ->assertSee('Foto Dinda &amp; Rama', false)
+        ->assertSee('data-gallery-lightbox', false);
+});
+
+it('limits each testimonial photo to three megabytes', function () {
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+
+    $this->actingAs($owner)->post('/admin/content/testimonials', [
+        'client_name' => 'Foto Terlalu Besar',
+        'rating' => 5,
+        'content' => 'Foto ini melebihi batas ukuran.',
+        'status' => 'published',
+        'photos' => [UploadedFile::fake()->image('terlalu-besar.jpg')->size(3073)],
+    ])->assertSessionHasErrors('photos.0');
+});
+
 it('calculates finance from verified payments and booking vendor prices', function () {
     $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
     $booking = Booking::firstOrFail();
@@ -2542,7 +2625,34 @@ it('requires at least three photos for each gallery item', function () {
         ->assertRedirect()
         ->assertSessionHas('success');
 
-    expect(Gallery::latest('id')->first()->photos)->toHaveCount(3);
+    $gallery = Gallery::latest('id')->first();
+    expect($gallery->photos)->toHaveCount(3);
+
+    $removedPhoto = $gallery->photos[0];
+    $this->actingAs($owner)
+        ->put('/admin/content/gallery/'.$gallery->id, [
+            'title' => 'Wedding Baru Diperbarui',
+            'category' => 'wedding',
+            'remove_photos' => [$removedPhoto],
+            'photos' => [UploadedFile::fake()->image('four.jpg')],
+        ])
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    $gallery->refresh();
+    expect($gallery->title)->toBe('Wedding Baru Diperbarui')
+        ->and($gallery->category)->toBe('wedding')
+        ->and($gallery->photos)->toHaveCount(3)
+        ->and($gallery->photos)->not->toContain($removedPhoto);
+    Storage::disk('public')->assertMissing($removedPhoto);
+
+    $this->actingAs($owner)
+        ->put('/admin/content/gallery/'.$gallery->id, [
+            'title' => $gallery->title,
+            'category' => $gallery->category,
+            'remove_photos' => [$gallery->photos[0]],
+        ])
+        ->assertSessionHasErrors('photos');
 });
 
 it('generates reminders via command', function () {
@@ -2734,8 +2844,8 @@ it('filters fieldwork by its schedule date and lets team update only inventory s
         ->assertOk()->assertSee('Tugas Tanggal Cocok')->assertDontSee('Tugas Tanggal Lain');
 
     $item = InventoryItem::firstOrFail();
-    $this->actingAs($team)->patch(route('admin.inventory.status.update', $item), ['status' => 'lost'])->assertRedirect();
-    expect($item->fresh()->status)->toBe('lost')
+    $this->actingAs($team)->patch(route('admin.inventory.status.update', $item), ['status' => 'laundering'])->assertRedirect();
+    expect($item->fresh()->status)->toBe('laundering')
         ->and(ActivityLog::where('action', 'inventory_status_updated')->exists())->toBeTrue();
 
     $this->actingAs($team)->put(route('admin.inventory.update', $item), [])->assertForbidden();

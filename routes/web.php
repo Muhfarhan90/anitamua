@@ -211,10 +211,12 @@ Route::middleware('auth')->group(function () {
             // Konten Website — Owner only
             Route::get('/content/testimonials', [ContentController::class, 'testimonials'])->name('content.testimonials');
             Route::post('/content/testimonials', [ContentController::class, 'storeTestimonial'])->name('content.testimonials.store');
+            Route::put('/content/testimonials/{testimonial}', [ContentController::class, 'updateTestimonial'])->name('content.testimonials.update');
             Route::delete('/content/testimonials/{testimonial}', [ContentController::class, 'destroyTestimonial'])->name('content.testimonials.destroy');
 
             Route::get('/content/gallery', [ContentController::class, 'gallery'])->name('content.gallery');
             Route::post('/content/gallery', [ContentController::class, 'storeGallery'])->name('content.gallery.store');
+            Route::put('/content/gallery/{gallery}', [ContentController::class, 'updateGallery'])->name('content.gallery.update');
             Route::delete('/content/gallery/{gallery}', [ContentController::class, 'destroyGallery'])->name('content.gallery.destroy');
 
             Route::get('/content/faqs', [ContentController::class, 'faqs'])->name('content.faqs');
