@@ -12,6 +12,29 @@
     </x-slot:actions>
 </x-page-header>
 
+<x-card class="mb-5">
+    <form method="GET" action="{{ route('admin.users.clients') }}" class="flex flex-wrap items-end gap-4">
+        <div class="flex-1 min-w-[220px]">
+            <label class="mb-1 block text-sm font-medium text-gray-600">Cari Klien</label>
+            <div class="relative">
+                <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400"></i>
+                <input type="text" name="q" value="{{ request('q') }}" placeholder="Nama, email, atau nomor HP..."
+                       class="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
+            </div>
+        </div>
+        <div class="min-w-[180px]">
+            <label class="mb-1 block text-sm font-medium text-gray-600">Status Akun</label>
+            <select name="status" class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-200">
+                <option value="">Semua Status</option>
+                <option value="active" @selected(request('status') === 'active')>Aktif</option>
+                <option value="inactive" @selected(request('status') === 'inactive')>Nonaktif</option>
+            </select>
+        </div>
+        <x-button type="submit"><i class="fas fa-filter"></i> Filter</x-button>
+        <x-button color="outline" href="{{ route('admin.users.clients') }}"><i class="fas fa-rotate-left"></i> Reset</x-button>
+    </form>
+</x-card>
+
 <x-card padding="p-0">
     <div class="overflow-x-auto">
         <table class="w-full text-sm">

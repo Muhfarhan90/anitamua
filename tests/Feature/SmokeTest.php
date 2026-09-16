@@ -2256,6 +2256,34 @@ it('admin can manage clients without gaining staff management access', function 
     $this->actingAs($admin)->get('/admin/users/staff')->assertForbidden();
 });
 
+it('filters clients by contact detail and account status', function () {
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    User::factory()->create([
+        'name' => 'Nadia Aktif',
+        'email' => 'nadia-filter@example.com',
+        'phone' => '081234560001',
+        'role' => User::ROLE_CLIENT,
+        'is_active' => true,
+    ]);
+    User::factory()->create([
+        'name' => 'Rani Nonaktif',
+        'email' => 'rani-filter@example.com',
+        'phone' => '081234560002',
+        'role' => User::ROLE_CLIENT,
+        'is_active' => false,
+    ]);
+
+    $this->actingAs($owner)->get('/admin/users/clients?q=nadia-filter@example.com')
+        ->assertOk()
+        ->assertSee('Nadia Aktif')
+        ->assertDontSee('Rani Nonaktif');
+
+    $this->actingAs($owner)->get('/admin/users/clients?status=inactive')
+        ->assertOk()
+        ->assertSee('Rani Nonaktif')
+        ->assertDontSee('Nadia Aktif');
+});
+
 it('calculates finance from verified payments and booking vendor prices', function () {
     $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
     $booking = Booking::firstOrFail();

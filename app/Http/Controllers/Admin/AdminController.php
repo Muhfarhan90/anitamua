@@ -24,12 +24,21 @@ class AdminController extends Controller
         return view('admin.users.staff', compact('users'));
     }
 
-    public function clients()
+    public function clients(Request $request)
     {
+        $search = trim((string) $request->input('q'));
         $users = User::withCount('bookings')
             ->where('role', User::ROLE_CLIENT)
+            ->when($search !== '', fn ($query) => $query->where(function ($query) use ($search) {
+                $query->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%");
+            }))
+            ->when($request->status === 'active', fn ($query) => $query->where('is_active', true))
+            ->when($request->status === 'inactive', fn ($query) => $query->where('is_active', false))
             ->orderBy('name')
-            ->paginate(20);
+            ->paginate(20)
+            ->withQueryString();
 
         return view('admin.users.client', compact('users'));
     }
