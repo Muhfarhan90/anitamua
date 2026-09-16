@@ -3,7 +3,7 @@
 @section('title', 'Master Pelaminan')
 
 @section('content')
-<x-page-header title="Master Pelaminan" subtitle="Nama dan foto pelaminan yang tersedia untuk survey lapangan">
+<x-page-header title="Master Pelaminan" subtitle="Nama, ukuran, dan foto pelaminan yang tersedia untuk survey lapangan">
     <x-slot:actions>
         <x-button color="primary" onclick="document.getElementById('addWeddingStageModal').classList.remove('hidden')">
             <i class="fas fa-plus"></i> Tambah Pelaminan
@@ -18,6 +18,7 @@
                 <tr class="text-left text-gray-500 border-b border-gray-100 bg-cream/60">
                     <th class="px-5 py-3 font-medium">Foto</th>
                     <th class="px-5 py-3 font-medium">Nama Pelaminan</th>
+                    <th class="px-5 py-3 font-medium">Ukuran</th>
                     <th class="px-5 py-3 font-medium">Status</th>
                     <th class="px-5 py-3 font-medium text-center">Aksi</th>
                 </tr>
@@ -36,6 +37,7 @@
                         @endif
                     </td>
                     <td class="px-5 py-3 font-semibold text-gray-800">{{ $weddingStage->name }}</td>
+                    <td class="px-5 py-3 text-gray-600">{{ $weddingStage->size ?: '-' }}</td>
                     <td class="px-5 py-3"><x-badge :color="$weddingStage->is_active ? 'success' : 'gray'">{{ $weddingStage->is_active ? 'Aktif' : 'Nonaktif' }}</x-badge></td>
                     <td class="px-5 py-3">
                         <div class="flex items-center justify-center gap-2">
@@ -48,7 +50,7 @@
                     </td>
                 </tr>
                 @empty
-                <tr><td colspan="4"><x-empty-state icon="fa-panorama" title="Belum ada pelaminan" /></td></tr>
+                <tr><td colspan="5"><x-empty-state icon="fa-panorama" title="Belum ada pelaminan" /></td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -65,6 +67,7 @@
         <form action="{{ route('admin.wedding-stages.store') }}" method="POST" enctype="multipart/form-data" class="space-y-3">
             @csrf
             <x-input name="name" label="Nama Pelaminan" required placeholder="Contoh: Garden Modern" />
+            <x-input name="size" label="Ukuran Pelaminan" placeholder="Contoh: 6 x 3 m" />
             <div>
                 <label class="block text-sm font-medium text-gray-600 mb-1">Foto Pelaminan (bisa pilih beberapa)</label>
                 <input name="photos[]" type="file" accept="image/*" multiple required class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-brand-200">
@@ -89,6 +92,7 @@
         <form action="{{ route('admin.wedding-stages.update', $weddingStage) }}" method="POST" enctype="multipart/form-data" class="space-y-3" onsubmit="return confirmPhotoRemoval(this)">
             @csrf @method('PUT')
             <x-input name="name" label="Nama Pelaminan" :value="$weddingStage->name" required />
+            <x-input name="size" label="Ukuran Pelaminan" :value="$weddingStage->size" placeholder="Contoh: 6 x 3 m" />
             @if($weddingStage->photo_urls)
                 @php($photoPaths = array_values(array_filter($weddingStage->photos ?: [$weddingStage->photo_path])))
                 <div class="grid grid-cols-3 gap-2">

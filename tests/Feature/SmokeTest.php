@@ -335,6 +335,7 @@ it('admin can manage wedding stages', function () {
 
     $this->actingAs($admin)->post('/admin/wedding-stages', [
         'name' => 'Rustic White',
+        'size' => '6 x 3 m',
         'is_active' => 1,
         'photos' => [
             UploadedFile::fake()->image('rustic-white.jpg'),
@@ -344,12 +345,14 @@ it('admin can manage wedding stages', function () {
 
     $weddingStage = WeddingStage::where('name', 'Rustic White')->firstOrFail();
     expect($weddingStage->is_active)->toBeTrue();
+    expect($weddingStage->size)->toBe('6 x 3 m');
     expect($weddingStage->photo_path)->toStartWith('uploads/wedding-stages/');
     expect($weddingStage->photos)->toHaveCount(2);
     Storage::disk('public')->assertExists($weddingStage->photo_path);
 
     $this->actingAs($admin)->put('/admin/wedding-stages/'.$weddingStage->id, [
         'name' => 'Rustic White Updated',
+        'size' => '8 x 4 m',
         'is_active' => 0,
         'photos' => [
             UploadedFile::fake()->image('rustic-white-updated.jpg'),
@@ -358,6 +361,7 @@ it('admin can manage wedding stages', function () {
     ])->assertRedirect();
 
     expect($weddingStage->refresh()->name)->toBe('Rustic White Updated');
+    expect($weddingStage->size)->toBe('8 x 4 m');
     expect($weddingStage->is_active)->toBeFalse();
     expect($weddingStage->photo_path)->toStartWith('uploads/wedding-stages/');
     expect($weddingStage->photos)->toHaveCount(4);
@@ -365,12 +369,18 @@ it('admin can manage wedding stages', function () {
     $photoToDelete = $weddingStage->photos[1];
     $this->actingAs($admin)->put('/admin/wedding-stages/'.$weddingStage->id, [
         'name' => $weddingStage->name,
+        'size' => $weddingStage->size,
         'is_active' => 0,
         'remove_photos' => [$photoToDelete],
     ])->assertRedirect();
     expect($weddingStage->refresh()->photos)->toHaveCount(3)
         ->and($weddingStage->photos)->not->toContain($photoToDelete);
     Storage::disk('public')->assertMissing($photoToDelete);
+
+    $this->actingAs($admin)->get('/admin/wedding-stages')
+        ->assertOk()
+        ->assertSee('Ukuran Pelaminan')
+        ->assertSee('8 x 4 m');
 
     $this->actingAs($admin)->delete('/admin/wedding-stages/'.$weddingStage->id)->assertRedirect();
     expect(WeddingStage::find($weddingStage->id))->toBeNull();

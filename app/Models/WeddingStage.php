@@ -14,7 +14,7 @@ class WeddingStage extends Model
 
     protected $table = 'wedding_stages';
 
-    protected $fillable = ['name', 'photo_path', 'photos', 'is_active'];
+    protected $fillable = ['name', 'size', 'photo_path', 'photos', 'is_active'];
     protected $appends = ['photo_urls'];
 
     protected function casts(): array

@@ -22,6 +22,7 @@ class WeddingStageController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:wedding_stages,name'],
+            'size' => ['nullable', 'string', 'max:100'],
             'photos' => ['required', 'array', 'min:1'],
             'photos.*' => ['image', 'max:5120'],
             'is_active' => ['required', 'boolean'],
@@ -46,6 +47,7 @@ class WeddingStageController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255', 'unique:wedding_stages,name,'.$weddingStage->id],
+            'size' => ['nullable', 'string', 'max:100'],
             'photos' => ['sometimes', 'array'],
             'photos.*' => ['image', 'max:5120'],
             'remove_photos' => ['sometimes', 'array'],
