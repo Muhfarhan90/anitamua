@@ -8,10 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('bookings', function (Blueprint $table) {
-            $table->json('discounts')->nullable()->after('discount_note');
-            $table->json('bonuses')->nullable()->after('discounts');
-        });
+        if (! Schema::hasColumn('bookings', 'discounts')) {
+            Schema::table('bookings', function (Blueprint $table) {
+                $table->json('discounts')->nullable()->after('discount_note');
+            });
+        }
+
+        if (! Schema::hasColumn('bookings', 'bonuses')) {
+            Schema::table('bookings', function (Blueprint $table) {
+                $table->json('bonuses')->nullable()->after('discounts');
+            });
+        }
     }
 
     public function down(): void
