@@ -55,6 +55,22 @@ it('renders landing pages', function () {
     $this->get('/booking/sukses/'.Booking::where('name', 'Dewi & Andi')->value('code'))->assertOk();
 });
 
+it('uses the active site logo as the favicon', function () {
+    SiteSetting::set('logo', 'uploads/logo/logo-tab.png');
+    cache()->forget('site_settings');
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+
+    $this->get('/')->assertOk()
+        ->assertSee('rel="icon"', false)
+        ->assertSee('storage/uploads/logo/logo-tab.png', false);
+    $this->get('/login')->assertOk()
+        ->assertSee('rel="icon"', false)
+        ->assertSee('storage/uploads/logo/logo-tab.png', false);
+    $this->actingAs($owner)->get('/dashboard')->assertOk()
+        ->assertSee('rel="icon"', false)
+        ->assertSee('storage/uploads/logo/logo-tab.png', false);
+});
+
 it('shows only active decorations, gates, and tents in the public catalog', function () {
     WeddingStage::create([
         'name' => 'Dekor Publik',

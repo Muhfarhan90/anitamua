@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', config('app.name', 'Anita MUA'))</title>
+    @if(!empty($settings['logo']))
+        <link rel="icon" href="{{ asset('storage/'.$settings['logo']) }}">
+        <link rel="apple-touch-icon" href="{{ asset('storage/'.$settings['logo']) }}">
+    @endif
 
     {{-- Fonts --}}
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
