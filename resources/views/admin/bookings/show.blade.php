@@ -13,6 +13,13 @@
     $offset = $circumference - ($percentage / 100 * $circumference);
     $eventLocation = $booking->location;
     $mapsUrl = $booking->maps_url;
+    $clientPhone = $booking->client?->phone ?? $booking->phone ?? '-';
+    $clientCopyText = implode(PHP_EOL, [
+        'Nama Pengantin: '.($booking->name ?? '-'),
+        'No. HP: '.$clientPhone,
+        'Alamat: '.($eventLocation ?: '-'),
+        'Link Maps: '.($mapsUrl ?: '-'),
+    ]);
 @endphp
 
 <x-page-header :title="'Detail Booking — '.($booking->client->name ?? $booking->name)">
@@ -40,6 +47,11 @@
     <div class="lg:col-span-2 space-y-5">
 
         <x-card title="Informasi Booking" title-icon="fa-file-invoice">
+            <x-slot:actions>
+                <button type="button" data-copy-client-info class="inline-flex items-center gap-1.5 rounded-lg border border-brand bg-brand px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-brand-dark focus:outline-none focus:ring-2 focus:ring-brand-200">
+                    <i class="fas fa-copy"></i> <span data-copy-client-label>Salin Data Klien</span>
+                </button>
+            </x-slot:actions>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                     <span class="text-gray-500">Kode</span>
@@ -381,6 +393,44 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const copyClientButton = document.querySelector('[data-copy-client-info]');
+    const clientCopyText = @json($clientCopyText);
+
+    const copyText = async (text) => {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(text);
+            return;
+        }
+
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand('copy');
+        textarea.remove();
+        if (!copied) throw new Error('Clipboard tidak tersedia.');
+    };
+
+    copyClientButton?.addEventListener('click', async () => {
+        const label = copyClientButton.querySelector('[data-copy-client-label]');
+        const icon = copyClientButton.querySelector('i');
+
+        try {
+            await copyText(clientCopyText);
+            label.textContent = 'Tersalin';
+            icon.className = 'fas fa-check';
+            setTimeout(() => {
+                label.textContent = 'Salin Data Klien';
+                icon.className = 'fas fa-copy';
+            }, 1800);
+        } catch {
+            label.textContent = 'Gagal menyalin';
+            setTimeout(() => label.textContent = 'Salin Data Klien', 1800);
+        }
+    });
+
     document.querySelectorAll('[data-summary-collapse]').forEach(card => {
         const button = card.querySelector('[data-summary-toggle]');
         const content = card.querySelector('[data-summary-content]');

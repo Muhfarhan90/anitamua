@@ -1728,7 +1728,12 @@ it('shows the booking location and maps link in booking information', function (
         ->assertOk()
         ->assertSee('grid-cols-2 md:grid-cols-4', false)
         ->assertSee('Link Maps')
-        ->assertSee('Gedung Serbaguna ANITA');
+        ->assertSee('Gedung Serbaguna ANITA')
+        ->assertSee('data-copy-client-info', false)
+        ->assertSee('Salin Data Klien')
+        ->assertSee('const clientCopyText', false)
+        ->assertSee('Nama Pengantin:', false)
+        ->assertSee('No. HP:', false);
 });
 
 it('renders scoped reset and hide controls for survey and fitting forms', function () {
