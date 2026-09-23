@@ -8,6 +8,7 @@ use App\Models\PackageChangeRequest;
 use App\Models\Payment;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ClientController extends Controller
 {
@@ -22,6 +23,17 @@ class ClientController extends Controller
         ]);
 
         return view('client.booking', compact('booking'));
+    }
+
+    public function testimonials()
+    {
+        $bookings = auth()->user()->bookings()
+            ->where('status', Booking::STATUS_COMPLETED)
+            ->with('testimonial')
+            ->orderByDesc('event_date')
+            ->get();
+
+        return view('client.testimonials', compact('bookings'));
     }
 
     public function uploadProof(Booking $booking, Request $request)
@@ -64,6 +76,54 @@ class ClientController extends Controller
         ActivityLogger::log('payment_proof_uploaded', 'Bukti pembayaran diunggah', 'Client mengunggah bukti '.Payment::typeLabel($payment->type).' menunggu verifikasi admin.', $booking->id);
 
         return back()->with('success', 'Bukti pembayaran diunggah. Admin akan memverifikasi segera.');
+    }
+
+    public function storeTestimonial(Booking $booking, Request $request)
+    {
+        abort_unless($booking->client_id === auth()->id(), 403);
+        abort_unless($booking->status === Booking::STATUS_COMPLETED, 403, 'Testimoni hanya dapat diberikan setelah booking selesai.');
+
+        $data = $request->validate([
+            'rating' => ['required', 'integer', 'between:1,5'],
+            'content' => ['required', 'string', 'max:3000'],
+            'photos' => ['nullable', 'array'],
+            'photos.*' => ['image', 'max:3072'],
+            'remove_photos' => ['nullable', 'array'],
+            'remove_photos.*' => ['string', 'max:2048'],
+        ]);
+
+        $testimonial = $booking->testimonial()->first();
+        $currentPhotos = array_values(array_filter($testimonial?->photos ?: [$testimonial?->photo]));
+        $removedPhotos = array_values(array_intersect($data['remove_photos'] ?? [], $currentPhotos));
+        $remainingPhotos = array_values(array_diff($currentPhotos, $removedPhotos));
+        $newPhotos = $request->hasFile('photos')
+            ? collect($request->file('photos'))
+                ->map(fn ($photo) => $photo->store('uploads/testimonials', 'public'))
+                ->all()
+            : [];
+        $photos = array_values([...$remainingPhotos, ...$newPhotos]);
+
+        $testimonial = $booking->testimonial()->updateOrCreate([], [
+            'client_name' => $booking->name,
+            'rating' => $data['rating'],
+            'content' => $data['content'],
+            'photo' => $photos[0] ?? null,
+            'photos' => $photos,
+            'status' => 'hidden',
+        ]);
+
+        collect($removedPhotos)->each(fn (string $photo) => Storage::disk('public')->delete($photo));
+
+        ActivityLogger::log(
+            $testimonial->wasRecentlyCreated ? 'testimonial_submitted' : 'testimonial_updated',
+            $testimonial->wasRecentlyCreated ? 'Testimoni dikirim' : 'Testimoni diperbarui',
+            'Testimoni untuk booking '.$booking->code.($testimonial->wasRecentlyCreated ? ' dikirim' : ' diperbarui').' oleh '.auth()->user()->name.'.',
+            $booking->id,
+        );
+
+        return back()->with('success', $testimonial->wasRecentlyCreated
+            ? 'Terima kasih. Testimoni Anda berhasil dikirim.'
+            : 'Testimoni berhasil diperbarui.');
     }
 
     public function requestPackageChange(Booking $booking, Request $request)

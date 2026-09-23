@@ -58,6 +58,8 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:client')->group(function () {
         Route::get('/client/booking/{booking}', [ClientController::class, 'booking'])->name('client.booking');
         Route::post('/client/booking/{booking}/proof', [ClientController::class, 'uploadProof'])->name('client.booking.proof');
+        Route::get('/client/testimonials', [ClientController::class, 'testimonials'])->name('client.testimonials');
+        Route::post('/client/booking/{booking}/testimonial', [ClientController::class, 'storeTestimonial'])->name('client.booking.testimonial');
     });
 
     // Profil & ganti password

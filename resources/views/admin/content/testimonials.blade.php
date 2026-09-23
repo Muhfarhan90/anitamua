@@ -68,6 +68,9 @@
                         <div class="flex items-start justify-between gap-3">
                             <div>
                                 <h3 class="font-semibold text-gray-800">{{ $testimonial->client_name }}</h3>
+                                @if($testimonial->booking)
+                                    <p class="mt-0.5 text-xs font-medium text-gray-400">Booking {{ $testimonial->booking->code }}</p>
+                                @endif
                                 <div class="mt-1 text-sm text-amber-500">@for($i = 1; $i <= 5; $i++)<i class="fas fa-star {{ $i <= $testimonial->rating ? '' : 'text-gray-200' }}"></i>@endfor</div>
                             </div>
                             <x-badge :color="$testimonial->status === 'published' ? 'success' : 'gray'">{{ $testimonial->status }}</x-badge>

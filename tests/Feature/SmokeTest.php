@@ -1720,6 +1720,114 @@ it('hides survey and fitting summaries from clients when they have no data', fun
         ->assertDontSee('Data Fitting');
 });
 
+it('lets a client submit and update a testimonial after their booking is completed', function () {
+    Storage::fake('public');
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $booking = $client->bookings()->firstOrFail();
+
+    $this->actingAs($client)->get(route('client.booking', $booking))
+        ->assertOk()
+        ->assertDontSee('Bagikan Pengalaman');
+    $this->actingAs($client)->get(route('client.testimonials'))
+        ->assertOk()
+        ->assertDontSee('data-testimonial-form', false);
+    $this->actingAs($client)->post(route('client.booking.testimonial', $booking), [
+        'rating' => 5,
+        'content' => 'Belum boleh dikirim.',
+    ])->assertForbidden();
+
+    $booking->update(['status' => Booking::STATUS_COMPLETED]);
+    $this->actingAs($client)->get(route('client.booking', $booking))
+        ->assertOk()
+        ->assertDontSee('Bagikan Pengalaman');
+    $this->actingAs($client)->get(route('client.testimonials'))
+        ->assertOk()
+        ->assertSee($booking->code)
+        ->assertSee('data-testimonial-form', false);
+
+    $this->actingAs($client)->post(route('client.booking.testimonial', $booking), [
+        'rating' => 5,
+        'content' => 'Tim ANITA membuat hari pernikahan kami terasa tenang dan istimewa.',
+        'photos' => [
+            UploadedFile::fake()->image('testimoni-1.jpg'),
+            UploadedFile::fake()->image('testimoni-2.jpg'),
+        ],
+    ])->assertRedirect()->assertSessionHas('success');
+
+    $testimonial = $booking->testimonial()->firstOrFail();
+    $removedPhoto = $testimonial->photos[0];
+    expect($booking->testimonial()->count())->toBe(1)
+        ->and($testimonial->client_name)->toBe($booking->name)
+        ->and($testimonial->rating)->toBe(5)
+        ->and($testimonial->status)->toBe('hidden')
+        ->and($testimonial->photos)->toHaveCount(2);
+    Storage::disk('public')->assertExists($removedPhoto);
+    expect(ActivityLog::where('booking_id', $booking->id)->where('action', 'testimonial_submitted')->exists())->toBeTrue();
+
+    $this->actingAs($client)->get(route('client.testimonials'))
+        ->assertOk()
+        ->assertSee($testimonial->content)
+        ->assertSee('Edit Testimoni')
+        ->assertDontSee('Menunggu persetujuan')
+        ->assertDontSee('Owner/Admin akan memeriksa testimoni');
+
+    $testimonial->update(['status' => 'published']);
+    $this->actingAs($client)->post(route('client.booking.testimonial', $booking), [
+        'rating' => 4,
+        'content' => 'Pelayanan sangat baik dan tim selalu membantu kami.',
+        'remove_photos' => [$removedPhoto],
+        'photos' => [UploadedFile::fake()->image('testimoni-baru.jpg')],
+    ])->assertRedirect()->assertSessionHas('success');
+
+    $testimonial->refresh();
+    expect($booking->testimonial()->count())->toBe(1)
+        ->and($testimonial->rating)->toBe(4)
+        ->and($testimonial->status)->toBe('hidden')
+        ->and($testimonial->photos)->toHaveCount(2)
+        ->and($testimonial->photos)->not->toContain($removedPhoto);
+    Storage::disk('public')->assertMissing($removedPhoto);
+    expect(ActivityLog::where('booking_id', $booking->id)->where('action', 'testimonial_updated')->exists())->toBeTrue();
+
+    $this->get(route('testimonials'))->assertOk()->assertDontSee($testimonial->content);
+    $this->actingAs($owner)->put(route('admin.content.testimonials.update', $testimonial), [
+        'client_name' => $testimonial->client_name,
+        'rating' => $testimonial->rating,
+        'content' => $testimonial->content,
+        'status' => 'published',
+    ])->assertRedirect();
+    $this->get(route('testimonials'))->assertOk()->assertSee($testimonial->content);
+    $this->actingAs($owner)->get(route('admin.content.testimonials'))
+        ->assertOk()
+        ->assertSee('Booking '.$booking->code);
+});
+
+it('protects client testimonial ownership and validates its fields', function () {
+    Storage::fake('public');
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $booking = $client->bookings()->firstOrFail();
+    $booking->update(['status' => Booking::STATUS_COMPLETED]);
+    $otherClient = User::create([
+        'name' => 'Klien Lain',
+        'email' => 'klien-lain@example.com',
+        'password' => bcrypt('password'),
+        'role' => User::ROLE_CLIENT,
+        'is_active' => true,
+    ]);
+
+    $this->actingAs($otherClient)->post(route('client.booking.testimonial', $booking), [
+        'rating' => 5,
+        'content' => 'Bukan booking milik saya.',
+    ])->assertForbidden();
+
+    $this->actingAs($client)->post(route('client.booking.testimonial', $booking), [
+        'rating' => 6,
+        'content' => '',
+        'photos' => [UploadedFile::fake()->image('terlalu-besar.jpg')->size(3073)],
+    ])->assertSessionHasErrors(['rating', 'content', 'photos.0']);
+    expect($booking->testimonial()->exists())->toBeFalse();
+});
+
 it('shows all booking activities in one scrollable history ordered newest first', function () {
     $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
     $booking = Booking::firstOrFail();

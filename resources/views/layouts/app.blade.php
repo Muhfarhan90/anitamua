@@ -147,6 +147,7 @@
                 ['title' => 'Menu', 'items' => [
                     ['label' => 'Dashboard',    'icon' => 'fa-solid fa-grip',           'url' => route('dashboard'),              'active' => 'dashboard'],
                     ['label' => 'Booking Saya', 'icon' => 'fa-solid fa-calendar-check', 'url' => $firstBooking ? route('client.booking', $firstBooking) : route('booking.create'), 'active' => ['client.booking*', 'booking.create']],
+                    ['label' => 'Testimoni Saya', 'icon' => 'fa-solid fa-star',          'url' => route('client.testimonials'),     'active' => 'client.testimonials'],
                 ]],
             ],
         ];
