@@ -67,6 +67,7 @@
                 ]],
                 ['title' => 'Paket', 'items' => [
                     ['label' => 'Paket',      'icon' => 'fa-solid fa-box',             'url' => route('admin.packages.index'),   'active' => 'admin.packages.*'],
+                    ['label' => 'Jenis Referensi', 'icon' => 'fa-solid fa-lightbulb',   'url' => route('admin.reference-types.index'), 'active' => 'admin.reference-types.*'],
                     ['label' => 'Pelaminan',  'icon' => 'fa-solid fa-panorama',        'url' => route('admin.wedding-stages.index'), 'active' => 'admin.wedding-stages.*'],
                     ['label' => 'Tenda',      'icon' => 'fa-solid fa-campground',       'url' => route('admin.tents.index'), 'active' => 'admin.tents.*'],
                     ['label' => 'Gapura',     'icon' => 'fa-solid fa-archway',          'url' => route('admin.entrance-gates.index'), 'active' => 'admin.entrance-gates.*'],
@@ -108,6 +109,7 @@
                 ]],
                 ['title' => 'Paket', 'items' => [
                     ['label' => 'Paket',      'icon' => 'fa-solid fa-box',             'url' => route('admin.packages.index'),   'active' => 'admin.packages.*'],
+                    ['label' => 'Jenis Referensi', 'icon' => 'fa-solid fa-lightbulb',   'url' => route('admin.reference-types.index'), 'active' => 'admin.reference-types.*'],
                     ['label' => 'Pelaminan',  'icon' => 'fa-solid fa-panorama',        'url' => route('admin.wedding-stages.index'), 'active' => 'admin.wedding-stages.*'],
                     ['label' => 'Tenda',      'icon' => 'fa-solid fa-campground',       'url' => route('admin.tents.index'), 'active' => 'admin.tents.*'],
                     ['label' => 'Gapura',     'icon' => 'fa-solid fa-archway',          'url' => route('admin.entrance-gates.index'), 'active' => 'admin.entrance-gates.*'],
@@ -147,6 +149,7 @@
                 ['title' => 'Menu', 'items' => [
                     ['label' => 'Dashboard',    'icon' => 'fa-solid fa-grip',           'url' => route('dashboard'),              'active' => 'dashboard'],
                     ['label' => 'Booking Saya', 'icon' => 'fa-solid fa-calendar-check', 'url' => $firstBooking ? route('client.booking', $firstBooking) : route('booking.create'), 'active' => ['client.booking*', 'booking.create']],
+                    ['label' => 'Referensi Saya', 'icon' => 'fa-solid fa-images',        'url' => route('client.references'),      'active' => 'client.references*'],
                     ['label' => 'Testimoni Saya', 'icon' => 'fa-solid fa-star',          'url' => route('client.testimonials'),     'active' => 'client.testimonials'],
                 ]],
             ],

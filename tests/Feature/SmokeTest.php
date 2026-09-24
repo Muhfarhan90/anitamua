@@ -4,6 +4,7 @@ use App\Helpers\BookingProgress;
 use App\Mail\ClientAccountCredentials;
 use App\Models\ActivityLog;
 use App\Models\Booking;
+use App\Models\ClientReference;
 use App\Models\EntranceGate;
 use App\Models\Finance;
 use App\Models\Fitting;
@@ -14,6 +15,7 @@ use App\Models\Package;
 use App\Models\PackageType;
 use App\Models\Payment;
 use App\Models\Reminder;
+use App\Models\ReferenceType;
 use App\Models\Schedule;
 use App\Models\SiteSetting;
 use App\Models\Tent;
@@ -1522,6 +1524,7 @@ it('keeps verified payments immutable to client proof uploads', function () {
     Storage::fake('public');
     $client = User::where('email', 'client@anitamua.com')->firstOrFail();
     $booking = $client->bookings()->firstOrFail();
+
     $payment = $booking->payments()->where('status', Payment::STATUS_VERIFIED)->firstOrFail();
     $amount = $payment->amount;
 
@@ -1826,6 +1829,160 @@ it('protects client testimonial ownership and validates its fields', function ()
         'photos' => [UploadedFile::fake()->image('terlalu-besar.jpg')->size(3073)],
     ])->assertSessionHasErrors(['rating', 'content', 'photos.0']);
     expect($booking->testimonial()->exists())->toBeFalse();
+});
+
+it('lets admins manage reference types and clients upload booking references', function () {
+    Storage::fake('public');
+
+    expect(ReferenceType::whereIn('name', ['Dekor', 'Tenda', 'Foto Prewedding'])->count())->toBe(3);
+
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $booking = $client->bookings()->firstOrFail();
+
+    $this->actingAs($owner)->post(route('admin.reference-types.store'), [
+        'name' => 'Dekor Impian',
+    ])->assertRedirect()->assertSessionHas('success');
+
+    $referenceType = ReferenceType::where('name', 'Dekor Impian')->firstOrFail();
+    $this->actingAs($client)->get(route('client.references'))
+        ->assertOk()
+        ->assertSee('Dekor Impian')
+        ->assertDontSee('Booking '.$booking->code);
+
+    $this->actingAs($client)->post(route('client.references.store'), [
+        'reference_type_id' => $referenceType->id,
+        'notes' => 'Warna pastel dan bunga tidak terlalu ramai.',
+        'photos' => [
+            UploadedFile::fake()->image('referensi-1.jpg'),
+            UploadedFile::fake()->image('referensi-2.jpg'),
+        ],
+    ])->assertRedirect()->assertSessionHas('success');
+
+    $reference = ClientReference::firstOrFail();
+    expect($reference->client_id)->toBe($client->id)
+        ->and($reference->booking_id)->toBe($booking->id)
+        ->and($reference->photos)->toHaveCount(2);
+    Storage::disk('public')->assertExists($reference->photos[0]);
+    expect(ActivityLog::where('booking_id', $booking->id)->where('action', 'reference_uploaded')->exists())->toBeTrue();
+
+    $removedPhoto = $reference->photos[0];
+    $this->actingAs($client)->put(route('client.references.update', $reference), [
+        'reference_type_id' => $referenceType->id,
+        'notes' => 'Catatan referensi diperbarui klien.',
+        'remove_photos' => [$removedPhoto],
+        'photos' => [UploadedFile::fake()->image('referensi-baru.jpg')],
+    ])->assertRedirect()->assertSessionHas('success');
+    $reference->refresh();
+    expect($reference->notes)->toBe('Catatan referensi diperbarui klien.')
+        ->and($reference->photos)->toHaveCount(2)
+        ->and($reference->photos)->not->toContain($removedPhoto);
+    Storage::disk('public')->assertMissing($removedPhoto);
+    $this->actingAs($client)->get(route('client.references'))
+        ->assertOk()
+        ->assertSee('Catatan referensi diperbarui klien.')
+        ->assertSee('fa-pen', false)
+        ->assertDontSee('Booking '.$booking->code);
+
+    $defaultType = ReferenceType::where('name', 'Tenda')->firstOrFail();
+    $this->actingAs($owner)->post(route('admin.bookings.references.store', $booking), [
+        'reference_type_id' => $defaultType->id,
+        'notes' => 'Referensi ditambahkan admin.',
+        'photos' => [UploadedFile::fake()->image('referensi-admin.jpg')],
+    ])->assertRedirect()->assertSessionHas('success');
+    $adminReference = ClientReference::where('id', '!=', $reference->id)->firstOrFail();
+
+    $this->actingAs($owner)->put(route('admin.bookings.references.update', [$booking, $adminReference]), [
+        'reference_type_id' => $defaultType->id,
+        'notes' => 'Referensi diperbarui admin.',
+    ])->assertRedirect()->assertSessionHas('success');
+
+    $this->actingAs($owner)->get(route('admin.bookings.show', $booking))
+        ->assertOk()
+        ->assertSee('Referensi Klien')
+        ->assertSee('Dekor Impian')
+        ->assertSee('Catatan referensi diperbarui klien.')
+        ->assertSee('Referensi diperbarui admin.')
+        ->assertSee('Tambah', false);
+
+    $adminPhoto = $adminReference->photos[0];
+    $this->actingAs($owner)->delete(route('admin.bookings.references.destroy', [$booking, $adminReference]))
+        ->assertRedirect()
+        ->assertSessionHas('success');
+    Storage::disk('public')->assertMissing($adminPhoto);
+
+    $this->actingAs($owner)->delete(route('admin.reference-types.destroy', $referenceType))
+        ->assertRedirect()
+        ->assertSessionHas('error');
+
+    $otherClient = User::create([
+        'name' => 'Klien Referensi Lain',
+        'email' => 'referensi-lain@example.com',
+        'password' => bcrypt('password'),
+        'role' => User::ROLE_CLIENT,
+        'is_active' => true,
+    ]);
+    $this->actingAs($otherClient)->post(route('client.references.store'), [
+        'reference_type_id' => $referenceType->id,
+        'photos' => [UploadedFile::fake()->image('tanpa-booking.jpg')],
+    ])->assertStatus(422);
+    expect(ClientReference::count())->toBe(1);
+
+    $this->actingAs($otherClient)->put(route('client.references.update', $reference), [
+        'reference_type_id' => $referenceType->id,
+    ])->assertForbidden();
+    $this->actingAs($otherClient)->delete(route('client.references.destroy', $reference))->assertForbidden();
+
+    $photo = $reference->photos[0];
+    $this->actingAs($client)->delete(route('client.references.destroy', $reference))
+        ->assertRedirect()
+        ->assertSessionHas('success');
+    Storage::disk('public')->assertMissing($photo);
+    expect(ClientReference::count())->toBe(0);
+
+    $this->actingAs($owner)->delete(route('admin.reference-types.destroy', $referenceType))
+        ->assertRedirect()
+        ->assertSessionHas('success');
+    expect(ReferenceType::whereKey($referenceType->id)->exists())->toBeFalse();
+});
+
+it('keeps reference photos intact when an edit cannot be saved', function () {
+    Storage::fake('public');
+
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $booking = $client->bookings()->firstOrFail();
+    $type = ReferenceType::firstOrFail();
+    $oldPhoto = UploadedFile::fake()->image('lama.jpg')->store('uploads/references', 'public');
+    $reference = ClientReference::create([
+        'booking_id' => $booking->id,
+        'client_id' => $client->id,
+        'reference_type_id' => $type->id,
+        'photos' => [$oldPhoto],
+    ]);
+
+    ClientReference::updating(function () {
+        throw new RuntimeException('Simulasi gagal menyimpan referensi.');
+    });
+
+    try {
+        foreach ([
+            [$owner, route('admin.bookings.references.update', [$booking, $reference])],
+            [$client, route('client.references.update', $reference)],
+        ] as [$user, $url]) {
+            $this->actingAs($user)->put($url, [
+                'reference_type_id' => $type->id,
+                'remove_photos' => [$oldPhoto],
+                'photos' => [UploadedFile::fake()->image('baru.jpg')],
+            ])->assertInternalServerError();
+
+            expect($reference->fresh()->photos)->toBe([$oldPhoto]);
+            Storage::disk('public')->assertExists($oldPhoto);
+            expect(Storage::disk('public')->allFiles('uploads/references'))->toBe([$oldPhoto]);
+        }
+    } finally {
+        ClientReference::flushEventListeners();
+    }
 });
 
 it('shows all booking activities in one scrollable history ordered newest first', function () {

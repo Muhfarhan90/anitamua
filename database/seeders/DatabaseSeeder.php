@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
     {
         // Data inti (user, paket, CMS) — sama dengan produksi
         $this->call(ProdSeeder::class);
+        $this->call(ReferenceTypeSeeder::class);
 
         // Data demo untuk pengembangan & testing (booking, pembayaran, dll)
         $this->seedMasterData();

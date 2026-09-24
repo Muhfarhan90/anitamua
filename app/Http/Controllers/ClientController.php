@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\ClientReference;
 use App\Models\Package;
 use App\Models\PackageChangeRequest;
 use App\Models\Payment;
+use App\Models\ReferenceType;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class ClientController extends Controller
 {
@@ -34,6 +37,116 @@ class ClientController extends Controller
             ->get();
 
         return view('client.testimonials', compact('bookings'));
+    }
+
+    public function references()
+    {
+        $booking = auth()->user()->bookings()
+            ->where('status', '!=', Booking::STATUS_CANCELLED)
+            ->latest()
+            ->first();
+        $referenceTypes = ReferenceType::orderBy('name')->get();
+        $references = $booking
+            ? $booking->references()->with('referenceType')->latest()->get()
+            : collect();
+
+        return view('client.references', compact('booking', 'referenceTypes', 'references'));
+    }
+
+    public function storeReference(Request $request)
+    {
+        $data = $request->validate([
+            'reference_type_id' => ['required', 'exists:reference_types,id'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'photos' => ['required', 'array', 'min:1', 'max:10'],
+            'photos.*' => ['image', 'max:5120'],
+        ]);
+
+        $booking = auth()->user()->bookings()
+            ->where('status', '!=', Booking::STATUS_CANCELLED)
+            ->latest()
+            ->first();
+        abort_unless($booking, 422, 'Belum ada booking aktif.');
+
+        $photos = collect($request->file('photos'))
+            ->map(fn ($photo) => $photo->store('uploads/references', 'public'))
+            ->all();
+        try {
+            ClientReference::create([
+                'booking_id' => $booking->id,
+                'client_id' => auth()->id(),
+                'reference_type_id' => $data['reference_type_id'],
+                'notes' => $data['notes'] ?? null,
+                'photos' => $photos,
+            ]);
+        } catch (Throwable $exception) {
+            Storage::disk('public')->delete($photos);
+            throw $exception;
+        }
+
+        ActivityLogger::log('reference_uploaded', 'Referensi diunggah', 'Referensi untuk booking '.$booking->code.' diunggah oleh '.auth()->user()->name.'.', $booking->id);
+
+        return back()->with('success', 'Referensi berhasil diunggah.');
+    }
+
+    public function updateReference(ClientReference $reference, Request $request)
+    {
+        abort_unless($reference->client_id === auth()->id(), 403);
+
+        $data = $request->validate([
+            'reference_type_id' => ['required', 'exists:reference_types,id'],
+            'notes' => ['nullable', 'string', 'max:1000'],
+            'photos' => ['nullable', 'array', 'max:10'],
+            'photos.*' => ['image', 'max:5120'],
+            'remove_photos' => ['nullable', 'array'],
+            'remove_photos.*' => ['string', 'max:2048'],
+        ]);
+
+        $currentPhotos = $reference->photos ?? [];
+        $removedPhotos = array_values(array_intersect($data['remove_photos'] ?? [], $currentPhotos));
+        if (count($currentPhotos) === count($removedPhotos) && ! $request->hasFile('photos')) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['photos' => 'Minimal satu foto referensi harus tersedia.']);
+        }
+
+        $newPhotos = collect($request->file('photos', []))
+            ->map(fn ($photo) => $photo->store('uploads/references', 'public'))
+            ->all();
+        $photos = array_values([...array_diff($currentPhotos, $removedPhotos), ...$newPhotos]);
+
+        try {
+            $saved = $reference->update([
+                'reference_type_id' => $data['reference_type_id'],
+                'notes' => $data['notes'] ?? null,
+                'photos' => $photos,
+            ]);
+            if (! $saved) {
+                throw new \RuntimeException('Referensi gagal disimpan.');
+            }
+        } catch (Throwable $exception) {
+            Storage::disk('public')->delete($newPhotos);
+            throw $exception;
+        }
+        Storage::disk('public')->delete($removedPhotos);
+
+        ActivityLogger::log('reference_updated', 'Referensi diperbarui', 'Referensi diperbarui oleh '.auth()->user()->name.'.', $reference->booking_id);
+
+        return back()->with('success', 'Referensi berhasil diperbarui.');
+    }
+
+    public function destroyReference(ClientReference $reference)
+    {
+        abort_unless($reference->client_id === auth()->id(), 403);
+
+        $bookingId = $reference->booking_id;
+        $photos = $reference->photos ?? [];
+        if ($reference->delete() === false) {
+            throw new \RuntimeException('Referensi gagal dihapus.');
+        }
+        Storage::disk('public')->delete($photos);
+
+        ActivityLogger::log('reference_deleted', 'Referensi dihapus', 'Referensi dihapus oleh '.auth()->user()->name.'.', $bookingId);
+
+        return back()->with('success', 'Referensi berhasil dihapus.');
     }
 
     public function uploadProof(Booking $booking, Request $request)

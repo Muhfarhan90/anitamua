@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\BenefitCategoryController;
 use App\Http\Controllers\Admin\BenefitController;
 use App\Http\Controllers\Admin\BookingManagementController;
+use App\Http\Controllers\Admin\BookingReferenceController;
 use App\Http\Controllers\Admin\ContentController;
 use App\Http\Controllers\Admin\EntranceGateController;
 use App\Http\Controllers\Admin\FieldWorkController;
@@ -14,6 +15,7 @@ use App\Http\Controllers\Admin\PackageController;
 use App\Http\Controllers\Admin\PackingController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\PromoBannerController;
+use App\Http\Controllers\Admin\ReferenceTypeController;
 use App\Http\Controllers\Admin\ScheduleController;
 use App\Http\Controllers\Admin\TentController;
 use App\Http\Controllers\Admin\VendorCategoryController;
@@ -56,6 +58,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::middleware('role:client')->group(function () {
+        Route::get('/client/references', [ClientController::class, 'references'])->name('client.references');
+        Route::post('/client/references', [ClientController::class, 'storeReference'])->name('client.references.store');
+        Route::put('/client/references/{reference}', [ClientController::class, 'updateReference'])->name('client.references.update');
+        Route::delete('/client/references/{reference}', [ClientController::class, 'destroyReference'])->name('client.references.destroy');
         Route::get('/client/booking/{booking}', [ClientController::class, 'booking'])->name('client.booking');
         Route::post('/client/booking/{booking}/proof', [ClientController::class, 'uploadProof'])->name('client.booking.proof');
         Route::get('/client/testimonials', [ClientController::class, 'testimonials'])->name('client.testimonials');
@@ -110,6 +116,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/bookings/{booking}/payment', [BookingManagementController::class, 'addPayment'])->name('bookings.payment');
             Route::post('/bookings/{booking}/cancel', [BookingManagementController::class, 'cancel'])->name('bookings.cancel');
             Route::post('/bookings/{booking}/complete', [BookingManagementController::class, 'complete'])->name('bookings.complete');
+            Route::post('/bookings/{booking}/references', [BookingReferenceController::class, 'store'])->name('bookings.references.store');
+            Route::put('/bookings/{booking}/references/{reference}', [BookingReferenceController::class, 'update'])->name('bookings.references.update');
+            Route::delete('/bookings/{booking}/references/{reference}', [BookingReferenceController::class, 'destroy'])->name('bookings.references.destroy');
 
             // Payments (tahap dibuat oleh client; admin hanya verifikasi)
             Route::get('/payments', [PaymentController::class, 'index'])->name('payments.index');
@@ -131,6 +140,11 @@ Route::middleware('auth')->group(function () {
 
             // Packages (dibutuhkan form booking & pricelist)
             Route::resource('/packages', PackageController::class)->names('packages')->except('show');
+
+            Route::resource('/reference-types', ReferenceTypeController::class)
+                ->names('reference-types')
+                ->parameters(['reference-types' => 'referenceType'])
+                ->only(['index', 'store', 'update', 'destroy']);
 
             // Master pelaminan untuk survey lapangan
             Route::resource('/wedding-stages', WeddingStageController::class)

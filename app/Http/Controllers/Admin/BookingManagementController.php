@@ -10,6 +10,7 @@ use App\Models\Fitting;
 use App\Models\Package;
 use App\Models\PackageType;
 use App\Models\Payment;
+use App\Models\ReferenceType;
 use App\Models\Schedule;
 use App\Models\SiteSetting;
 use App\Models\Survey;
@@ -57,6 +58,7 @@ class BookingManagementController extends Controller
             'client', 'package.packageType', 'payments', 'invoice', 'bookingVendors.vendor.category',
             'addons',
             'schedules.picUser', 'survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings',
+            'references.referenceType',
             'activityLogs' => fn ($query) => $query->latest(),
             'activityLogs.user', 'packageChangeRequests.oldPackage', 'packageChangeRequests.newPackage',
         ]);
@@ -67,6 +69,7 @@ class BookingManagementController extends Controller
         $packages = Package::with('packageType')->where('status', 'active')->get();
         $staff = User::whereIn('role', [User::ROLE_OWNER, User::ROLE_ADMIN, User::ROLE_TEAM])->get();
         $teamMembers = User::where('role', User::ROLE_TEAM)->where('is_active', true)->orderBy('name')->get();
+        $referenceTypes = ReferenceType::orderBy('name')->get();
         $currentDecorationId = $booking->survey?->wedding_stage_id;
         $weddingStages = WeddingStage::query()
             ->where(function ($query) use ($currentDecorationId) {
@@ -78,7 +81,7 @@ class BookingManagementController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('admin.bookings.show', compact('booking', 'packages', 'staff', 'teamMembers', 'weddingStages'));
+        return view('admin.bookings.show', compact('booking', 'packages', 'staff', 'teamMembers', 'weddingStages', 'referenceTypes'));
     }
 
     public function create()

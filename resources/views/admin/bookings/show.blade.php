@@ -252,6 +252,8 @@
         {{-- FITTING (READ ONLY) --}}
         @include('admin.bookings.partials.fitting-summary')
 
+        @include('admin.bookings.partials.references-summary')
+
         {{-- ACTIVITY --}}
         <x-card title="Aktivitas" title-icon="fa-clock-rotate-left">
             <div class="max-h-48 overflow-y-auto overscroll-contain pr-2" data-activities-scroll>
@@ -628,4 +630,5 @@ document.addEventListener('DOMContentLoaded', function () {
         </div>
     </div>
 </div>
+<x-gallery-lightbox />
 @endsection

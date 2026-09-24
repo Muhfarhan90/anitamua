@@ -141,6 +141,11 @@ class Booking extends Model
         return $this->hasOne(Testimonial::class);
     }
 
+    public function references(): HasMany
+    {
+        return $this->hasMany(ClientReference::class);
+    }
+
     public function scopeActive($query)
     {
         return $query->where('status', '!=', self::STATUS_CANCELLED);
