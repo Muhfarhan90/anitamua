@@ -66,6 +66,9 @@
     .invoice-bonus-list { margin-top: .75rem; }
     .invoice-bonus-row { display: flex; justify-content: space-between; gap: .75rem; padding: .35rem 0; color: var(--invoice-muted); font-size: .76rem; }
     .invoice-bonus-row strong { color: var(--invoice-ink); white-space: nowrap; }
+    .invoice-bonus-box s { text-decoration-color: var(--invoice-magenta); }
+    .invoice-bonus-total { display: flex; justify-content: space-between; gap: .75rem; margin-top: .45rem; padding-top: .7rem; border-top: 1px solid #ead6e1; color: var(--invoice-ink); font-size: .76rem; font-weight: 800; }
+    .invoice-bonus-total strong { white-space: nowrap; }
     .invoice-bottom { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 1rem; margin-top: 1rem; align-items: stretch; position: relative; z-index: 1; }
     .invoice-note { display: flex; align-items: flex-end; padding: .8rem .2rem; color: var(--invoice-muted); font-size: .72rem; line-height: 1.55; white-space: pre-line; }
     .invoice-totals { padding: 1.1rem; border-radius: 1rem; background: #fff; border: 1px solid #ead6e1; }
@@ -133,6 +136,7 @@
     $payments = $booking->payments->sortBy('created_at');
     $verifiedPayments = $payments->where('status', 'verified');
     $bonuses = collect($booking->bonuses ?? [])->filter(fn (array $bonus) => filled($bonus['note'] ?? null));
+    $bonusTotal = $bonuses->sum(fn (array $bonus) => (float) ($bonus['amount'] ?? 0));
 @endphp
 
 <div class="invoice-screen-header">
@@ -246,9 +250,10 @@
                         <div class="invoice-bonus-heading">Bonus</div>
                         <div class="invoice-bonus-list">
                             @foreach($bonuses as $bonus)
-                            <div class="invoice-bonus-row"><span>{{ $bonus['note'] }}</span><strong>Rp {{ number_format($bonus['amount'] ?? 0, 0, ',', '.') }}</strong></div>
+                            <div class="invoice-bonus-row"><span>{{ $bonus['note'] }}</span><strong><s>Rp {{ number_format($bonus['amount'] ?? 0, 0, ',', '.') }}</s></strong></div>
                             @endforeach
                         </div>
+                        <div class="invoice-bonus-total"><span>Total</span><strong><s>Rp {{ number_format($bonusTotal, 0, ',', '.') }}</s></strong></div>
                     </section>
                     @endif
                     <div class="invoice-note">{{ $invoiceGreeting }}</div>

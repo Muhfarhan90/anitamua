@@ -20,17 +20,6 @@
     </div>
     <div class="space-y-6" data-fieldwork-content>
     @if(!$embedded)
-    @if($fitting)
-    <div class="flex items-center justify-between gap-4 px-4 py-3 mb-4 {{ $fitting->status === 'finished' ? 'bg-emerald-50/50' : 'bg-gray-50/60' }}">
-        <div><p class="text-sm font-semibold text-gray-800">{{ $fitting->date ? $fitting->date->format('d M Y') : '-' }} @if($fitting->time)<span class="text-gray-400 font-normal">· {{ $fitting->time->format('H:i') }}</span>@endif</p><p class="text-xs text-gray-500">{{ $fitting->pic ? 'PIC: '.$fitting->pic : '' }}{{ $fitting->notes ? ' · '.$fitting->notes : '' }}</p></div>
-        <div class="flex items-center gap-2 flex-shrink-0">@if($fitting->photos) @foreach($fitting->photos as $photo)<a href="{{ asset('storage/'.$photo) }}" onclick="openProof(event, this.href)" class="cursor-pointer"><img src="{{ asset('storage/'.$photo) }}" alt="Foto fitting" class="w-10 h-10 object-cover rounded-lg border border-gray-100"></a>@endforeach @endif<x-badge :color="match($fitting->status) {'finished' => 'success', 'on_going' => 'warning', default => 'gray'}">{{ ucfirst(str_replace('_', ' ', $fitting->status)) }}</x-badge></div>
-    </div>
-    @else
-    <x-empty-state icon="fa-shirt" title="Belum ada data fitting" />
-    @endif
-@endif
-
-    @if(!$embedded)
     <form action="{{ route('admin.fieldwork.fitting') }}" method="POST" enctype="multipart/form-data" class="pt-4 mt-3 space-y-5" data-fieldwork-reset-scope>
         @csrf
         <input type="hidden" name="booking_id" value="{{ $booking->id }}">
@@ -81,7 +70,7 @@
         @endforeach
 
         <div class="border-t border-gray-100 pt-5">
-            <x-textarea :name="$fieldName('notes')" label="Catatan Umum" rows="2">{{ old($fieldName('notes'), $fitting?->notes ?? '') }}</x-textarea>
+            <x-textarea :name="$fieldName('notes')" label="Catatan Fitting" rows="2">{{ old($fieldName('notes'), $fitting?->notes ?? '') }}</x-textarea>
         </div>
         @if(!$embedded)
             <x-button color="primary" type="submit"><i class="fas fa-save"></i> {{ $fitting ? 'Perbarui Fitting' : 'Simpan Fitting' }}</x-button>

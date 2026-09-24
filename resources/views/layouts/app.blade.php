@@ -109,12 +109,13 @@
                 ]],
                 ['title' => 'Paket', 'items' => [
                     ['label' => 'Paket',      'icon' => 'fa-solid fa-box',             'url' => route('admin.packages.index'),   'active' => 'admin.packages.*'],
-                    ['label' => 'Jenis Referensi', 'icon' => 'fa-solid fa-lightbulb',   'url' => route('admin.reference-types.index'), 'active' => 'admin.reference-types.*'],
                     ['label' => 'Pelaminan',  'icon' => 'fa-solid fa-panorama',        'url' => route('admin.wedding-stages.index'), 'active' => 'admin.wedding-stages.*'],
                     ['label' => 'Tenda',      'icon' => 'fa-solid fa-campground',       'url' => route('admin.tents.index'), 'active' => 'admin.tents.*'],
                     ['label' => 'Gapura',     'icon' => 'fa-solid fa-archway',          'url' => route('admin.entrance-gates.index'), 'active' => 'admin.entrance-gates.*'],
                     ['label' => 'Benefit',    'icon' => 'fa-solid fa-circle-check',    'url' => route('admin.benefits.index'),   'active' => 'admin.benefits.*'],
                     ['label' => 'Kat. Benefit', 'icon' => 'fa-solid fa-tags',          'url' => route('admin.benefit-categories.index'), 'active' => 'admin.benefit-categories.*'],
+                    ['label' => 'Jenis Referensi', 'icon' => 'fa-solid fa-lightbulb',   'url' => route('admin.reference-types.index'), 'active' => 'admin.reference-types.*'],
+
                 ]],
                 ['title' => 'Wardrobe', 'items' => [
                     ['label' => 'Inventory',  'icon' => 'fa-solid fa-shirt',           'url' => route('admin.inventory.index'),  'active' => 'admin.inventory.*'],

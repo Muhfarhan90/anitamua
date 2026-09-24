@@ -331,6 +331,12 @@ it('team can save survey and fitting data', function () {
     $booking->refresh();
     expect($booking->fitting_date->toDateString())->toBe(now()->addDays(5)->toDateString());
     expect($booking->fittings()->first()->cpw_busana_akad_notes)->toBeNull();
+
+    $this->actingAs($team)->get(route('admin.fieldwork.booking', $booking))
+        ->assertOk()
+        ->assertSee('Catatan Fitting')
+        ->assertDontSee('Catatan Umum')
+        ->assertDontSee('PIC: Dewi P. · Sesuaikan gaun');
 });
 
 it('admin edit page separates booking, survey, and fitting saves', function () {
@@ -346,6 +352,21 @@ it('admin edit page separates booking, survey, and fitting saves', function () {
         ->assertSee('data-fieldwork-toggle', false)
         ->assertSee('action="'.route('admin.fieldwork.survey').'"', false)
         ->assertSee('action="'.route('admin.fieldwork.fitting').'"', false);
+});
+
+it('shows payment proof in its own column on the client page', function () {
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $booking = Booking::where('client_id', $client->id)->firstOrFail();
+    $booking->payments()->where('status', Payment::STATUS_PENDING)->firstOrFail()
+        ->update(['proof' => 'uploads/proofs/contoh.jpg']);
+
+    $this->actingAs($client)->get(route('client.booking', $booking))
+        ->assertOk()
+        ->assertDontSee('Bayar Sekarang')
+        ->assertDontSee('<th class="px-5 py-2.5 font-medium text-center">Aksi</th>', false)
+        ->assertSee('<th class="px-5 py-2.5 font-medium text-center">Bukti</th>', false)
+        ->assertSee('Lihat bukti')
+        ->assertSee('Bayar / Tambah Tahap Pembayaran');
 });
 
 it('admin can manage wedding stages', function () {
@@ -2181,6 +2202,40 @@ it('creates one invoice per booked booking and updates it from verified payments
         ->assertHeader('content-disposition', 'inline; filename="Invoice-'.$paid->invoice_number.'.pdf"');
 });
 
+it('prints booking details with survey and fitting data in an admin-only PDF', function () {
+    Storage::fake('public');
+
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $booking = $client->bookings()->firstOrFail();
+    $photo = UploadedFile::fake()->image('pilihan-pelaminan.jpg')->store('uploads/surveys', 'public');
+
+    $booking->survey()->firstOrNew()->fill([
+        'pic' => 'Tim Survey',
+        'flower_color' => 'Putih dan merah muda',
+        'wedding_stage_photo_path' => $photo,
+        'notes' => 'Akses mobil lewat gerbang selatan.',
+    ])->save();
+    $fitting = $booking->fittings()->firstOrNew()->fill([
+        'date' => now()->toDateString(), 'pic' => 'Tim Fitting', 'status' => 'finished',
+    ]);
+    $fitting->cpw_busana_akad_notes = 'Kain putih dengan bordir';
+    $fitting->cpw_busana_akad_photo_path = $photo;
+    $fitting->save();
+
+    $html = view('admin.bookings.pdf', ['booking' => $booking, 'companyName' => 'ANITA'])->render();
+    expect($html)->toContain('Informasi Booking dan Klien', 'Data Survey', 'Data Fitting',
+        'Putih dan merah muda', 'Akses mobil lewat gerbang selatan.', 'Kain putih dengan bordir', 'data:image/jpeg;base64,');
+
+    $this->actingAs($owner)->get(route('admin.bookings.show', $booking))
+        ->assertOk()->assertSee('Cetak PDF');
+    $response = $this->actingAs($owner)->get(route('admin.bookings.pdf', $booking))
+        ->assertOk()->assertHeader('content-type', 'application/pdf');
+    expect(substr($response->getContent(), 0, 4))->toBe('%PDF');
+
+    $this->actingAs($client)->get(route('admin.bookings.pdf', $booking))->assertForbidden();
+});
+
 it('applies multiple booking discounts to totals and invoices', function () {
     $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
     $client = User::where('email', 'client@anitamua.com')->firstOrFail();
@@ -2197,6 +2252,7 @@ it('applies multiple booking discounts to totals and invoices', function () {
         ],
         'bonuses' => [
             ['amount' => 200000, 'note' => 'Free touch up'],
+            ['amount' => 300000, 'note' => 'Aksesori tambahan'],
         ],
         'name' => 'Diskon Persen',
         'phone' => '081234567890',
@@ -2226,7 +2282,14 @@ it('applies multiple booking discounts to totals and invoices', function () {
         ->assertSee('Promo awal tahun')
         ->assertSee('>Bonus</div>', false)
         ->assertSee('Free touch up')
+        ->assertSee('<s>Rp 200.000</s>', false)
+        ->assertSee('<s>Rp 300.000</s>', false)
+        ->assertSee('<div class="invoice-bonus-total"><span>Total</span><strong><s>Rp 500.000</s></strong></div>', false)
         ->assertDontSee('invoice-discount-marker', false);
+
+    $pdfHtml = view('invoices.pdf', ['invoice' => $invoice, 'settings' => [], 'logoSrc' => null])->render();
+    expect($pdfHtml)->toContain('<div class="bonus-total table"><div class="cell">Total</div><div class="cell"><s>Rp 500.000</s></div></div>');
+    $this->actingAs($admin)->get(route('admin.invoices.pdf', $invoice))->assertOk();
 
     $booking->update(['discounts' => null, 'discount_type' => 'fixed', 'discount_value' => 100000]);
     expect($booking->refresh()->discount_amount)->toBe(100000.0)

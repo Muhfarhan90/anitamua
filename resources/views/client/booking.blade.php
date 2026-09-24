@@ -34,7 +34,7 @@
                                 <th class="px-5 py-2.5 font-medium">Nominal</th>
                                 <th class="px-5 py-2.5 font-medium">Waktu Transaksi</th>
                                 <th class="px-5 py-2.5 font-medium">Status</th>
-                                <th class="px-5 py-2.5 font-medium text-center">Aksi</th>
+                                <th class="px-5 py-2.5 font-medium text-center">Bukti</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -68,8 +68,8 @@
                                     } }}</x-badge>
                                 </td>
                                 <td class="px-5 py-3 text-center">
-                                    @if($payment->status === 'pending' && $payment->amount > 0)
-                                        <x-button size="sm" onclick="document.getElementById('upload').scrollIntoView({behavior:'smooth'})"><i class="fas fa-money-bill-wave"></i> Bayar Sekarang</x-button>
+                                    @if($payment->proof)
+                                        <a href="{{ asset('storage/'.$payment->proof) }}" onclick="openProof(event, this.href)" class="text-xs text-brand hover:underline">Lihat bukti</a>
                                     @else
                                         <span class="text-gray-400 text-xs">—</span>
                                     @endif

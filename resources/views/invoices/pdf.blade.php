@@ -50,6 +50,9 @@
         .bonus-list { margin-top: 8px; }
         .bonus-item { padding: 3px 0; color: #8b7d84; font-size: 7px; }
         .bonus-item .cell:last-child { color: #302a2d; font-weight: bold; text-align: right; }
+        .bonus-box s { text-decoration: line-through; color: #302a2d; }
+        .bonus-total { margin-top: 5px; padding-top: 6px; border-top: 1px solid #ead6e1; color: #302a2d; font-size: 7px; font-weight: bold; }
+        .bonus-total .cell:last-child { text-align: right; }
         .summary-wrap { margin-top: 10px; }
         .summary-note { width: 60%; padding: 8px 0; color: #8b7d84; font-size: 7.5px; vertical-align: bottom; }
         .summary-box { width: 40%; padding: 9px; border: 1px solid #ead6e1; border-radius: 7px; background: #fff; }
@@ -76,6 +79,7 @@
     $payments = $booking->payments->sortBy('created_at');
     $verifiedPayments = $payments->where('status', 'verified');
     $bonuses = collect($booking->bonuses ?? [])->filter(fn (array $bonus) => filled($bonus['note'] ?? null));
+    $bonusTotal = $bonuses->sum(fn (array $bonus) => (float) ($bonus['amount'] ?? 0));
     $invoiceGreeting = $settings['invoice_greeting'] ?? 'Terima kasih telah mempercayakan momen spesial Anda kepada ANITA. Invoice ini mengikuti status pembayaran yang sudah diverifikasi.';
 @endphp
 <div class="paper">
@@ -146,9 +150,10 @@
                 <div class="bonus-title">Bonus</div>
                 <div class="bonus-list">
                     @foreach($bonuses as $bonus)
-                    <div class="bonus-item table"><div class="cell">{{ $bonus['note'] }}</div><div class="cell">Rp {{ number_format($bonus['amount'] ?? 0, 0, ',', '.') }}</div></div>
+                    <div class="bonus-item table"><div class="cell">{{ $bonus['note'] }}</div><div class="cell"><s>Rp {{ number_format($bonus['amount'] ?? 0, 0, ',', '.') }}</s></div></div>
                     @endforeach
                 </div>
+                <div class="bonus-total table"><div class="cell">Total</div><div class="cell"><s>Rp {{ number_format($bonusTotal, 0, ',', '.') }}</s></div></div>
             </div>
             @endif
             {!! nl2br(e($invoiceGreeting)) !!}
