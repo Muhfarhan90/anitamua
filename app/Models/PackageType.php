@@ -10,7 +10,12 @@ class PackageType extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name'];
+    protected $fillable = ['name', 'is_data_survey', 'is_data_fitting'];
+
+    protected function casts(): array
+    {
+        return ['is_data_survey' => 'boolean', 'is_data_fitting' => 'boolean'];
+    }
 
     public function packages(): HasMany
     {

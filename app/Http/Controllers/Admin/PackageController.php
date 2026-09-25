@@ -107,8 +107,17 @@ class PackageController extends Controller
 
     public function storeType(Request $request)
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:100', 'unique:package_types,name']]);
-        $type = PackageType::create(['name' => trim($data['name'])]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100', 'unique:package_types,name'],
+            'is_data_survey' => ['sometimes', 'boolean'],
+            'is_data_fitting' => ['sometimes', 'boolean'],
+        ]);
+        $type = PackageType::create([
+            ...$data,
+            'name' => trim($data['name']),
+            'is_data_survey' => $data['is_data_survey'] ?? true,
+            'is_data_fitting' => $data['is_data_fitting'] ?? true,
+        ]);
 
         ActivityLogger::log('package_type_created', 'Jenis paket dibuat', 'Jenis paket '.$type->name.' dibuat oleh '.auth()->user()->name);
 
@@ -117,8 +126,12 @@ class PackageController extends Controller
 
     public function updateType(Request $request, PackageType $packageType)
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:100', 'unique:package_types,name,'.$packageType->id]]);
-        $packageType->update(['name' => trim($data['name'])]);
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100', 'unique:package_types,name,'.$packageType->id],
+            'is_data_survey' => ['sometimes', 'boolean'],
+            'is_data_fitting' => ['sometimes', 'boolean'],
+        ]);
+        $packageType->update([...$data, 'name' => trim($data['name'])]);
 
         ActivityLogger::log('package_type_updated', 'Jenis paket diperbarui', 'Jenis paket diperbarui oleh '.auth()->user()->name);
 

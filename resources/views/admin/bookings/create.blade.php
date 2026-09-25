@@ -64,7 +64,7 @@
             <x-select name="package_id" id="package_id" label="Pilih Paket" required
                 placeholder="— Pilih Jenis Paket dahulu —">
                 @foreach ($packages ?? [] as $package)
-                    <option value="{{ $package->id }}" data-type="{{ $package->package_type_id }}" data-price="{{ $package->price }}" @selected(old('package_id') == $package->id)>
+                    <option value="{{ $package->id }}" data-type="{{ $package->package_type_id }}" data-price="{{ $package->price }}" data-survey="{{ (int) ($package->packageType?->is_data_survey ?? true) }}" data-fitting="{{ (int) ($package->packageType?->is_data_fitting ?? true) }}" @selected(old('package_id') == $package->id)>
                         {{ $package->name }}@if ($package->sub_type)
                             ({{ $subTypeLabels[$package->sub_type] ?? $package->sub_type }})
                         @endif - Rp {{ number_format($package->price, 0, ',', '.') }}
@@ -116,6 +116,7 @@
             </div>
         </x-card>
 
+            <div data-package-section="survey">
             @include('admin.bookings.partials.survey-card', [
                 'embedded' => true,
                 'booking' => null,
@@ -124,12 +125,15 @@
                 'entranceGates' => $entranceGates,
                 'teamMembers' => $teamMembers,
             ])
+            </div>
 
+            <div data-package-section="fitting">
             @include('admin.bookings.partials.fitting-card', [
                 'embedded' => true,
                 'booking' => null,
                 'teamMembers' => $teamMembers,
             ])
+            </div>
 
             <div class="flex items-center gap-4 pt-5 border-t border-brand-100">
                 <x-button href="{{ route('admin.bookings.index') }}" color="ghost"
@@ -147,6 +151,15 @@
                 const selectJenis = document.getElementById('package_type');
                 const selectPaket = document.getElementById('package_id');
                 const paketOptions = Array.from(selectPaket.options).slice(1);
+                function updateFieldworkSections() {
+                    const selected = selectPaket.selectedOptions[0];
+                    document.querySelectorAll('[data-package-section]').forEach(section => {
+                        const enabled = selected?.value && selected.dataset[section.dataset.packageSection] === '1';
+                        section.classList.toggle('hidden', !enabled);
+                        section.querySelectorAll('input, select, textarea, button').forEach(input => input.disabled = !enabled);
+                    });
+                }
+                selectPaket.addEventListener('change', updateFieldworkSections);
                 const clientModeInputs = document.querySelectorAll('input[name="client_mode"]');
                 const existingClientFields = document.getElementById('existingClientFields');
                 const newClientFields = document.getElementById('newClientFields');
@@ -187,12 +200,14 @@
                     }
                 }
                 selectJenis.addEventListener('change', applyFilter);
+                selectJenis.addEventListener('change', updateFieldworkSections);
 
                 const preselected = selectPaket.selectedOptions[0];
                 if (preselected && preselected.value) {
                     selectJenis.value = preselected.dataset.type || '';
                     applyFilter();
                 }
+                updateFieldworkSections();
 
                 function updateClientPreview() {
                     const opt = selectClient.selectedOptions[0];

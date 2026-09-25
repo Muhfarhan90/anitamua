@@ -369,6 +369,63 @@ it('shows payment proof in its own column on the client page', function () {
         ->assertSee('Bayar / Tambah Tahap Pembayaran');
 });
 
+it('uses package type settings to control survey and fitting per booking', function () {
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $team = User::where('email', 'team@anitamua.com')->firstOrFail();
+    $client = User::where('email', 'client@anitamua.com')->firstOrFail();
+    $booking = Booking::where('client_id', $client->id)->firstOrFail();
+    $type = $booking->package->packageType;
+
+    $this->actingAs($owner)->post(route('admin.packages.types.store'), [
+        'name' => 'Paket Tanpa Survey dan Fitting',
+        'is_data_survey' => 0,
+        'is_data_fitting' => 0,
+    ])->assertRedirect();
+    $newType = PackageType::where('name', 'Paket Tanpa Survey dan Fitting')->firstOrFail();
+    expect($newType->is_data_survey)->toBeFalse()
+        ->and($newType->is_data_fitting)->toBeFalse();
+
+    $this->actingAs($owner)->put(route('admin.packages.types.update', $type), [
+        'name' => $type->name,
+        'is_data_survey' => 1,
+        'is_data_fitting' => 0,
+    ])->assertRedirect();
+
+    expect($type->refresh()->is_data_survey)->toBeTrue()
+        ->and($type->is_data_fitting)->toBeFalse();
+
+    $this->actingAs($team)->get(route('admin.fieldwork.booking', $booking))
+        ->assertOk()->assertSee('Data Survey')->assertDontSee('Data Fitting');
+    $this->actingAs($client)->get(route('client.booking', $booking))
+        ->assertOk()->assertDontSee('Data Fitting');
+    $this->actingAs($team)->post(route('admin.fieldwork.fitting'), [
+        'booking_id' => $booking->id,
+        'date' => now()->toDateString(),
+        'status' => 'scheduled',
+    ])->assertForbidden();
+    $this->actingAs($team)->get(route('admin.bookings.packing', $booking))->assertNotFound();
+
+    $this->actingAs($owner)->put(route('admin.packages.types.update', $type), [
+        'name' => $type->name,
+        'is_data_survey' => 0,
+        'is_data_fitting' => 1,
+    ])->assertRedirect();
+
+    $this->actingAs($team)->get(route('admin.fieldwork.booking', $booking))
+        ->assertOk()->assertDontSee('Data Survey')->assertSee('Data Fitting');
+    $this->actingAs($team)->post(route('admin.fieldwork.survey'), [
+        'booking_id' => $booking->id,
+    ])->assertForbidden();
+
+    $this->actingAs($owner)->put(route('admin.packages.types.update', $type), [
+        'name' => $type->name,
+        'is_data_survey' => 1,
+        'is_data_fitting' => 1,
+    ])->assertRedirect();
+    $this->actingAs($team)->get(route('admin.fieldwork.booking', $booking))
+        ->assertOk()->assertSee('Data Survey')->assertSee('Data Fitting');
+});
+
 it('admin can manage wedding stages', function () {
     Storage::fake('public');
     $admin = User::where('email', 'admin@anitamua.com')->first();

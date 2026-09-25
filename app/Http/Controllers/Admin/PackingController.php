@@ -12,6 +12,7 @@ class PackingController extends Controller
 {
     public function show(Booking $booking)
     {
+        abort_unless($booking->allowsFitting(), 404);
         // $this->ensureBookingAccess($booking);
         $booking->load('package');
         $fitting = Fitting::where('booking_id', $booking->id)->first();
@@ -21,6 +22,7 @@ class PackingController extends Controller
 
     public function update(Booking $booking, Request $request)
     {
+        abort_unless($booking->allowsFitting(), 404);
         // $this->ensureBookingAccess($booking);
         $data = $request->validate([
             'items' => ['required', 'array'],

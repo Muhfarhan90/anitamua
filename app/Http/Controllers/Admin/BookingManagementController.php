@@ -183,6 +183,12 @@ class BookingManagementController extends Controller
         unset($data['addons'], $data['dp1_amount']);
 
         $package = Package::findOrFail($data['package_id']);
+        if ($package->packageType?->is_data_survey === false) {
+            unset($data['survey_date']);
+        }
+        if ($package->packageType?->is_data_fitting === false) {
+            unset($data['fitting_date']);
+        }
         $discounts = $this->normalizeDiscounts(
             $data['discounts'] ?? [],
             (float) $package->price + (float) collect($addons)->sum('price'),
@@ -314,6 +320,13 @@ class BookingManagementController extends Controller
         unset($data['vendor_additions'], $data['vendor_additions_present'], $data['vendor_changes'], $data['removed_booking_vendor_ids'], $data['removed_vendor_category_ids'], $data['additional_vendor_ids'], $data['additional_vendor_additions']);
 
         $packageChanged = (int) $data['package_id'] !== (int) $booking->package_id;
+        $selectedPackage = Package::with('packageType')->findOrFail($data['package_id']);
+        if ($selectedPackage->packageType?->is_data_survey === false) {
+            unset($data['survey_date']);
+        }
+        if ($selectedPackage->packageType?->is_data_fitting === false) {
+            unset($data['fitting_date']);
+        }
         $packagePrice = $packageChanged
             ? (float) Package::findOrFail($data['package_id'])->price
             : (float) ($booking->package_price ?? $booking->package?->price ?? 0);
@@ -985,7 +998,7 @@ class BookingManagementController extends Controller
             || $request->hasFile('survey_photos')
             || $request->hasFile('survey_videos');
 
-        if ($hasSurveyData) {
+        if ($booking->allowsSurvey() && $hasSurveyData) {
             $existingSurvey = $booking->survey()->first();
             $stageId = $request->input('survey_wedding_stage_id');
             $stage = $stageId ? WeddingStage::findOrFail($stageId) : null;
@@ -1050,7 +1063,7 @@ class BookingManagementController extends Controller
             || $hasItemData
             || $request->hasFile('fitting_photos');
 
-        if (! $hasFittingData) {
+        if (! $booking->allowsFitting() || ! $hasFittingData) {
             return;
         }
 

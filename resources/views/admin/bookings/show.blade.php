@@ -247,10 +247,14 @@
         </x-card>
 
         {{-- SURVEY (READ ONLY) --}}
+        @if($booking->allowsSurvey())
         @include('admin.bookings.partials.survey-summary')
+        @endif
 
         {{-- FITTING (READ ONLY) --}}
+        @if($booking->allowsFitting())
         @include('admin.bookings.partials.fitting-summary')
+        @endif
 
         @include('admin.bookings.partials.references-summary')
 

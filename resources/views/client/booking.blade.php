@@ -135,11 +135,11 @@
                 </form>
             </x-card>
 
-            @if($booking->survey)
+            @if($booking->allowsSurvey() && $booking->survey)
                 @include('admin.bookings.partials.survey-summary')
             @endif
 
-            @if($booking->fittings->isNotEmpty())
+            @if($booking->allowsFitting() && $booking->fittings->isNotEmpty())
                 @include('admin.bookings.partials.fitting-summary')
             @endif
 

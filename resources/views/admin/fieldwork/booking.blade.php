@@ -21,7 +21,11 @@
 </div>
 
 <div class="space-y-5">
+    @if($booking->allowsSurvey())
     @include('admin.bookings.partials.survey-card')
+    @endif
+    @if($booking->allowsFitting())
     @include('admin.bookings.partials.fitting-card')
+    @endif
 </div>
 @endsection

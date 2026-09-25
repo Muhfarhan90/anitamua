@@ -49,9 +49,11 @@
                     </td>
                     <td class="px-5 py-3 text-center">
                         <div class="flex items-center justify-center gap-2">
+                            @if($booking->allowsFitting())
                             <x-button size="sm" color="success" href="{{ route('admin.bookings.packing', $booking) }}">
                                 <i class="fas fa-list-check"></i> Checklist
                             </x-button>
+                            @endif
                             <x-button size="sm" href="{{ route('admin.fieldwork.booking', $booking) }}">
                                 <i class="fas fa-clipboard-list"></i> Buka Tugas
                             </x-button>

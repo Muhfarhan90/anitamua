@@ -41,7 +41,7 @@
 
             <x-select name="package_id" id="package_id" label="Pilih Paket" required placeholder="- Pilih Jenis Paket dahulu -" data-initial-package-id="{{ $booking->package_id }}">
                 @foreach ($packages ?? [] as $package)
-                    <option value="{{ $package->id }}" data-type="{{ $package->package_type_id }}" data-price="{{ $package->price }}" @selected(old('package_id', $booking->package_id) == $package->id)>
+                    <option value="{{ $package->id }}" data-type="{{ $package->package_type_id }}" data-price="{{ $package->price }}" data-survey="{{ (int) ($package->packageType?->is_data_survey ?? true) }}" data-fitting="{{ (int) ($package->packageType?->is_data_fitting ?? true) }}" @selected(old('package_id', $booking->package_id) == $package->id)>
                         {{ $package->name }}@if ($package->sub_type)
                             ({{ $subTypeLabels[$package->sub_type] ?? $package->sub_type }})
                         @endif - Rp {{ number_format($package->price, 0, ',', '.') }}
@@ -233,6 +233,7 @@
         </x-card>
     </form>
 
+            <div data-package-section="survey" data-initial-enabled="{{ (int) $booking->allowsSurvey() }}" @if(!$booking->allowsSurvey()) class="hidden" @endif>
             @include('admin.bookings.partials.survey-card', [
                 'booking' => $booking,
                 'showScheduleDate' => true,
@@ -241,11 +242,14 @@
                 'entranceGates' => $entranceGates,
                 'teamMembers' => $teamMembers,
             ])
+            </div>
 
+            <div data-package-section="fitting" data-initial-enabled="{{ (int) $booking->allowsFitting() }}" @if(!$booking->allowsFitting()) class="hidden" @endif>
             @include('admin.bookings.partials.fitting-card', [
                 'booking' => $booking,
                 'teamMembers' => $teamMembers,
             ])
+            </div>
     </div>
 
     @push('scripts')
@@ -254,6 +258,16 @@
                 const selectJenis = document.getElementById('package_type');
                 const selectPaket = document.getElementById('package_id');
                 const paketOptions = Array.from(selectPaket.options).slice(1);
+                function updateFieldworkSections() {
+                    const selected = selectPaket.selectedOptions[0];
+                    document.querySelectorAll('[data-package-section]').forEach(section => {
+                        const enabled = selected?.value
+                            ? selected.dataset[section.dataset.packageSection] === '1'
+                            : !selectJenis.value && section.dataset.initialEnabled === '1';
+                        section.classList.toggle('hidden', !enabled);
+                    });
+                }
+                selectPaket.addEventListener('change', updateFieldworkSections);
                 const packageVendorWarning = document.querySelector('[data-package-vendor-warning]');
                 function applyFilter() {
                     const jenis = selectJenis.value;
@@ -266,6 +280,7 @@
                 }
 
                 selectJenis.addEventListener('change', applyFilter);
+                selectJenis.addEventListener('change', updateFieldworkSections);
                 selectPaket.addEventListener('change', function () {
                     packageVendorWarning?.classList.toggle('hidden', String(selectPaket.value) === String(selectPaket.dataset.initialPackageId));
                 });
@@ -275,6 +290,7 @@
                     selectJenis.value = preselected.dataset.type || '';
                     applyFilter();
                 }
+                updateFieldworkSections();
 
                 function formatRupiah(value) {
                     return 'Rp ' + Number(value || 0).toLocaleString('id-ID');

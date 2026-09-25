@@ -22,7 +22,7 @@ class FieldWorkController extends Controller
     public function index(Request $request)
     {
         $data = $request->validate(['date' => ['nullable', 'date']]);
-        $query = Booking::with('package')
+        $query = Booking::with('package.packageType')
             ->where('status', '!=', Booking::STATUS_CANCELLED)
             ->when($data['date'] ?? null, fn ($query, $date) => $query->whereHas('schedules', fn ($schedules) => $schedules
                 ->whereDate('date', $date)
@@ -45,7 +45,7 @@ class FieldWorkController extends Controller
     public function fieldwork(Booking $booking)
     {
         // $this->ensureBookingAccess($booking);
-        $booking->load(['survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings', 'package', 'schedules']);
+        $booking->load(['survey.weddingStage', 'survey.tent', 'survey.entranceGate', 'fittings', 'package.packageType', 'schedules']);
 
         $currentDecorationId = $booking->survey?->wedding_stage_id;
         $weddingStages = WeddingStage::query()
@@ -143,6 +143,7 @@ class FieldWorkController extends Controller
             'videos.*' => ['max:51200'],
         ]);
 
+        abort_unless(Booking::findOrFail($data['booking_id'])->allowsSurvey(), 403);
         // $this->ensureBookingAccess(Booking::findOrFail($data['booking_id']));
         $existing = Survey::where('booking_id', $data['booking_id'])->first();
         $weddingStage = ! empty($data['wedding_stage_id'])
@@ -224,6 +225,7 @@ class FieldWorkController extends Controller
             'photos.*' => ['image', 'max:5120'],
         ]);
 
+        abort_unless(Booking::findOrFail($data['booking_id'])->allowsFitting(), 403);
         // $this->ensureBookingAccess(Booking::findOrFail($data['booking_id']));
         // Simpan file baru, lalu gabungkan dengan foto yang sudah ada
         $existing = Fitting::where('booking_id', $data['booking_id'])->first();

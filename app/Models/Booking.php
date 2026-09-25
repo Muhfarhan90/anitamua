@@ -61,6 +61,16 @@ class Booking extends Model
         return $this->belongsTo(Package::class);
     }
 
+    public function allowsSurvey(): bool
+    {
+        return $this->package?->packageType?->is_data_survey ?? true;
+    }
+
+    public function allowsFitting(): bool
+    {
+        return $this->package?->packageType?->is_data_fitting ?? true;
+    }
+
     public function addons(): HasMany
     {
         return $this->hasMany(BookingAddon::class);
