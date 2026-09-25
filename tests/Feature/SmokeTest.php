@@ -2339,12 +2339,18 @@ it('applies multiple booking discounts to totals and invoices', function () {
         ->assertSee('Promo awal tahun')
         ->assertSee('>Bonus</div>', false)
         ->assertSee('Free touch up')
-        ->assertSee('<s>Rp 200.000</s>', false)
-        ->assertSee('<s>Rp 300.000</s>', false)
+        ->assertSee('<strong>Rp 200.000</strong>', false)
+        ->assertSee('<strong>Rp 300.000</strong>', false)
+        ->assertDontSee('<s>Rp 200.000</s>', false)
+        ->assertDontSee('<s>Rp 300.000</s>', false)
         ->assertSee('<div class="invoice-bonus-total"><span>Total</span><strong><s>Rp 500.000</s></strong></div>', false)
         ->assertDontSee('invoice-discount-marker', false);
 
     $pdfHtml = view('invoices.pdf', ['invoice' => $invoice, 'settings' => [], 'logoSrc' => null])->render();
+    expect($pdfHtml)->toContain('<div class="cell">Rp 200.000</div>')
+        ->toContain('<div class="cell">Rp 300.000</div>')
+        ->not->toContain('<s>Rp 200.000</s>')
+        ->not->toContain('<s>Rp 300.000</s>');
     expect($pdfHtml)->toContain('<div class="bonus-total table"><div class="cell">Total</div><div class="cell"><s>Rp 500.000</s></div></div>');
     $this->actingAs($admin)->get(route('admin.invoices.pdf', $invoice))->assertOk();
 

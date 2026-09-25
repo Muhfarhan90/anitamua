@@ -250,7 +250,7 @@
                         <div class="invoice-bonus-heading">Bonus</div>
                         <div class="invoice-bonus-list">
                             @foreach($bonuses as $bonus)
-                            <div class="invoice-bonus-row"><span>{{ $bonus['note'] }}</span><strong><s>Rp {{ number_format($bonus['amount'] ?? 0, 0, ',', '.') }}</s></strong></div>
+                            <div class="invoice-bonus-row"><span>{{ $bonus['note'] }}</span><strong>Rp {{ number_format($bonus['amount'] ?? 0, 0, ',', '.') }}</strong></div>
                             @endforeach
                         </div>
                         <div class="invoice-bonus-total"><span>Total</span><strong><s>Rp {{ number_format($bonusTotal, 0, ',', '.') }}</s></strong></div>

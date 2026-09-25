@@ -150,7 +150,7 @@
                 <div class="bonus-title">Bonus</div>
                 <div class="bonus-list">
                     @foreach($bonuses as $bonus)
-                    <div class="bonus-item table"><div class="cell">{{ $bonus['note'] }}</div><div class="cell"><s>Rp {{ number_format($bonus['amount'] ?? 0, 0, ',', '.') }}</s></div></div>
+                    <div class="bonus-item table"><div class="cell">{{ $bonus['note'] }}</div><div class="cell">Rp {{ number_format($bonus['amount'] ?? 0, 0, ',', '.') }}</div></div>
                     @endforeach
                 </div>
                 <div class="bonus-total table"><div class="cell">Total</div><div class="cell"><s>Rp {{ number_format($bonusTotal, 0, ',', '.') }}</s></div></div>
