@@ -95,6 +95,15 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/inventory', [InventoryController::class, 'index'])->name('admin.inventory.index');
         Route::patch('/admin/inventory/{item}/status', [InventoryController::class, 'updateStatus'])->name('admin.inventory.status.update');
 
+        // Inventory Wardrobe dan kategorinya dapat dikelola Owner, Admin, dan Team.
+        Route::post('/admin/inventory', [InventoryController::class, 'store'])->name('admin.inventory.store');
+        Route::put('/admin/inventory/{item}', [InventoryController::class, 'update'])->name('admin.inventory.update');
+        Route::delete('/admin/inventory/{item}', [InventoryController::class, 'destroy'])->name('admin.inventory.destroy');
+        Route::get('/admin/inventory-categories', [InventoryCategoryController::class, 'index'])->name('admin.inventory-categories.index');
+        Route::post('/admin/inventory-categories', [InventoryCategoryController::class, 'store'])->name('admin.inventory-categories.store');
+        Route::put('/admin/inventory-categories/{category}', [InventoryCategoryController::class, 'update'])->name('admin.inventory-categories.update');
+        Route::delete('/admin/inventory-categories/{category}', [InventoryCategoryController::class, 'destroy'])->name('admin.inventory-categories.destroy');
+
         // Checklist Packing H-1 dari data fitting (Owner, Admin, Tim Lapangan)
         Route::get('/admin/bookings/{booking}/packing', [PackingController::class, 'show'])->name('admin.bookings.packing');
         Route::post('/admin/bookings/{booking}/packing', [PackingController::class, 'update'])->name('admin.packing.update');
@@ -181,17 +190,6 @@ Route::middleware('auth')->group(function () {
             Route::post('/vendor-categories', [VendorCategoryController::class, 'store'])->name('vendor-categories.store');
             Route::put('/vendor-categories/{category}', [VendorCategoryController::class, 'update'])->name('vendor-categories.update');
             Route::delete('/vendor-categories/{category}', [VendorCategoryController::class, 'destroy'])->name('vendor-categories.destroy');
-
-            // Inventory Wardrobe (Owner & Admin)
-            Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
-            Route::put('/inventory/{item}', [InventoryController::class, 'update'])->name('inventory.update');
-            Route::delete('/inventory/{item}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
-
-            // Kategori Inventory (Owner & Admin)
-            Route::get('/inventory-categories', [InventoryCategoryController::class, 'index'])->name('inventory-categories.index');
-            Route::post('/inventory-categories', [InventoryCategoryController::class, 'store'])->name('inventory-categories.store');
-            Route::put('/inventory-categories/{category}', [InventoryCategoryController::class, 'update'])->name('inventory-categories.update');
-            Route::delete('/inventory-categories/{category}', [InventoryCategoryController::class, 'destroy'])->name('inventory-categories.destroy');
 
             // // Reminder manual & Timeline (Owner & Admin) — dinonaktifkan sementara
             // Route::get('/reminders', [AdminController::class, 'reminders'])->name('reminders.index');

@@ -144,6 +144,7 @@
                     ['label' => 'Jadwal Saya', 'icon' => 'fa-regular fa-calendar', 'url' => route('admin.calendar'), 'active' => 'admin.calendar'],
                     ['label' => 'Tugas Lapangan', 'icon' => 'fa-solid fa-clipboard-list', 'url' => route('admin.fieldwork.index'), 'active' => 'admin.fieldwork.*'],
                     ['label' => 'Inventory', 'icon' => 'fa-solid fa-shirt', 'url' => route('admin.inventory.index'), 'active' => 'admin.inventory.*'],
+                    ['label' => 'Kat. Inventory', 'icon' => 'fa-solid fa-tags', 'url' => route('admin.inventory-categories.index'), 'active' => 'admin.inventory-categories.*'],
                 ]],
             ],
             'client' => [

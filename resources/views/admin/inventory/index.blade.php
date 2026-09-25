@@ -4,7 +4,7 @@
 
 @section('content')
 @php
-    $canManageInventory = in_array(auth()->user()->role, [App\Models\User::ROLE_OWNER, App\Models\User::ROLE_ADMIN], true);
+    $canManageInventory = in_array(auth()->user()->role, [App\Models\User::ROLE_OWNER, App\Models\User::ROLE_ADMIN, App\Models\User::ROLE_TEAM], true);
     $canUpdateInventoryStatus = in_array(auth()->user()->role, [App\Models\User::ROLE_OWNER, App\Models\User::ROLE_ADMIN, App\Models\User::ROLE_TEAM], true);
     $inventoryStatuses = [
         'available' => 'Tersedia',

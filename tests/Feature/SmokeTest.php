@@ -10,6 +10,7 @@ use App\Models\Finance;
 use App\Models\Fitting;
 use App\Models\Gallery;
 use App\Models\InventoryItem;
+use App\Models\InventoryCategory;
 use App\Models\Invoice;
 use App\Models\Package;
 use App\Models\PackageType;
@@ -1715,7 +1716,7 @@ it('blocks team from admin booking pages while keeping the calendar available', 
     $this->actingAs($team)->get('/admin/packages')->assertForbidden();
 });
 
-it('lets field team view inventory without management actions', function () {
+it('lets field team manage inventory and categories like admin', function () {
     $team = User::where('email', 'team@anitamua.com')->firstOrFail();
     $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
 
@@ -1732,11 +1733,38 @@ it('lets field team view inventory without management actions', function () {
         ->assertSee('Disewa')
         ->assertSee('Dilaundry')
         ->assertSee('Dipermak')
-        ->assertDontSee('Tambah Barang')
-        ->assertDontSee('openEdit(', false)
-        ->assertDontSee('admin.inventory.destroy');
+        ->assertSee('Tambah Barang')
+        ->assertSee('openEdit(', false);
 
-    $this->actingAs($team)->post('/admin/inventory')->assertForbidden();
+    $this->actingAs($team)->get(route('admin.inventory-categories.index'))->assertOk();
+    $this->actingAs($team)->post(route('admin.inventory-categories.store'), [
+        'name' => 'Kategori Team Uji',
+    ])->assertRedirect();
+    $category = InventoryCategory::where('name', 'Kategori Team Uji')->firstOrFail();
+    $this->actingAs($team)->put(route('admin.inventory-categories.update', $category), [
+        'name' => 'Kategori Team Baru',
+    ])->assertRedirect();
+    expect($category->refresh()->name)->toBe('Kategori Team Baru');
+
+    $this->actingAs($team)->post(route('admin.inventory.store'), [
+        'name' => 'Gaun Team Uji',
+        'inventory_category_id' => $category->id,
+        'condition' => 'good',
+        'status' => 'available',
+    ])->assertRedirect();
+    $item = InventoryItem::where('name', 'Gaun Team Uji')->firstOrFail();
+    $this->actingAs($team)->put(route('admin.inventory.update', $item), [
+        'name' => 'Gaun Team Baru',
+        'inventory_category_id' => $category->id,
+        'condition' => 'fair',
+        'status' => 'in_use',
+    ])->assertRedirect();
+    expect($item->refresh()->name)->toBe('Gaun Team Baru');
+
+    $this->actingAs($team)->delete(route('admin.inventory.destroy', $item))->assertRedirect();
+    $this->assertDatabaseMissing('inventory_items', ['id' => $item->id]);
+    $this->actingAs($team)->delete(route('admin.inventory-categories.destroy', $category))->assertRedirect();
+    $this->assertDatabaseMissing('inventory_categories', ['id' => $category->id]);
 
     $this->actingAs($admin)
         ->get(route('admin.inventory.index'))
@@ -3228,7 +3256,7 @@ it('allows team members to access all fieldwork regardless of schedule PIC', fun
         ->assertForbidden();
 });
 
-it('filters fieldwork by its schedule date and lets team update only inventory status', function () {
+it('filters fieldwork by its schedule date and lets team update inventory status', function () {
     $team = User::where('email', 'team@anitamua.com')->firstOrFail();
     $source = Booking::firstOrFail();
     $date = now()->addMonths(5)->toDateString();
@@ -3255,7 +3283,7 @@ it('filters fieldwork by its schedule date and lets team update only inventory s
     expect($item->fresh()->status)->toBe('laundering')
         ->and(ActivityLog::where('action', 'inventory_status_updated')->exists())->toBeTrue();
 
-    $this->actingAs($team)->put(route('admin.inventory.update', $item), [])->assertForbidden();
+    $this->actingAs($team)->put(route('admin.inventory.update', $item), [])->assertSessionHasErrors(['name', 'inventory_category_id', 'condition', 'status']);
 });
 
 it('uses dynamic package types across package management and public packages', function () {
