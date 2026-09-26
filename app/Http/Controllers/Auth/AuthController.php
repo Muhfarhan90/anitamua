@@ -42,7 +42,13 @@ class AuthController extends Controller
 
         ActivityLogger::log('user_login', 'Login', $user->name.' berhasil login');
 
-        return redirect()->intended(route('dashboard'));
+        $destination = route('dashboard');
+        if ($user->role === 'client') {
+            $booking = $user->bookings()->latest()->first();
+            $destination = $booking ? route('client.booking', $booking) : route('booking.create');
+        }
+
+        return redirect()->intended($destination);
     }
 
     public function logout(Request $request)
