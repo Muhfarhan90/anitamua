@@ -15,13 +15,13 @@ class AnalyticsController extends Controller
     {
         $startDate = null;
         $endDate = null;
-        $yesterday = now('Asia/Jakarta')->subDay()->toDateString();
+        $today = now('Asia/Jakarta')->toDateString();
         $hasCustomRange = $request->filled('start_date') || $request->filled('end_date');
 
         if ($hasCustomRange) {
             $validator = Validator::make($request->query(), [
-                'start_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.$yesterday],
-                'end_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:start_date', 'before_or_equal:'.$yesterday],
+                'start_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.$today],
+                'end_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:start_date', 'before_or_equal:'.$today],
             ]);
 
             if ($validator->fails()) {
@@ -46,7 +46,7 @@ class AnalyticsController extends Controller
             'periods' => WebsiteAnalyticsService::PERIODS,
             'startDate' => old('start_date', $startDate),
             'endDate' => old('end_date', $endDate),
-            'yesterday' => $yesterday,
+            'today' => $today,
         ]);
     }
 }

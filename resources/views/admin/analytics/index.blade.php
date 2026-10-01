@@ -29,13 +29,13 @@
     <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div class="flex-1">
             <label for="analyticsStartDate" class="mb-1.5 block text-xs font-semibold text-gray-600">Dari tanggal</label>
-            <input id="analyticsStartDate" name="start_date" type="date" value="{{ $startDate }}" max="{{ $yesterday }}" required
+            <input id="analyticsStartDate" name="start_date" type="date" value="{{ $startDate }}" max="{{ $today }}" required
                    class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 focus:border-brand focus:ring-brand">
             @error('start_date') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
         </div>
         <div class="flex-1">
             <label for="analyticsEndDate" class="mb-1.5 block text-xs font-semibold text-gray-600">Sampai tanggal</label>
-            <input id="analyticsEndDate" name="end_date" type="date" value="{{ $endDate }}" max="{{ $yesterday }}" required
+            <input id="analyticsEndDate" name="end_date" type="date" value="{{ $endDate }}" max="{{ $today }}" required
                    class="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700 focus:border-brand focus:ring-brand">
             @error('end_date') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
         </div>

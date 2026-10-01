@@ -120,10 +120,10 @@ class WebsiteAnalyticsService
         $summaryRow = $summary->getRows()[0] ?? null;
         $summaryValues = $summaryRow?->getMetricValues() ?? [];
         $totals = [
-            'activeUsers' => (int) ($summaryValues[0]?->getValue() ?? 0),
-            'sessions' => (int) ($summaryValues[1]?->getValue() ?? 0),
-            'screenPageViews' => (int) ($summaryValues[2]?->getValue() ?? 0),
-            'engagementRate' => (float) ($summaryValues[3]?->getValue() ?? 0) * 100,
+            'activeUsers' => (int) (($summaryValues[0] ?? null)?->getValue() ?? 0),
+            'sessions' => (int) (($summaryValues[1] ?? null)?->getValue() ?? 0),
+            'screenPageViews' => (int) (($summaryValues[2] ?? null)?->getValue() ?? 0),
+            'engagementRate' => (float) (($summaryValues[3] ?? null)?->getValue() ?? 0) * 100,
         ];
 
         $status = array_sum(array_slice($totals, 0, 3)) > 0 ? 'ready' : 'empty';
@@ -139,9 +139,9 @@ class WebsiteAnalyticsService
                 $dimensions = $row->getDimensionValues();
 
                 return [
-                    'title' => $dimensions[0]?->getValue() ?: 'Tanpa judul',
-                    'path' => $dimensions[1]?->getValue() ?: '/',
-                    'views' => (int) ($row->getMetricValues()[0]?->getValue() ?? 0),
+                    'title' => ($dimensions[0] ?? null)?->getValue() ?: 'Tanpa judul',
+                    'path' => ($dimensions[1] ?? null)?->getValue() ?: '/',
+                    'views' => (int) (($row->getMetricValues()[0] ?? null)?->getValue() ?? 0),
                 ];
             })->all(),
         ];
@@ -226,10 +226,15 @@ class WebsiteAnalyticsService
     {
         $values = collect($rows)->mapWithKeys(function ($row) {
             $metrics = $row->getMetricValues();
+            $dimension = $row->getDimensionValues()[0] ?? null;
 
-            return [$row->getDimensionValues()[0]->getValue() => [
-                'sessions' => (int) ($metrics[0]?->getValue() ?? 0),
-                'views' => (int) ($metrics[1]?->getValue() ?? 0),
+            if ($dimension === null) {
+                return [];
+            }
+
+            return [$dimension->getValue() => [
+                'sessions' => (int) (($metrics[0] ?? null)?->getValue() ?? 0),
+                'views' => (int) (($metrics[1] ?? null)?->getValue() ?? 0),
             ]];
         });
 
