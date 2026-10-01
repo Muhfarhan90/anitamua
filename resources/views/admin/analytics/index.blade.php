@@ -3,7 +3,7 @@
 @section('title', 'Analitik Website')
 
 @section('content')
-<x-page-header title="Analitik Website" subtitle="Pahami pola kunjungan website dan halaman yang paling diminati.">
+<x-page-header title="Analitik Website" subtitle="Pahami pola sesi website dan halaman yang paling diminati.">
     <x-slot:actions>
         <span class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-gray-500 shadow-sm border border-gray-100">
             <span class="h-2 w-2 rounded-full {{ $analytics['status'] === 'ready' ? 'bg-emerald-400' : 'bg-amber-400' }}"></span>
@@ -54,21 +54,20 @@
         <p class="text-xs text-gray-400">{{ $analytics['rangeLabel'] }}</p>
     </div>
 
-    <div class="grid grid-cols-2 gap-3 lg:grid-cols-4 mb-5">
-        <x-stat-card icon="fa-user-group" color="brand" label="Pengunjung" :value="number_format($analytics['summary']['activeUsers'], 0, ',', '.')" sub="Pengunjung aktif" />
-        <x-stat-card icon="fa-arrow-pointer" color="blue" label="Kunjungan" :value="number_format($analytics['summary']['sessions'], 0, ',', '.')" sub="Total sesi" />
+    <div class="grid grid-cols-2 gap-3 lg:grid-cols-3 mb-5">
+        <x-stat-card icon="fa-user-group" color="brand" label="Pengunjung" :value="number_format($analytics['summary']['activeUsers'], 0, ',', '.')" sub="Pengunjung unik" />
+        <x-stat-card icon="fa-arrow-pointer" color="blue" label="Sesi" :value="number_format($analytics['summary']['sessions'], 0, ',', '.')" sub="Kunjungan website" />
         <x-stat-card icon="fa-eye" color="purple" label="Tayangan" :value="number_format($analytics['summary']['screenPageViews'], 0, ',', '.')" sub="Halaman dilihat" />
-        <x-stat-card icon="fa-heart-pulse" color="emerald" label="Engagement" :value="number_format($analytics['summary']['engagementRate'], 1, ',', '.').'%'" sub="Sesi terlibat" />
     </div>
 
     <div class="grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-        <x-card title="Pola Kunjungan" title-icon="fa-chart-line" padding="p-4 md:p-5">
+        <x-card title="Pola Sesi & Tayangan" title-icon="fa-chart-line" padding="p-4 md:p-5">
             <div class="mb-4 flex items-center gap-5 text-xs text-gray-500">
-                <span class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-brand"></span>Kunjungan</span>
+                <span class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-brand"></span>Sesi</span>
                 <span class="inline-flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-blue-400"></span>Tayangan</span>
             </div>
             <div class="relative h-72 md:h-80">
-                <canvas id="analyticsTrendChart" role="img" aria-label="Grafik kunjungan dan tayangan website"></canvas>
+                <canvas id="analyticsTrendChart" role="img" aria-label="Grafik sesi dan tayangan website"></canvas>
             </div>
         </x-card>
 
@@ -103,8 +102,8 @@
                 <h2 class="font-display text-lg font-bold text-gray-800">Data belum dapat dimuat</h2>
                 <p class="mt-2 text-sm leading-6 text-gray-500">Periksa akses service account atau coba buka halaman ini kembali beberapa saat lagi.</p>
             @else
-                <h2 class="font-display text-lg font-bold text-gray-800">Belum ada kunjungan</h2>
-                <p class="mt-2 text-sm leading-6 text-gray-500">Google Analytics belum mencatat kunjungan pada periode {{ strtolower($analytics['periodLabel']) }}.</p>
+                <h2 class="font-display text-lg font-bold text-gray-800">Belum ada sesi</h2>
+                <p class="mt-2 text-sm leading-6 text-gray-500">Google Analytics belum mencatat sesi pada periode {{ strtolower($analytics['periodLabel']) }}.</p>
             @endif
         </div>
     </x-card>
@@ -126,7 +125,7 @@
                 labels: points.map(point => point.label),
                 datasets: [
                     {
-                        label: 'Kunjungan',
+                        label: 'Sesi',
                         data: points.map(point => point.sessions),
                         borderColor: '#d4739a',
                         backgroundColor: 'rgba(212, 115, 154, .12)',

@@ -99,7 +99,7 @@ class WebsiteAnalyticsService
 
         [$summary, $trend, $topPages] = $this->runReports([
             $this->request($property, $start, $end)
-                ->setMetrics($this->metrics(['activeUsers', 'sessions', 'screenPageViews', 'engagementRate'])),
+                ->setMetrics($this->metrics(['activeUsers', 'sessions', 'screenPageViews'])),
             $this->request($property, $start, $end)
                 ->setDimensions([new Dimension(['name' => $dimension])])
                 ->setMetrics($this->metrics(['sessions', 'screenPageViews'])),
@@ -123,7 +123,6 @@ class WebsiteAnalyticsService
             'activeUsers' => (int) (($summaryValues[0] ?? null)?->getValue() ?? 0),
             'sessions' => (int) (($summaryValues[1] ?? null)?->getValue() ?? 0),
             'screenPageViews' => (int) (($summaryValues[2] ?? null)?->getValue() ?? 0),
-            'engagementRate' => (float) (($summaryValues[3] ?? null)?->getValue() ?? 0) * 100,
         ];
 
         $status = array_sum(array_slice($totals, 0, 3)) > 0 ? 'ready' : 'empty';
