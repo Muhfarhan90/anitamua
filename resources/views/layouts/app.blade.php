@@ -64,6 +64,7 @@
                 ]],
                 ['title' => 'Laporan', 'items' => [
                     ['label' => 'Keuangan',   'icon' => 'fa-solid fa-wallet',          'url' => route('admin.finances.index'),   'active' => 'admin.finances.*'],
+                    ['label' => 'Analitik Website', 'icon' => 'fa-solid fa-chart-line', 'url' => route('admin.analytics.index'), 'active' => 'admin.analytics.*'],
                 ]],
                 ['title' => 'Paket', 'items' => [
                     ['label' => 'Paket',      'icon' => 'fa-solid fa-box',             'url' => route('admin.packages.index'),   'active' => 'admin.packages.*'],

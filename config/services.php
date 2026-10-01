@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    'google_analytics' => [
+        'measurement_id' => env('GOOGLE_ANALYTICS_MEASUREMENT_ID'),
+        'property_id' => env('GOOGLE_ANALYTICS_PROPERTY_ID'),
+        'credentials_path' => env(
+            'GOOGLE_ANALYTICS_CREDENTIALS_PATH',
+            storage_path('app/private/google-analytics.json')
+        ) ?: storage_path('app/private/google-analytics.json'),
+        'start_date' => env('GOOGLE_ANALYTICS_START_DATE'),
+    ],
+
 ];

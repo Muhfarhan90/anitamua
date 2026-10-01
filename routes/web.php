@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\AnalyticsController;
 use App\Http\Controllers\Admin\BenefitCategoryController;
 use App\Http\Controllers\Admin\BenefitController;
 use App\Http\Controllers\Admin\BookingManagementController;
@@ -113,6 +114,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/admin/fieldwork/fitting', [FieldWorkController::class, 'fittingStore'])->name('admin.fieldwork.fitting');
 
         Route::prefix('admin')->name('admin.')->middleware('role:owner,admin')->group(function () {
+            Route::get('/analytics', [AnalyticsController::class, 'index'])
+                ->name('analytics.index');
+
             // Booking management (operasional admin)
             Route::get('/bookings', [BookingManagementController::class, 'index'])->name('bookings.index');
             Route::post('/bookings', [BookingManagementController::class, 'store'])->name('bookings.store');

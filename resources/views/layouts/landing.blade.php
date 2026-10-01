@@ -13,6 +13,24 @@
     @vite('resources/css/app.css')
     @vite('resources/js/app.js')
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    @if($gaMeasurementId = config('services.google_analytics.measurement_id'))
+        @php
+            $gaPagePath = request()->routeIs('booking.success')
+                ? '/booking/sukses'
+                : '/'.ltrim(request()->path(), '/');
+            $gaPageLocation = url($gaPagePath);
+        @endphp
+        <script async src="https://www.googletagmanager.com/gtag/js?id={{ urlencode($gaMeasurementId) }}"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', @json($gaMeasurementId), {
+                page_location: @json($gaPageLocation, JSON_UNESCAPED_SLASHES),
+                page_path: @json($gaPagePath, JSON_UNESCAPED_SLASHES)
+            });
+        </script>
+    @endif
     @stack('styles')
 </head>
 <body>
