@@ -91,6 +91,7 @@
                     ['label' => 'Testimoni',  'icon' => 'fa-solid fa-quote-right',     'url' => route('admin.content.testimonials'), 'active' => 'admin.content.testimonials*'],
                     ['label' => 'Galeri',     'icon' => 'fa-solid fa-image',           'url' => route('admin.content.gallery'), 'active' => 'admin.content.gallery*'],
                     ['label' => 'FAQ',        'icon' => 'fa-solid fa-circle-question', 'url' => route('admin.content.faqs'),    'active' => 'admin.content.faqs*'],
+                    ['label' => 'Syarat & Ketentuan', 'icon' => 'fa-solid fa-file-lines', 'url' => route('admin.content.terms'), 'active' => 'admin.content.terms*'],
                     ['label' => 'Pengaturan', 'icon' => 'fa-solid fa-gear',            'url' => route('admin.content.settings'), 'active' => 'admin.content.settings*'],
                 ]],
                 ['title' => 'Marketing', 'items' => [
@@ -133,6 +134,7 @@
                     ['label' => 'Testimoni',  'icon' => 'fa-solid fa-quote-right',     'url' => route('admin.content.testimonials'), 'active' => 'admin.content.testimonials*'],
                     ['label' => 'Galeri',     'icon' => 'fa-solid fa-image',           'url' => route('admin.content.gallery'), 'active' => 'admin.content.gallery*'],
                     ['label' => 'FAQ',        'icon' => 'fa-solid fa-circle-question', 'url' => route('admin.content.faqs'),    'active' => 'admin.content.faqs*'],
+                    ['label' => 'Syarat & Ketentuan', 'icon' => 'fa-solid fa-file-lines', 'url' => route('admin.content.terms'), 'active' => 'admin.content.terms*'],
                     ['label' => 'Pengaturan', 'icon' => 'fa-solid fa-gear',            'url' => route('admin.content.settings'), 'active' => 'admin.content.settings*'],
                 ]],
                 ['title' => 'Marketing', 'items' => [

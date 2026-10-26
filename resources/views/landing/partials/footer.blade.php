@@ -29,6 +29,7 @@
                     <div class="flex flex-col gap-2">
                         <a href="{{ route('testimonials') }}">Testimoni</a>
                         <a href="{{ route('faq') }}">FAQ</a>
+                        <a href="{{ route('terms') }}">Syarat &amp; Ketentuan</a>
                         <a href="{{ route('contact') }}">Kontak</a>
                         <a href="{{ route('booking.create') }}">Booking</a>
                     </div>

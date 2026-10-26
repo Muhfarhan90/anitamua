@@ -15,6 +15,7 @@
         <table class="w-full text-sm">
             <thead><tr class="border-b border-gray-100 bg-cream/60 text-left text-gray-500">
                 <th class="px-5 py-3 font-medium">Jenis Paket</th>
+                <th class="px-5 py-3 font-medium">Kelompok</th>
                 <th class="px-5 py-3 font-medium">Jumlah Paket</th>
                 <th class="px-5 py-3 font-medium">Data Survey</th>
                 <th class="px-5 py-3 font-medium">Data Fitting</th>
@@ -24,6 +25,7 @@
                 @forelse($packageTypes as $packageType)
                     <tr class="border-b border-gray-50 transition-colors hover:bg-brand-50/30">
                         <td class="px-5 py-3 font-semibold text-gray-800">{{ $packageType->name }}</td>
+                        <td class="px-5 py-3"><x-badge color="info">{{ $packageType->display_group === 'regular' ? 'Reguler' : 'Wedding' }}</x-badge></td>
                         <td class="px-5 py-3"><x-badge :color="$packageType->packages_count ? 'info' : 'gray'">{{ $packageType->packages_count }} paket</x-badge></td>
                         <td class="px-5 py-3"><x-badge :color="$packageType->is_data_survey ? 'success' : 'gray'">{{ $packageType->is_data_survey ? 'Aktif' : 'Nonaktif' }}</x-badge></td>
                         <td class="px-5 py-3"><x-badge :color="$packageType->is_data_fitting ? 'success' : 'gray'">{{ $packageType->is_data_fitting ? 'Aktif' : 'Nonaktif' }}</x-badge></td>
@@ -40,7 +42,7 @@
                         </div></td>
                     </tr>
                 @empty
-                    <tr><td colspan="5"><x-empty-state icon="fa-tags" title="Belum ada jenis paket" /></td></tr>
+                    <tr><td colspan="6"><x-empty-state icon="fa-tags" title="Belum ada jenis paket" /></td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -54,6 +56,9 @@
         <form method="POST" action="{{ route('admin.packages.types.store') }}" class="space-y-3">
             @csrf
             <x-input name="name" label="Nama Jenis Paket" required placeholder="Contoh: Paket Engagement" />
+            <div><label for="new-package-group" class="mb-1 block text-sm font-medium text-gray-600">Kelompok Paket</label>
+                <select id="new-package-group" name="display_group" required class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm"><option value="regular">Reguler</option><option value="wedding">Wedding</option></select>
+            </div>
             <input type="hidden" name="is_data_survey" value="0">
             <label class="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="is_data_survey" value="1" checked class="rounded border-gray-300 text-brand"> Tampilkan Data Survey di booking</label>
             <input type="hidden" name="is_data_fitting" value="0">
@@ -71,6 +76,9 @@
             <form method="POST" action="{{ route('admin.packages.types.update', $packageType) }}" class="space-y-3">
                 @csrf @method('PUT')
                 <x-input name="name" label="Nama Jenis Paket" :value="$packageType->name" required />
+                <div><label for="package-group-{{ $packageType->id }}" class="mb-1 block text-sm font-medium text-gray-600">Kelompok Paket</label>
+                    <select id="package-group-{{ $packageType->id }}" name="display_group" required class="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm"><option value="regular" @selected($packageType->display_group === 'regular')>Reguler</option><option value="wedding" @selected($packageType->display_group === 'wedding')>Wedding</option></select>
+                </div>
                 <input type="hidden" name="is_data_survey" value="0">
                 <label class="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" name="is_data_survey" value="1" @checked($packageType->is_data_survey) class="rounded border-gray-300 text-brand"> Tampilkan Data Survey di booking</label>
                 <input type="hidden" name="is_data_fitting" value="0">

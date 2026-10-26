@@ -2631,7 +2631,7 @@ it('renders MVP back office pages and hides deferred features', function () {
     // Modul fase 2 sudah aktif
     foreach (['/admin/inventory', '/admin/inventory-categories', '/admin/benefits', '/admin/benefit-categories',
         '/admin/users/staff', '/admin/users/clients',
-        '/admin/content/testimonials', '/admin/content/gallery', '/admin/content/faqs', '/admin/content/settings'] as $url) {
+        '/admin/content/testimonials', '/admin/content/gallery', '/admin/content/faqs', '/admin/content/terms', '/admin/content/settings'] as $url) {
         $this->actingAs($owner)->get($url)->assertOk();
     }
 
@@ -3289,17 +3289,80 @@ it('filters fieldwork by its schedule date and lets team update inventory status
 it('uses dynamic package types across package management and public packages', function () {
     $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
 
-    $this->actingAs($owner)->post(route('admin.packages.types.store'), ['name' => 'Engagement'])->assertRedirect();
-    $type = PackageType::where('name', 'Engagement')->firstOrFail();
+    $this->actingAs($owner)->post(route('admin.packages.types.store'), ['name' => 'Engagement Custom', 'display_group' => 'regular'])->assertRedirect();
+    $type = PackageType::where('name', 'Engagement Custom')->firstOrFail();
     $package = Package::create([
         'name' => 'Paket Engagement', 'type' => 'makeup', 'package_type_id' => $type->id,
         'price' => 2000000, 'status' => 'active', 'color' => '#d4739a',
     ]);
 
-    $this->actingAs($owner)->get(route('admin.packages.create'))->assertOk()->assertSee('Engagement');
-    $this->get('/paket')->assertOk()->assertSee('Engagement')->assertSee($package->name);
+    $this->actingAs($owner)->get(route('admin.packages.create'))->assertOk()->assertSee('Engagement Custom');
+    $this->get('/paket')->assertOk()->assertSee('Engagement Custom')->assertSee($package->name);
+    $this->actingAs($owner)->put(route('admin.packages.types.update', $type), ['name' => 'Engagement Custom', 'display_group' => 'wedding'])->assertRedirect();
+    expect($type->fresh()->display_group)->toBe('wedding');
+    $this->actingAs($owner)->post(route('admin.packages.types.store'), ['name' => 'Kategori Salah', 'display_group' => 'other'])->assertSessionHasErrors('display_group');
     $this->actingAs($owner)->delete(route('admin.packages.types.destroy', $type))->assertRedirect();
     expect(PackageType::find($type->id))->not->toBeNull();
+});
+
+it('groups existing and new packages without relying on legacy package type', function () {
+    foreach (['Engagement', 'Graduation', 'Prewed'] as $name) {
+        expect(PackageType::where('name', $name)->value('display_group'))->toBe('regular');
+    }
+    expect(PackageType::where('name', 'Make Up & Attire')->value('display_group'))->toBe('wedding')
+        ->and(PackageType::where('name', 'Full WO Package')->value('display_group'))->toBe('wedding');
+
+    $this->get(route('packages'))->assertOk()
+        ->assertSee('Belum ada paket reguler aktif')
+        ->assertSee('max-h-48 overflow-y-auto', false)
+        ->assertSee(route('terms'));
+
+    $regularType = PackageType::where('name', 'Engagement')->firstOrFail();
+    Package::create([
+        'name' => 'Paket Reguler Baru', 'package_type_id' => $regularType->id,
+        'price' => 1500000, 'status' => 'active', 'color' => '#d4739a',
+    ]);
+    $this->get(route('packages'))->assertOk()
+        ->assertSeeInOrder(['id="panel-regular"', 'Paket Reguler Baru', 'id="panel-wedding"'])
+        ->assertDontSee('Belum ada paket reguler aktif');
+    $this->get(route('home'))->assertOk()->assertSee('Paket Reguler Baru');
+});
+
+it('publishes sanitized global package terms from site settings', function () {
+    $this->get(route('terms'))->assertOk()->assertSee('Syarat dan ketentuan belum tersedia.');
+    $this->get(route('about'))->assertOk()->assertSee('href="'.route('terms').'"', false);
+    $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
+    $this->actingAs($owner)->get(route('admin.content.settings'))->assertOk()
+        ->assertDontSee('data-rich-text-editor', false);
+    $this->actingAs($owner)->get(route('admin.content.terms'))->assertOk()
+        ->assertSee('data-rich-text-editor', false)
+        ->assertSee('rich-text-editor-', false)
+        ->assertSee('Simpan Syarat &amp; Ketentuan', false);
+    $this->actingAs($owner)->post(route('admin.content.terms.store'), [
+        'package_terms_html' => '<h1>Ketentuan Booking</h1><p class="ql-align-center"><strong>DP</strong> <u>tidak</u> <s>dapat</s> dikembalikan.</p><blockquote>Catatan penting.</blockquote><ul><li>Satu ketentuan</li></ul><script>alert(1)</script><a href="javascript:alert(1)">Klik</a>',
+    ])->assertRedirect()->assertSessionHas('success');
+
+    expect(SiteSetting::get('package_terms_html'))->toContain('<h1>Ketentuan Booking</h1>', 'ql-align-center', '<blockquote>Catatan penting.</blockquote>', '<ul><li>Satu ketentuan</li></ul>')
+        ->not->toContain('<script', 'javascript:');
+    $this->get(route('terms'))->assertOk()
+        ->assertSee('<h1>Ketentuan Booking</h1>', false)
+        ->assertDontSee('javascript:alert(1)', false);
+    $this->actingAs($owner)->post(route('admin.content.settings.store'), [
+        'booking_referral_sources' => SiteSetting::DEFAULT_BOOKING_REFERRAL_SOURCES,
+        'package_terms_html' => '<p>Jangan timpa</p>',
+    ])->assertRedirect();
+    expect(SiteSetting::get('package_terms_html'))->toContain('Ketentuan Booking');
+    expect(ActivityLog::where('action', 'package_terms_updated')->exists())->toBeTrue();
+
+    $admin = User::where('email', 'admin@anitamua.com')->firstOrFail();
+    $this->actingAs($admin)->get(route('admin.content.terms'))->assertOk();
+    $this->actingAs($admin)->post(route('admin.content.terms.store'), [])
+        ->assertSessionHasErrors('package_terms_html');
+    expect(SiteSetting::get('package_terms_html'))->toContain('Ketentuan Booking');
+
+    $team = User::where('email', 'team@anitamua.com')->firstOrFail();
+    $this->actingAs($team)->get(route('admin.content.terms'))->assertForbidden();
+    $this->actingAs($team)->post(route('admin.content.terms.store'), ['package_terms_html' => 'Ubah'])->assertForbidden();
 });
 
 it('stores CPW reception three and head accessories as fitting and packing items', function () {

@@ -109,12 +109,14 @@ class PackageController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', 'unique:package_types,name'],
+            'display_group' => ['sometimes', 'in:regular,wedding'],
             'is_data_survey' => ['sometimes', 'boolean'],
             'is_data_fitting' => ['sometimes', 'boolean'],
         ]);
         $type = PackageType::create([
             ...$data,
             'name' => trim($data['name']),
+            'display_group' => $data['display_group'] ?? 'wedding',
             'is_data_survey' => $data['is_data_survey'] ?? true,
             'is_data_fitting' => $data['is_data_fitting'] ?? true,
         ]);
@@ -128,6 +130,7 @@ class PackageController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', 'unique:package_types,name,'.$packageType->id],
+            'display_group' => ['sometimes', 'in:regular,wedding'],
             'is_data_survey' => ['sometimes', 'boolean'],
             'is_data_fitting' => ['sometimes', 'boolean'],
         ]);

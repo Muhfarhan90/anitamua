@@ -27,6 +27,7 @@ class ProdSeeder extends Seeder
         $this->seedContent();
         $this->call(WeddingPackageSeeder::class);
         $this->call(MakeupPackageSeeder::class);
+        $this->call(RegularPackageTypeSeeder::class);
     }
 
     private function seedUsers(): void

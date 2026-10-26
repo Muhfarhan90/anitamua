@@ -10,7 +10,7 @@ class PackageType extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'is_data_survey', 'is_data_fitting'];
+    protected $fillable = ['name', 'display_group', 'is_data_survey', 'is_data_fitting'];
 
     protected function casts(): array
     {

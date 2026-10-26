@@ -35,6 +35,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [LandingController::class, 'index'])->name('home');
 Route::get('/tentang', [LandingController::class, 'about'])->name('about');
 Route::get('/paket', [LandingController::class, 'packages'])->name('packages');
+Route::get('/syarat-ketentuan', [LandingController::class, 'terms'])->name('terms');
 Route::get('/galeri', [LandingController::class, 'gallery'])->name('gallery');
 Route::get('/dekor-tenda', [LandingController::class, 'decorTents'])->name('decor-tents');
 Route::get('/wardrobe', [LandingController::class, 'wardrobe'])->name('wardrobe');
@@ -242,6 +243,9 @@ Route::middleware('auth')->group(function () {
             Route::post('/content/faqs/reorder', [ContentController::class, 'reorderFaqs'])->name('content.faqs.reorder');
             Route::put('/content/faqs/{faq}', [ContentController::class, 'updateFaq'])->name('content.faqs.update');
             Route::delete('/content/faqs/{faq}', [ContentController::class, 'destroyFaq'])->name('content.faqs.destroy');
+
+            Route::get('/content/terms', [ContentController::class, 'terms'])->name('content.terms');
+            Route::post('/content/terms', [ContentController::class, 'storeTerms'])->name('content.terms.store');
 
             Route::get('/content/settings', [ContentController::class, 'settings'])->name('content.settings');
             Route::post('/content/settings', [ContentController::class, 'storeSettings'])->name('content.settings.store');

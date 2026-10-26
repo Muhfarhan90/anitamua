@@ -80,17 +80,19 @@
         </div>
 
         @php
-            $makeupPkgs = $packages->where('type', 'makeup')->sortBy('price');
-            $weddingPkgs = $packages->where('type', 'full')->sortBy('price');
+            $regularPkgs = $packages->filter(fn ($package) => $package->packageType?->display_group === 'regular')->sortBy('price');
+            $weddingPkgs = $packages->filter(fn ($package) => $package->packageType?->display_group !== 'regular')->sortBy('price');
+            $featuredPackages = $regularPkgs->take(2)->concat($weddingPkgs->take(2))->concat($packages->sortBy('price'))->unique('id')->take(4);
         @endphp
 
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 items-stretch mb-8">
-            @foreach($makeupPkgs->take(4) as $package)
+            @foreach($featuredPackages as $package)
                 <div class="card-mua h-full text-center p-5 flex flex-col">
                     <div class="mx-auto mb-3 rounded-full flex items-center justify-center" style="width:60px; height:60px; background:{{ $package->color }}18;">
                         <i class="fas fa-wand-magic-sparkles" style="font-size:1.5rem; color:{{ $package->color }};"></i>
                     </div>
                     <h5 class="font-bold mb-1">{{ $package->name }}</h5>
+                    <span class="text-xs font-semibold text-brand">{{ $package->packageType?->display_group === 'regular' ? 'Reguler' : 'Wedding' }}</span>
                     <div class="font-display text-3xl font-bold my-3 text-rose">Rp {{ number_format($package->price, 0, ',', '.') }}</div>
                     <ul class="list-none text-left text-sm mt-2 mb-4" style="min-height:72px;">
                         @foreach($package->benefits->take(4) as $benefit)
@@ -107,7 +109,7 @@
 
         <div class="text-center">
             <a href="{{ route('packages') }}" class="btn-pink px-6 py-2.5 text-base">
-                <i class="fa-regular fa-calendar-check mr-2"></i>Lihat Semua Paket (Makeup & Wedding)
+                <i class="fa-regular fa-calendar-check mr-2"></i>Lihat Semua Paket
             </a>
         </div>
     </div>

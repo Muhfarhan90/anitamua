@@ -7,6 +7,7 @@ use App\Models\EntranceGate;
 use App\Models\Gallery;
 use App\Models\InventoryCategory;
 use App\Models\Package;
+use App\Models\SiteSetting;
 use App\Models\Tent;
 use App\Models\Testimonial;
 use App\Models\WeddingStage;
@@ -36,6 +37,11 @@ class LandingController extends Controller
         $packages = Package::with(['benefits', 'packageType'])->where('status', 'active')->get();
 
         return view('landing.packages', compact('packages'));
+    }
+
+    public function terms()
+    {
+        return view('landing.terms', ['terms' => SiteSetting::get('package_terms_html', '')]);
     }
 
     public function gallery()

@@ -9,6 +9,7 @@ use App\Models\SiteSetting;
 use App\Models\Testimonial;
 use App\Services\ActivityLogger;
 use App\Services\ImageCompressor;
+use App\Support\RichText;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -250,6 +251,24 @@ class ContentController extends Controller
         ActivityLogger::log('faq_deleted', 'FAQ dihapus', 'FAQ dihapus oleh '.auth()->user()->name);
 
         return back()->with('success', 'FAQ dihapus.');
+    }
+
+    // ============ SYARAT & KETENTUAN ============
+
+    public function terms()
+    {
+        return view('admin.content.terms', ['terms' => SiteSetting::get('package_terms_html', '')]);
+    }
+
+    public function storeTerms(Request $request)
+    {
+        $data = $request->validate(['package_terms_html' => ['present', 'nullable', 'string']]);
+
+        SiteSetting::set('package_terms_html', RichText::sanitize($data['package_terms_html']), 'content');
+        cache()->forget('site_settings');
+        ActivityLogger::log('package_terms_updated', 'Syarat & ketentuan diperbarui', 'Syarat & ketentuan diperbarui oleh '.auth()->user()->name);
+
+        return back()->with('success', 'Syarat & ketentuan berhasil disimpan.');
     }
 
     // ============ PENGATURAN SITUS ============
