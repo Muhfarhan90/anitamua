@@ -65,9 +65,9 @@
             </div>
             @php
                 $masterPhotoGroups = [
-                    ['label' => 'Pelaminan', 'item' => $survey->weddingStage, 'photo_path' => $survey->wedding_stage_photo_path],
-                    ['label' => 'Tenda', 'item' => $survey->tent, 'photo_path' => $survey->tent_photo_path],
-                    ['label' => 'Gapura', 'item' => $survey->entranceGate, 'photo_path' => $survey->entrance_gate_photo_path],
+                    ['label' => 'Pelaminan', 'item' => $survey->weddingStage, 'photo_path' => $survey->weddingStage?->photo_path],
+                    ['label' => 'Tenda', 'item' => $survey->tent, 'photo_path' => $survey->tent?->photo_path],
+                    ['label' => 'Gapura', 'item' => $survey->entranceGate, 'photo_path' => $survey->entranceGate?->photo_path],
                 ];
             @endphp
             <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">

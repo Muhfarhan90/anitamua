@@ -51,58 +51,69 @@
                 <div id="panel-{{ $group }}" role="tabpanel" aria-labelledby="tab-{{ $group }}"
                     x-show="activeTab === '{{ $group }}'" x-cloak>
                     @forelse($groupPackages->groupBy(fn ($package) => $package->packageType?->name ?? 'Lainnya')->sortKeys() as $typeName => $typePackages)
-                        <div class="mb-12">
-                            <div class="mb-6 flex items-center justify-center gap-4">
+                        <div class="mb-8" x-data="{ open: false }">
+                            <button type="button" @click="open = !open" :aria-expanded="open"
+                                class="mb-6 flex w-full cursor-pointer items-center gap-4 border-0 bg-transparent p-0">
                                 <span class="h-px flex-1 bg-brand-200"></span>
+
                                 <h2 class="font-display px-3 text-center text-xl font-bold text-brand-dark">
-                                    {{ $typeName }}</h2>
+                                    {{ $typeName }}
+                                </h2>
+
                                 <span class="h-px flex-1 bg-brand-200"></span>
+
+                                <i class="fa-solid fa-chevron-down text-sm text-brand transition-transform duration-300"
+                                    :class="open ? 'rotate-180' : ''"></i>
+                            </button>
+
+                            <div x-show="open" x-cloak x-transition>
+                                @foreach ($typePackages->sortBy('price')->groupBy('sub_type') as $subType => $items)
+                                    @if ($subType)
+                                        <h3 class="mb-4 text-center text-sm font-semibold tracking-wide text-gray-600">
+                                            {{ $subTypeLabels[$subType] ?? ucfirst(str_replace('_', ' ', $subType)) }}</h3>
+                                    @endif
+                                    <div class="mb-8 flex flex-wrap justify-center gap-5">
+                                        @foreach ($items as $package)
+                                            <div
+                                                class="card-mua text-center p-5 flex flex-col w-full sm:w-[calc(50%-0.625rem)] lg:w-[calc(25%-0.9375rem)]">
+                                                <div class="mx-auto mb-3 rounded-full flex items-center justify-center"
+                                                    style="width:64px; height:64px; background:{{ $package->color }}18;"><i
+                                                        class="fa-solid fa-gem"
+                                                        style="font-size:1.5rem; color:{{ $package->color }};"></i></div>
+                                                <h5 class="font-bold mb-1">{{ $package->name }}</h5>
+                                                <div class="my-3 text-rose">
+                                                    @if ($package->original_price && $package->original_price > $package->price)
+                                                        <div
+                                                            class="mb-1 text-base font-semibold text-gray-600 line-through decoration-1 decoration-gray-600">
+                                                            Rp {{ number_format($package->original_price, 0, ',', '.') }}
+                                                        </div>
+                                                    @endif
+                                                    <div class="font-display text-2xl font-bold">Rp
+                                                        {{ number_format($package->price, 0, ',', '.') }}</div>
+                                                </div>
+                                                <div class="text-left text-sm mb-4 border-t border-gray-100 pt-3 max-h-48 overflow-y-auto pe-2"
+                                                    tabindex="0" role="region"
+                                                    aria-label="Benefit paket {{ $package->name }}">
+                                                    @foreach ($package->benefits->groupBy(fn($benefit) => $benefit->category->name ?? 'Umum') as $category => $benefits)
+                                                        <p class="font-bold mb-1.5 mt-3 first:mt-0"
+                                                            style="color:var(--primary-dark); font-size:.68rem; text-transform:uppercase; letter-spacing:1px;">
+                                                            {{ $category }}</p>
+                                                        <ul class="list-none mb-1">
+                                                            @foreach ($benefits as $benefit)
+                                                                <li class="mb-1.5 flex items-start gap-2"><i
+                                                                        class="fa-solid fa-circle-check text-green-600 mt-1"></i><span>{{ $benefit->name }}</span>
+                                                                </li>
+                                                            @endforeach
+                                                        </ul>
+                                                    @endforeach
+                                                </div>
+                                                <a href="{{ route('booking.create') }}?package={{ $package->id }}"
+                                                    class="btn-pink w-full mt-auto">Booking Paket Ini</a>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endforeach
                             </div>
-                            @foreach ($typePackages->sortBy('price')->groupBy('sub_type') as $subType => $items)
-                                @if ($subType)
-                                    <h3 class="mb-4 text-center text-sm font-semibold tracking-wide text-gray-600">
-                                        {{ $subTypeLabels[$subType] ?? ucfirst(str_replace('_', ' ', $subType)) }}</h3>
-                                @endif
-                                <div class="mb-8 flex flex-wrap justify-center gap-5">
-                                    @foreach ($items as $package)
-                                        <div
-                                            class="card-mua text-center p-5 flex flex-col w-full sm:w-[calc(50%-0.625rem)] lg:w-[calc(25%-0.9375rem)]">
-                                            <div class="mx-auto mb-3 rounded-full flex items-center justify-center"
-                                                style="width:64px; height:64px; background:{{ $package->color }}18;"><i
-                                                    class="fa-solid fa-gem"
-                                                    style="font-size:1.5rem; color:{{ $package->color }};"></i></div>
-                                            <h5 class="font-bold mb-1">{{ $package->name }}</h5>
-                                            <div class="my-3 text-rose">
-                                                @if ($package->original_price && $package->original_price > $package->price)
-                                                    <div
-                                                        class="mb-1 text-base font-semibold text-gray-600 line-through decoration-1 decoration-gray-600">
-                                                        Rp {{ number_format($package->original_price, 0, ',', '.') }}</div>
-                                                @endif
-                                                <div class="font-display text-2xl font-bold">Rp
-                                                    {{ number_format($package->price, 0, ',', '.') }}</div>
-                                            </div>
-                                            <div class="text-left text-sm mb-4 border-t border-gray-100 pt-3 max-h-48 overflow-y-auto pe-2"
-                                                tabindex="0" role="region"
-                                                aria-label="Benefit paket {{ $package->name }}">
-                                                @foreach ($package->benefits->groupBy(fn($benefit) => $benefit->category->name ?? 'Umum') as $category => $benefits)
-                                                    <p class="font-bold mb-1.5 mt-3 first:mt-0"
-                                                        style="color:var(--primary-dark); font-size:.68rem; text-transform:uppercase; letter-spacing:1px;">
-                                                        {{ $category }}</p>
-                                                    <ul class="list-none mb-1">
-                                                        @foreach ($benefits as $benefit)
-                                                            <li class="mb-1.5 flex items-start gap-2"><i
-                                                                    class="fa-solid fa-circle-check text-green-600 mt-1"></i><span>{{ $benefit->name }}</span>
-                                                            </li>
-                                                        @endforeach
-                                                    </ul>
-                                                @endforeach
-                                            </div>
-                                            <a href="{{ route('booking.create') }}?package={{ $package->id }}"
-                                                class="btn-pink w-full mt-auto">Booking Paket Ini</a>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @endforeach
                         </div>
                     @empty
                         <div

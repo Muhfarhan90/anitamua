@@ -28,7 +28,7 @@ class ScheduleController extends Controller
         $year = (int) ($request->year ?? now()->year);
         $date = Carbon::create($year, $month, 1);
 
-        $monthSchedules = Schedule::with('booking')
+        $monthSchedules = Schedule::with('booking.package.packageType')
             // ->assignedTo($user) // Filter PIC dinonaktifkan untuk Tim Lapangan.
             ->whereHas('booking', fn ($query) => $query->whereNotIn('status', [
                 Booking::STATUS_CANCELLED,
@@ -46,6 +46,7 @@ class ScheduleController extends Controller
             ->map(fn ($s) => [
                 'title' => $s->title ?: Schedule::typeLabel($s->type).' — '.$s->booking->name,
                 'type' => $s->type,
+                'display_group' => $s->booking->package?->packageType?->display_group === 'regular' ? 'regular' : 'wedding',
                 'time' => $s->time ? $s->time->format('H:i') : null,
                 'location' => $s->location ?: $s->booking->location,
                 'status' => $s->status,
