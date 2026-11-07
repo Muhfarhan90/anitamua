@@ -122,6 +122,7 @@ Route::middleware('auth')->group(function () {
             Route::get('/bookings', [BookingManagementController::class, 'index'])->name('bookings.index');
             Route::post('/bookings', [BookingManagementController::class, 'store'])->name('bookings.store');
             Route::get('/bookings/{booking}/edit', [BookingManagementController::class, 'edit'])->name('bookings.edit');
+            Route::get('/bookings/{booking}/pdf', [BookingManagementController::class, 'pdf'])->name('bookings.pdf');
             Route::patch('/bookings/{booking}', [BookingManagementController::class, 'update'])->name('bookings.update');
             Route::get('/bookings/{booking}', [BookingManagementController::class, 'show'])->name('bookings.show');
             Route::post('/bookings/{booking}/vendors', [BookingManagementController::class, 'addVendor'])->name('bookings.vendors.store');

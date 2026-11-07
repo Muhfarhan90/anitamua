@@ -30,6 +30,7 @@
         <a href="{{ route('admin.invoices.show', $booking->invoice) }}" class="inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"><i class="fas fa-file-invoice"></i> Lihat Invoice</a>
         @endif
         @endif
+        <x-button href="{{ route('admin.bookings.pdf', $booking) }}" target="_blank" color="primary"><i class="fas fa-print"></i> Cetak Booking</x-button>
         @if($booking->status === \App\Models\Booking::STATUS_BOOKED)
         <form action="{{ route('admin.bookings.complete', $booking) }}" method="POST" class="inline">
             @csrf

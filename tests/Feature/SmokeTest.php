@@ -2287,7 +2287,7 @@ it('creates one invoice per booked booking and updates it from verified payments
         ->assertHeader('content-disposition', 'inline; filename="Invoice-'.$paid->invoice_number.'.pdf"');
 });
 
-it('prints booking details with survey and fitting data in an admin-only PDF', function () {
+it('opens printable booking details with survey data for admins', function () {
     Storage::fake('public');
 
     $owner = User::where('email', 'owner@anitamua.com')->firstOrFail();
@@ -2301,22 +2301,20 @@ it('prints booking details with survey and fitting data in an admin-only PDF', f
         'wedding_stage_photo_path' => $photo,
         'notes' => 'Akses mobil lewat gerbang selatan.',
     ])->save();
-    $fitting = $booking->fittings()->firstOrNew()->fill([
-        'date' => now()->toDateString(), 'pic' => 'Tim Fitting', 'status' => 'finished',
-    ]);
-    $fitting->cpw_busana_akad_notes = 'Kain putih dengan bordir';
-    $fitting->cpw_busana_akad_photo_path = $photo;
-    $fitting->save();
-
     $html = view('admin.bookings.pdf', ['booking' => $booking, 'companyName' => 'ANITA'])->render();
-    expect($html)->toContain('Informasi Booking dan Klien', 'Data Survey', 'Data Fitting',
-        'Putih dan merah muda', 'Akses mobil lewat gerbang selatan.', 'Kain putih dengan bordir', 'data:image/jpeg;base64,');
+    expect($html)->toContain('Informasi Booking dan Klien', 'Data Survey',
+        'Putih dan merah muda', 'Akses mobil lewat gerbang selatan.', 'data:image/jpeg;base64,')
+        ->not->toContain('Data Fitting');
 
     $this->actingAs($owner)->get(route('admin.bookings.show', $booking))
-        ->assertOk()->assertSee('Cetak PDF');
-    $response = $this->actingAs($owner)->get(route('admin.bookings.pdf', $booking))
-        ->assertOk()->assertHeader('content-type', 'application/pdf');
-    expect(substr($response->getContent(), 0, 4))->toBe('%PDF');
+        ->assertOk()->assertSee('Cetak Booking');
+    $this->actingAs($owner)->get(route('admin.bookings.pdf', $booking))
+        ->assertOk()
+        ->assertSee('window.print()', false)
+        ->assertSee('Informasi Booking dan Klien')
+        ->assertSee('Data Survey')
+        ->assertDontSee('Data Fitting')
+        ->assertDontSee('Dompdf', false);
 
     $this->actingAs($client)->get(route('admin.bookings.pdf', $booking))->assertForbidden();
 });

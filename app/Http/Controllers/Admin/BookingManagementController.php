@@ -84,6 +84,20 @@ class BookingManagementController extends Controller
         return view('admin.bookings.show', compact('booking', 'packages', 'staff', 'teamMembers', 'weddingStages', 'referenceTypes'));
     }
 
+    public function pdf(Booking $booking)
+    {
+        $booking->load([
+            'client', 'package.packageType', 'package.benefits', 'addons', 'payments', 'bookingVendors.vendor.category',
+            'schedules.picUser', 'survey.weddingStage', 'survey.tent', 'survey.entranceGate',
+            'references.referenceType', 'activityLogs.user',
+        ]);
+
+        return view('admin.bookings.pdf', [
+            'booking' => $booking,
+            'companyName' => SiteSetting::get('company_name', 'ANITA'),
+        ]);
+    }
+
     public function create()
     {
         $packages = Package::with('packageType')->where('status', 'active')->get();
